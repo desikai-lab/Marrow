@@ -4,6 +4,7 @@ import shutil
 import sys
 import unittest
 from datetime import datetime
+from unittest.mock import patch
 
 # Add project root to paths
 sys.path.append(os.getcwd())
@@ -17,6 +18,8 @@ from tools.artifact_pipeline import (
 )
 from tools.artifacts import search_project_artifacts_logic
 from tools.utils.cleaner import ContentCleaner
+
+FAKE_VECTOR = [0.1] * 384
 
 
 class TestArtifactVectorization(unittest.TestCase):
@@ -38,13 +41,22 @@ class TestArtifactVectorization(unittest.TestCase):
 
         init_db(self.project_root)
 
+        # Mock embeddings globally for this test class
+        self.embeddings_patcher = patch(
+            "storage.repositories.artifact_repository.embeddings_manager.generate_vector",
+            return_value=FAKE_VECTOR,
+        )
+        self.mock_generate_vector = self.embeddings_patcher.start()
+
     def tearDown(self):
+        self.embeddings_patcher.stop()
         # On Windows, LanceDB sometimes holds file locks; attempt deletion
         try:
             if os.path.exists(self.project_root):
                 shutil.rmtree(self.project_root)
         except Exception:
             pass
+
 
     def test_clean_noise_content_removes_metadata_and_logs(self):
         """Verifies cleaning content of noise (comments, logs)."""
