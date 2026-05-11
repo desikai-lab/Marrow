@@ -1,24 +1,27 @@
+import asyncio
 import os
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from mcp_core import mcp
+from storage.db import index_rebuild_worker
 from transport.middleware import (
     DebugLoggingMiddleware,
     FixHostHeaderMiddleware,
     SSEHeadersMiddleware,
-    TokenAuthMiddleware,
     TimingMiddleware,
+    TokenAuthMiddleware,
 )
 from transport.oauth_router import router as oauth_router
 from transport.vectorize_router import router as vectorize_router
-from storage.db import index_rebuild_worker
-import asyncio
 
 # Build the MCP ASGI application.
 mcp_asgi = mcp.streamable_http_app()
 
-import logging as _logging
+import logging as _logging  # noqa: E402
+
 
 async def maintenance_loop() -> None:
     """Background task: runs MaintenanceService for all known projects every N hours.
@@ -28,9 +31,10 @@ async def maintenance_loop() -> None:
     aborts the cycle or kills the loop.
     """
     import os
+
     from config import PROJECTS_ROOT
-    from storage.repositories.skeleton_repository import SkeletonRepository
     from services.maintenance_service import MaintenanceService
+    from storage.repositories.skeleton_repository import SkeletonRepository
 
     interval = int(os.getenv("MAINTENANCE_INTERVAL_SECONDS", "1800"))
     _logger = _logging.getLogger("marrow.maintenance_scheduler")
@@ -44,8 +48,7 @@ async def maintenance_loop() -> None:
             continue
 
         projects = [
-            p for p in os.listdir(PROJECTS_ROOT)
-            if os.path.isdir(os.path.join(PROJECTS_ROOT, p))
+            p for p in os.listdir(PROJECTS_ROOT) if os.path.isdir(os.path.join(PROJECTS_ROOT, p))
         ]
         _logger.info("[Maintenance] Cycle start — %d project(s).", len(projects))
 
@@ -65,8 +68,11 @@ async def maintenance_loop() -> None:
                 report = await service.run()
                 _logger.info(
                     "[Maintenance] %s — compact: %s, versions: %s, ghosts: %d, errors: %d",
-                    project_name, report.files_compacted, report.versions_cleaned,
-                    report.ghosts_pruned, len(report.errors),
+                    project_name,
+                    report.files_compacted,
+                    report.versions_cleaned,
+                    report.ghosts_pruned,
+                    len(report.errors),
                 )
                 if report.errors:
                     _logger.warning("[Maintenance] %s errors: %s", project_name, report.errors)
@@ -84,15 +90,16 @@ async def lifespan(app):
         asyncio.create_task(index_rebuild_worker("artifact_chunks", debounce_s=20)),
         asyncio.create_task(maintenance_loop()),
     ]
-    
+
     async with mcp.session_manager.run():
         yield
-        
+
     # Shutdown logic: cancel tasks and wait for them to finish
     for t in tasks:
         t.cancel()
     if tasks:
         await asyncio.gather(*tasks, return_exceptions=True)
+
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Marrow MCP Server", lifespan=lifespan)
@@ -109,7 +116,7 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["WWW-Authenticate", "mcp-protocol-version"]
+        expose_headers=["WWW-Authenticate", "mcp-protocol-version"],
     )
 
     # MIDDLEWARE REGISTRATION ORDER — ORDER IS LOAD-SENSITIVE (ADR-01)
@@ -122,16 +129,16 @@ def create_app() -> FastAPI:
     #   3. TokenAuthMiddleware      — authenticates after host is corrected
     #      → handler
     #
-    # DebugLoggingMiddleware exists in middleware.py but is NOT registered here 
+    # DebugLoggingMiddleware exists in middleware.py but is NOT registered here
     # per plan_track_b.md instructions (even though it was registered in original app.py).
     #
     # WARNING: Do not reorder these three calls without updating this comment and ADR-01.
-    app.add_middleware(TokenAuthMiddleware)       # innermost at runtime
+    app.add_middleware(TokenAuthMiddleware)  # innermost at runtime
     app.add_middleware(SSEHeadersMiddleware)
     app.add_middleware(FixHostHeaderMiddleware)
     if os.getenv("MCP_DEBUG_TRANSPORT", "false").lower() == "true":
-        app.add_middleware(DebugLoggingMiddleware)     # outermost at runtime
-    app.add_middleware(TimingMiddleware)           # absolute outermost wrapper for latency tracking
+        app.add_middleware(DebugLoggingMiddleware)  # outermost at runtime
+    app.add_middleware(TimingMiddleware)  # absolute outermost wrapper for latency tracking
 
     # Mount MCP SSE transport
     app.mount("/", mcp_asgi)

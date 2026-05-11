@@ -1,11 +1,15 @@
 import asyncio
-from typing import Callable, Awaitable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from watchdog.events import FileSystemEventHandler, FileSystemEvent
+
+from watchdog.events import FileSystemEvent, FileSystemEventHandler
+
 from src.watcher.debouncer import AsyncDebouncer
 
+
 class SkeletonEventBridge(FileSystemEventHandler):
-    """Bridges threaded watchdog file events into the asyncio main loop."""    
+    """Bridges threaded watchdog file events into the asyncio main loop."""
+
     def __init__(
         self,
         loop: asyncio.AbstractEventLoop,
@@ -30,10 +34,7 @@ class SkeletonEventBridge(FileSystemEventHandler):
 
     def _dispatch_delete(self, src_path: str):
         """Dispatches a delete callback from the watchdog thread into the async loop."""
-        self._loop.call_soon_threadsafe(
-            asyncio.ensure_future,
-            self._delete_callback(src_path)
-        )
+        self._loop.call_soon_threadsafe(asyncio.ensure_future, self._delete_callback(src_path))
 
     def on_modified(self, event: FileSystemEvent):
         self._process_event(event)

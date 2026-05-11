@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class LangSyntaxConfig:
     container_nodes: set[str]
@@ -9,13 +10,14 @@ class LangSyntaxConfig:
     import_nodes: set[str]
     property_nodes: set[str]
 
+
 csharp_config = LangSyntaxConfig(
     container_nodes={"namespace_declaration", "class_declaration", "interface_declaration"},
     method_nodes={"method_declaration", "constructor_declaration"},
     body_nodes={"block"},
     stub_text=b"{ /* ... implementation */ }",
     import_nodes={"using_directive"},
-    property_nodes={"property_declaration", "field_declaration"}
+    property_nodes={"property_declaration", "field_declaration"},
 )
 
 ts_config = LangSyntaxConfig(
@@ -24,7 +26,7 @@ ts_config = LangSyntaxConfig(
     body_nodes={"statement_block"},
     stub_text=b"{ /* ... implementation */ }",
     import_nodes={"import_statement", "lexical_declaration"},
-    property_nodes={"property_signature", "public_field_definition"}
+    property_nodes={"property_signature", "public_field_definition"},
 )
 
 python_config = LangSyntaxConfig(
@@ -33,7 +35,7 @@ python_config = LangSyntaxConfig(
     body_nodes={"block"},
     stub_text=b" pass",
     import_nodes={"import_statement", "import_from_statement"},
-    property_nodes={"expression_statement"}
+    property_nodes={"expression_statement"},
 )
 
 CONFIG_BY_EXT = {
@@ -42,5 +44,5 @@ CONFIG_BY_EXT = {
     ".ts": ts_config,
     ".tsx": ts_config,
     ".jsx": ts_config,
-    ".py": python_config
+    ".py": python_config,
 }

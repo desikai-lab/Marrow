@@ -4,12 +4,13 @@ Ensures that chunk payloads survive worker restarts. Delivery is attempted
 immediately; on failure, rows remain PENDING and are flushed on next startup
 or by the background flush loop.
 """
+
 import asyncio
 import json
 import logging
 import sqlite3
-from datetime import datetime, timezone
-from typing import Awaitable, Callable, Optional
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class WorkerOutbox:
         self._db_path = db_path
         self._flush_interval = flush_interval
         self._flush_concurrency = flush_concurrency
-        self._conn: Optional[sqlite3.Connection] = None
+        self._conn: sqlite3.Connection | None = None
 
     async def setup(self) -> None:
         """Open the DB, enable WAL mode, and create the schema."""
@@ -64,7 +65,7 @@ class WorkerOutbox:
     ) -> int:
         """Write a PENDING row and return its row_id."""
         assert self._conn, "WorkerOutbox.setup() must be called before enqueue()"
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         cur = self._conn.execute(
             "INSERT INTO outbox (operation, file_path, chunk_count, payload, created_at) "
             "VALUES (?, ?, ?, ?, ?)",
@@ -135,13 +136,17 @@ class WorkerOutbox:
                 except Exception as e:
                     logger.warning(
                         "[Outbox] Batch flush failed for row %d (%s): %s",
-                        row_id, file_path, e,
+                        row_id,
+                        file_path,
+                        e,
                     )
 
-        await asyncio.gather(*[
-            _deliver_one(row_id, op, fp, payload_json)
-            for row_id, op, fp, _chunk_count, payload_json in rows
-        ])
+        await asyncio.gather(
+            *[
+                _deliver_one(row_id, op, fp, payload_json)
+                for row_id, op, fp, _chunk_count, payload_json in rows
+            ]
+        )
 
     async def background_flush_loop(self, deliver_fn: DeliverFn) -> None:
         """Runs forever, flushing pending rows every flush_interval seconds."""
@@ -167,6 +172,7 @@ class WorkerOutbox:
         ).fetchone()[0]
         if count >= _FAILED_ROW_WARN_THRESHOLD:
             logger.warning(
-                "[Outbox] WARNING: %d FAILED rows in outbox. "
-                "Inspect %s for details.", count, self._db_path
+                "[Outbox] WARNING: %d FAILED rows in outbox. Inspect %s for details.",
+                count,
+                self._db_path,
             )

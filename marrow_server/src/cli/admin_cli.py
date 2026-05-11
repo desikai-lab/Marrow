@@ -1,11 +1,11 @@
 import argparse
-import sys
-import os
 import logging
+import os
+import sys
 
-if sys.stdout.encoding.lower() != 'utf-8':
+if sys.stdout.encoding.lower() != "utf-8":
     try:
-        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stdout.reconfigure(encoding="utf-8")
     except (AttributeError, TypeError):
         pass
 
@@ -16,12 +16,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("admin_cli")
 
-from cli.commands import COMMANDS
+from cli.commands import COMMANDS  # noqa: E402
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Admin CLI: Marrow management")
     subparsers = parser.add_subparsers(dest="command", help="Commands")
-    
+
     # Make command required (for Python 3.7+ required=True)
     subparsers.required = True
 

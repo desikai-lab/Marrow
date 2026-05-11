@@ -3,18 +3,15 @@
 Unit tests use unittest.mock to avoid live LanceDB / filesystem I/O.
 Run with: pytest tests/test_complete_tasks.py -v
 """
-import os
+
 import json
-import threading
-import tempfile
-import shutil
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call, AsyncMock
-from typing import List
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 # ── helpers ──────────────────────────────────────────────────────────────────
+
 
 def _make_record(key: str, status: str = "active", blocked_by: list = None):
     """Returns a minimal TaskRecord-like MagicMock."""
@@ -50,6 +47,7 @@ def _make_blob(key: str, status: str = "active", blocked_by: list = None) -> dic
 
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture()
 def tmp_project(tmp_path):
@@ -91,14 +89,16 @@ class TestCompleteSingleTaskHappyPath:
 
             repo_instance = MockTaskRepo.return_value
             repo_instance.get_by_key = AsyncMock(return_value=record)
-            repo_instance.search = AsyncMock(return_value=[])        # no active tasks to unblock
+            repo_instance.search = AsyncMock(return_value=[])  # no active tasks to unblock
             repo_instance.table.delete = MagicMock()
             repo_instance.table.add = MagicMock()
             repo_instance.to_index_row = MagicMock()
 
             from storage.uow import UnitOfWork
+
             uow = UnitOfWork(str(tmp_project))
             import asyncio
+
             result = asyncio.run(uow.move_tasks_batch_atomically([key], new_status="✅ Закрыта"))
 
         assert key in result["completed"]
@@ -120,8 +120,9 @@ class TestCompleteMultipleTasksSingleLock:
             p.write_text(json.dumps(blobs[k]), encoding="utf-8")
 
         lock_acquire_count = []
-    
+
         from contextlib import asynccontextmanager
+
         @asynccontextmanager
         async def counting_lock(name):
             lock_acquire_count.append(1)
@@ -136,13 +137,15 @@ class TestCompleteMultipleTasksSingleLock:
             patch("storage.uow.validate_status_change"),
             patch("storage.db.get_table_lock", side_effect=counting_lock),
         ):
+
             def _fake_write(root, data):
                 p = tmp_project / ".db" / "blobs" / "done" / f"{data['key']}.md"
                 p.parent.mkdir(parents=True, exist_ok=True)
                 p.write_text(json.dumps(data), encoding="utf-8")
                 return p
+
             mock_write.side_effect = _fake_write
-    
+
             repo_inst = MockTaskRepo.return_value
             repo_inst.get_by_key = AsyncMock(side_effect=lambda k: records[k])
             repo_inst.search = AsyncMock(return_value=[])
@@ -151,11 +154,13 @@ class TestCompleteMultipleTasksSingleLock:
             repo_inst.upsert = AsyncMock()
             # table.name is used by get_table_lock
             repo_inst.table.name = "tasks"
-    
+
             from storage.uow import UnitOfWork
+
             uow = UnitOfWork(str(tmp_project))
-    
+
             import asyncio
+
             result = asyncio.run(uow.move_tasks_batch_atomically(keys, new_status="closed"))
 
         assert set(result["completed"]) == set(keys)
@@ -188,14 +193,18 @@ class TestFailFastOnUnknownKey:
             # Return None for the bad key
             repo_inst.get_by_key = AsyncMock(side_effect=lambda k: rec if k == good_key else None)
             repo_inst.table.add = MagicMock()
-            
+
             from storage.uow import UnitOfWork
             from utils.exceptions import TaskNotFoundError
+
             uow = UnitOfWork(str(tmp_project))
 
             import asyncio
+
             with pytest.raises(TaskNotFoundError):
-                asyncio.run(uow.move_tasks_batch_atomically([good_key, bad_key], new_status="✅ Закрыта"))
+                asyncio.run(
+                    uow.move_tasks_batch_atomically([good_key, bad_key], new_status="✅ Закрыта")
+                )
 
             # Zero writes to storage
             mock_write.assert_not_called()
@@ -234,9 +243,11 @@ class TestRollbackOnLanceDbFailure:
             repo_inst.search = AsyncMock(return_value=[])
 
             from storage.uow import UnitOfWork
+
             uow = UnitOfWork(str(tmp_project))
 
             import asyncio
+
             with pytest.raises(RuntimeError, match="LanceDB failure"):
                 asyncio.run(uow.move_tasks_batch_atomically([key], new_status="closed"))
 
@@ -285,13 +296,15 @@ class TestAutoUnblockClearsBlockedBy:
         ):
             repo_inst = MockTaskRepo.return_value
             repo_inst.get_by_key = AsyncMock(return_value=rec_a)
-            repo_inst.search = AsyncMock(return_value=[rec_b])   # one active task with blocked_by
+            repo_inst.search = AsyncMock(return_value=[rec_b])  # one active task with blocked_by
             repo_inst.table.delete = MagicMock()
             repo_inst.table.add = AsyncMock()
             repo_inst.upsert = AsyncMock()
 
-            from storage.uow import UnitOfWork
             import asyncio
+
+            from storage.uow import UnitOfWork
+
             uow = UnitOfWork(str(tmp_project))
             result = asyncio.run(uow.move_tasks_batch_atomically([key_a], new_status="✅ Закрыта"))
 
@@ -306,6 +319,8 @@ class TestEmptyTaskIdsReturnsEarly:
             with patch("services.task_command_service.PROJECTS_ROOT", "/fake"):
                 with patch("os.path.isdir", return_value=True):
                     import asyncio
+
                     from services.task_command_service import complete_tasks_logic
+
                     result = asyncio.run(complete_tasks_logic([], "SomeProject"))
         assert "No task IDs" in result

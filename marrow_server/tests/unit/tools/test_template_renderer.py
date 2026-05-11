@@ -1,6 +1,9 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from tools.utils.template_renderer import TemplateRenderer
+
 
 def test_render_singlePlaceholder_returnsSubstituted():
     mock_context = MagicMock()
@@ -8,6 +11,7 @@ def test_render_singlePlaceholder_returnsSubstituted():
     content = "Hello {{KEY}}!"
     result = TemplateRenderer.render(content, mock_context)
     assert result == "Hello VALUE!"
+
 
 def test_render_missingKey_leavesPlaceholderAndWarns():
     mock_context = MagicMock()
@@ -17,6 +21,7 @@ def test_render_missingKey_leavesPlaceholderAndWarns():
         result = TemplateRenderer.render(content, mock_context)
     assert result == "Hello {{MISSING}}!"
 
+
 def test_render_keyLookupIsCaseInsensitive():
     mock_context = MagicMock()
     mock_context.variables = {"KEY": "VALUE"}
@@ -24,12 +29,14 @@ def test_render_keyLookupIsCaseInsensitive():
     result = TemplateRenderer.render(content, mock_context)
     assert result == "Hello VALUE!"
 
+
 def test_render_noPlaceholders_returnsOriginal():
     mock_context = MagicMock()
     mock_context.variables = {"KEY": "VALUE"}
     content = "Hello World!"
     result = TemplateRenderer.render(content, mock_context)
     assert result == "Hello World!"
+
 
 def test_render_multiplePlaceholders_allSubstituted():
     mock_context = MagicMock()

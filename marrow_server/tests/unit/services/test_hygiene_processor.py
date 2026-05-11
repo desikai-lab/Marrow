@@ -3,17 +3,15 @@
 Unit tests mock filesystem and BuildContext to isolate the processor.
 Run with: pytest tests/test_hygiene_processor.py -v
 """
-import os
-import tempfile
-from pathlib import Path
+
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from tools.build_processors import HygieneCheckProcessor, ProcessorFactory
 
-
 # ── helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_context(project: str, manifest_name: str) -> MagicMock:
     ctx = MagicMock()
@@ -116,7 +114,9 @@ class TestFullBuildWithHygieneFirstStep:
             return original_process(self_inner, step, ctx)
 
         with patch.object(HygieneCheckProcessor, "process", tracking_process):
-            with patch("tools.utils.filesystem_utils.validate_project_path", return_value=str(tmp_path)):
+            with patch(
+                "tools.utils.filesystem_utils.validate_project_path", return_value=str(tmp_path)
+            ):
                 ctx = _make_context("TestProject", "integration_build")
                 step = _make_step("warn")
                 ProcessorFactory.get_processor("hygiene_check").process(step, ctx)

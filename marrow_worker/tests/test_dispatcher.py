@@ -7,7 +7,6 @@ from tree_sitter import Parser
 
 from src.parser.dispatcher import get_parser_for_extension, supported_extensions
 
-
 # ---------------------------------------------------------------------------
 # Parametrized mapping table
 # ext -> expected language name (checked via Parser internals)
@@ -43,6 +42,7 @@ def test_extension_is_case_insensitive(ext):
 # Negative cases
 # ---------------------------------------------------------------------------
 
+
 def test_unknown_extension_raises():
     """get_parser_for_extension() must raise ValueError for unsupported extensions."""
     with pytest.raises(ValueError, match="Unsupported file extension"):
@@ -58,6 +58,7 @@ def test_missing_dot_raises():
 # ---------------------------------------------------------------------------
 # Metadata
 # ---------------------------------------------------------------------------
+
 
 def test_supported_extensions_contains_all_known():
     exts = supported_extensions()

@@ -1,8 +1,9 @@
+
 import pytest
-import shutil
-from pathlib import Path
-from storage.entities import TaskRecord
+
 from storage.db import init_db
+from storage.entities import TaskRecord
+
 
 @pytest.fixture
 def tmp_project_root(tmp_path):
@@ -12,6 +13,7 @@ def tmp_project_root(tmp_path):
     # Initialize DB and directories
     init_db(str(project_root))
     return str(project_root)
+
 
 @pytest.fixture
 def sample_task_record():
@@ -28,5 +30,5 @@ def sample_task_record():
         project="test_project",
         problem="Problem description",
         solution="Solution description",
-        where=["config.py", "app.py"]
+        where=["config.py", "app.py"],
     )

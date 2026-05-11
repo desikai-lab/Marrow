@@ -1,10 +1,10 @@
 import asyncio
 import logging
-from typing import List, Optional, Dict, Any
+from typing import Any
 
 import pyarrow as pa
 
-from storage.db import get_skeleton_table, get_table_lock, schedule_index_rebuild, list_table_names
+from storage.db import get_skeleton_table, get_table_lock, list_table_names, schedule_index_rebuild
 from storage.entities import SkeletonChunkRecord
 from utils.metrics import track_time
 
@@ -12,9 +12,9 @@ logger = logging.getLogger("marrow.skeleton_repository")
 
 # ADR-24: depth -> (allowed chunk_types | None, force_summary_only)
 _DEPTH_CONFIG: dict = {
-    0: (None,                                                    False),
-    1: ({"file", "imports", "namespace", "class"},               True),
-    2: ({"file", "imports", "namespace", "class", "method"},     False),
+    0: (None, False),
+    1: ({"file", "imports", "namespace", "class"}, True),
+    2: ({"file", "imports", "namespace", "class", "method"}, False),
 }
 
 
@@ -34,7 +34,7 @@ class SkeletonRepository:
         self,
         path: str,
         project: str,
-        records: List[SkeletonChunkRecord],
+        records: list[SkeletonChunkRecord],
         **kwargs,
     ) -> int:
         """
@@ -52,20 +52,23 @@ class SkeletonRepository:
                     seen_keys.add((rec.chunk_type, rec.chunk_name))
 
                 new_data = pa.Table.from_pylist([r.to_index_row() for r in records])
+
                 def do_merge():
                     (
-                        self.table
-                        .merge_insert(["path", "chunk_type", "chunk_name"])
+                        self.table.merge_insert(["path", "chunk_type", "chunk_name"])
                         .when_matched_update_all()
                         .when_not_matched_insert_all()
                         .when_not_matched_by_source_delete(f"path = '{path}'")
                         .execute(new_data)
                     )
+
                 await asyncio.to_thread(do_merge)
                 schedule_index_rebuild(self.table)
                 logger.info(
                     "Stored %d skeleton chunk(s) for %s:%s",
-                    len(records), project, path,
+                    len(records),
+                    project,
+                    path,
                 )
             else:
                 # If records is empty, we still want to delete existing chunks for this path
@@ -106,7 +109,9 @@ class SkeletonRepository:
         Raises RuntimeError (joining per-table messages) if any table fails.
         """
         import datetime
+
         from storage.db import get_db
+
         delta = datetime.timedelta(hours=older_than_hours)
         db = get_db(self.project_root)
         table_names = list_table_names(db)
@@ -143,6 +148,7 @@ class SkeletonRepository:
         Raises RuntimeError (joining per-table messages) if any table fails.
         """
         from storage.db import get_db
+
         db = get_db(self.project_root)
         table_names = list_table_names(db)
         errors = []
@@ -166,31 +172,31 @@ class SkeletonRepository:
     @track_time(layer="repository")
     async def semantic_search(
         self,
-        query_vector: List[float],
-        project: Optional[str] = None,
-        chunk_type: Optional[str] = None,
+        query_vector: list[float],
+        project: str | None = None,
+        chunk_type: str | None = None,
         limit: int = 10,
         include_tests: bool = False,
-        root_path: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        root_path: str | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Vector similarity search with optional prefilters on project and chunk_type.
         Returns a list of dicts (without the raw vector column).
         """
         query = self.table.search(query_vector)
 
-        filters: List[str] = []
+        filters: list[str] = []
         if project:
             filters.append(f"project = '{project}'")
         if chunk_type:
             filters.append(f"chunk_type = '{chunk_type}'")
         if not include_tests:
-            filters.append("is_test = false")          # ADR-23: column-based, not path regex
+            filters.append("is_test = false")  # ADR-23: column-based, not path regex
         if root_path:
-            safe_root = root_path.replace("'", "''").replace('\\', '/')
+            safe_root = root_path.replace("'", "''").replace("\\", "/")
             # Robust matching: any path containing the root_path (ADR-24)
             filters.append(f"path LIKE '%{safe_root}%'")
-            
+
         if filters:
             query = query.where(" AND ".join(filters), prefilter=True)
 
@@ -198,14 +204,14 @@ class SkeletonRepository:
         # strip vector column from output
         return [
             {
-                "path":          r["path"],
-                "project":       r["project"],
-                "chunk_type":    r["chunk_type"],
-                "chunk_name":    r["chunk_name"],
+                "path": r["path"],
+                "project": r["project"],
+                "chunk_type": r["chunk_type"],
+                "chunk_name": r["chunk_name"],
                 "skeleton_text": r["skeleton_text"],
-                "start_line":    r["start_line"],
-                "end_line":      r["end_line"],
-                "distance":      round(r.get("_distance", 0.0), 4),
+                "start_line": r["start_line"],
+                "end_line": r["end_line"],
+                "distance": round(r.get("_distance", 0.0), 4),
             }
             for r in results
         ]
@@ -215,18 +221,18 @@ class SkeletonRepository:
         self,
         project: str,
         exact_name: str,
-        chunk_type: Optional[str] = None,
+        chunk_type: str | None = None,
         include_tests: bool = False,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Bypasses semantic search to find code units (classes, methods, properties) by their exact name.
         """
         # SECURITY CRITICAL: Sanitize inputs to prevent SQL Injection in LanceDB/DataFusion .where()
         safe_project = project.replace("'", "''")
         safe_name = exact_name.replace("'", "''")
-        
+
         where_clause = f"project = '{safe_project}' AND chunk_name = '{safe_name}'"
-        
+
         if chunk_type:
             safe_type = chunk_type.replace("'", "''")
             where_clause += f" AND chunk_type = '{safe_type}'"
@@ -235,16 +241,16 @@ class SkeletonRepository:
             where_clause += " AND is_test = false"
 
         results = await asyncio.to_thread(lambda: self.table.search().where(where_clause).to_list())
-        
+
         return [
             {
-                "path":          r["path"],
-                "project":       r["project"],
-                "chunk_type":    r["chunk_type"],
-                "chunk_name":    r["chunk_name"],
+                "path": r["path"],
+                "project": r["project"],
+                "chunk_type": r["chunk_type"],
+                "chunk_name": r["chunk_name"],
                 "skeleton_text": r["skeleton_text"],
-                "start_line":    r["start_line"],
-                "end_line":      r["end_line"]
+                "start_line": r["start_line"],
+                "end_line": r["end_line"],
             }
             for r in results
         ]
@@ -256,13 +262,13 @@ class SkeletonRepository:
         project: str,
         depth: int = 0,
         summary_only: bool = False,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Retrieves all skeleton chunks for a file, sorted by start_line.
         depth: 0=all, 1=class/namespace names only, 2=class+method signatures.
         summary_only: strip skeleton_text (honoured only at depth=0).
         """
-        posix_path = path.replace('\\', '/')
+        posix_path = path.replace("\\", "/")
         results = await asyncio.to_thread(
             lambda: (
                 self.table.search()
@@ -270,24 +276,24 @@ class SkeletonRepository:
                 .to_list()
             )
         )
-        
+
         allowed_types, force_summary = _DEPTH_CONFIG.get(depth, (None, False))
         if allowed_types:
             results = [r for r in results if r["chunk_type"] in allowed_types]
         elif summary_only:
             results = [r for r in results if r["chunk_type"] != "property"]
-            
+
         strip_text_flag = force_summary or (depth == 0 and summary_only)
-        
+
         formatted = []
         for r in sorted(results, key=lambda x: x["start_line"]):
             chunk = {
-                "path":          r["path"],
-                "project":       r["project"],
-                "chunk_type":    r["chunk_type"],
-                "chunk_name":    r["chunk_name"],
-                "start_line":    r["start_line"],
-                "end_line":      r["end_line"],
+                "path": r["path"],
+                "project": r["project"],
+                "chunk_type": r["chunk_type"],
+                "chunk_name": r["chunk_name"],
+                "start_line": r["start_line"],
+                "end_line": r["end_line"],
             }
 
             should_strip = strip_text_flag and r["chunk_type"] != "imports"
@@ -295,24 +301,18 @@ class SkeletonRepository:
             if not should_strip:
                 chunk["skeleton_text"] = r["skeleton_text"]
             formatted.append(chunk)
-            
+
         return formatted
 
     @track_time(layer="repository")
-    async def get_all_indexed_paths(self, project: str, include_tests: bool = False) -> List[str]:
+    async def get_all_indexed_paths(self, project: str, include_tests: bool = False) -> list[str]:
         """Returns unique file paths from file-level chunks in the skeleton index."""
         safe_project = project.replace("'", "''")
         where_clause = f"project = '{safe_project}' AND chunk_type = 'file'"
         if not include_tests:
             where_clause += " AND is_test = false"
-            
-        results = await asyncio.to_thread(
-            lambda: (
-                self.table.search()
-                .where(where_clause)
-                .to_list()
-            )
-        )
+
+        results = await asyncio.to_thread(lambda: self.table.search().where(where_clause).to_list())
         seen: set = set()
         paths = []
         for r in results:

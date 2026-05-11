@@ -5,18 +5,18 @@ standardised {status, error_type, message} format when given bad input.
 Uses project "TestIntegrationPhase4" (real temp dir, created/torn down per session)
 and a per-class ghost project name (uuid-based) to avoid cross-test dir pollution.
 """
+
 import os
-import uuid
 import shutil
+import uuid
+
 import pytest
 
-from utils.error_middleware import mcp_error_handler
-from utils.exceptions import ProjectNotFoundError, TaskNotFoundError, StorageDisabledError
-
-from services.task_query_service import search_tasks_logic, get_task_details_logic
-from services.task_command_service import update_task_logic
 from services.artifact_query_service import search_artifact_sections_logic
+from services.task_command_service import update_task_logic
+from services.task_query_service import get_task_details_logic, search_tasks_logic
 from tools import list_artifacts_logic
+from utils.error_middleware import mcp_error_handler
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -26,14 +26,14 @@ TEST_PROJECT = "TestIntegrationPhase4"
 def _wrap(fn, *args, **kwargs):
     """Run fn(*args) through mcp_error_handler, return the result."""
     import asyncio
-    
+
     # We decorate the function first
     wrapped = mcp_error_handler(fn)
-    
+
     # Check if the ORIGINAL function is a coroutine function
     # Note: mcp_error_handler returns an async_wrapper if it is.
     result = wrapped(*args, **kwargs)
-    
+
     if asyncio.iscoroutine(result):
         # We need an event loop to run the coroutine
         try:
@@ -41,7 +41,7 @@ def _wrap(fn, *args, **kwargs):
         except RuntimeError:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            
+
         return loop.run_until_complete(result)
     return result
 
@@ -49,7 +49,7 @@ def _wrap(fn, *args, **kwargs):
 def _assert_error(result, error_type: str = None):
     """Normalise list/dict result and assert it is a standard error dict."""
     if isinstance(result, list):
-        assert len(result) > 0, f"Expected error dict, got empty list"
+        assert len(result) > 0, "Expected error dict, got empty list"
         result = result[0]
     assert isinstance(result, dict), f"Expected dict, got {type(result)}: {result}"
     assert result.get("status") == "error", f"status != 'error': {result}"
@@ -67,10 +67,12 @@ def _ghost() -> str:
 
 # ── fixtures ─────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture(scope="module")
 def real_project(tmp_path_factory):
     """Creates a real on-disk project and tears it down after all tests in module."""
     from config import PROJECTS_ROOT
+
     root = os.path.join(PROJECTS_ROOT, TEST_PROJECT)
     os.makedirs(root, exist_ok=True)
     yield TEST_PROJECT
@@ -78,6 +80,7 @@ def real_project(tmp_path_factory):
 
 
 # ── 1. ProjectNotFoundError ───────────────────────────────────────────────────
+
 
 class TestProjectNotFound:
     """
@@ -128,18 +131,20 @@ class TestProjectNotFound:
         result = _wrap(list_artifacts_logic, ghost, "")
         # Acceptable: empty list [] or ProjectNotFoundError dict
         if isinstance(result, list):
-            assert all(
-                "error" not in item or item.get("status") == "error"
-                for item in result
-            ), f"Legacy error format in list: {result}"
+            assert all("error" not in item or item.get("status") == "error" for item in result), (
+                f"Legacy error format in list: {result}"
+            )
         else:
             _assert_error(result, "ProjectNotFoundError")
 
 
 # ── 2. TaskNotFoundError ──────────────────────────────────────────────────────
 
+
 class TestTaskNotFound:
-    def test_get_task_details_logic_missing_task_id_returns_task_not_found_error(self, real_project):
+    def test_get_task_details_logic_missing_task_id_returns_task_not_found_error(
+        self, real_project
+    ):
         result = _wrap(get_task_details_logic, real_project, "F99999")
         _assert_error(result, "TaskNotFoundError")
 
@@ -150,6 +155,7 @@ class TestTaskNotFound:
 
 # ── 3. Error response structure ───────────────────────────────────────────────
 
+
 class TestErrorStructure:
     """Contract: every error dict must have status, error_type, message."""
 
@@ -158,9 +164,9 @@ class TestErrorStructure:
             assert result, "Got empty list, expected error dict"
             result = result[0]
         assert isinstance(result, dict), f"Expected dict, got {type(result)}: {result}"
-        assert result.get("status") == "error",    f"Missing status=error: {result}"
-        assert "error_type" in result,             f"Missing error_type: {result}"
-        assert "message" in result,                f"Missing message: {result}"
+        assert result.get("status") == "error", f"Missing status=error: {result}"
+        assert "error_type" in result, f"Missing error_type: {result}"
+        assert "message" in result, f"Missing message: {result}"
         assert isinstance(result["message"], str), f"message must be str: {result}"
         if "details" in result:
             assert isinstance(result["details"], dict), f"details must be dict: {result}"
@@ -175,9 +181,11 @@ class TestErrorStructure:
 
     def test_mcp_error_handler_runtime_error_does_not_leak_absolute_paths(self):
         """System errors must not expose Windows filesystem paths."""
+
         @mcp_error_handler
         def leaky():
             raise RuntimeError(r"D:\MCPs\marrow_server\secret\path.py failed")
+
         result = leaky()
         assert "D:\\" not in result["message"], f"Path leaked: {result}"
 

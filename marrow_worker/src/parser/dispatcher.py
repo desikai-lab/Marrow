@@ -12,12 +12,12 @@ from .grammars import get_language
 
 # Extension → language name strategy map
 _LANG_MAP: dict[str, str] = {
-    ".py":  "python",
-    ".ts":  "typescript",
-    ".tsx": "typescript_tsx",   # uses language_tsx() — supports JSX syntax
-    ".js":  "typescript",
-    ".jsx": "typescript_tsx",   # JSX is also TSX grammar
-    ".cs":  "c_sharp",
+    ".py": "python",
+    ".ts": "typescript",
+    ".tsx": "typescript_tsx",  # uses language_tsx() — supports JSX syntax
+    ".js": "typescript",
+    ".jsx": "typescript_tsx",  # JSX is also TSX grammar
+    ".cs": "c_sharp",
 }
 
 
@@ -37,8 +37,7 @@ def get_parser_for_extension(file_ext: str) -> Parser:
     lang_name = _LANG_MAP.get(ext)
     if not lang_name:
         raise ValueError(
-            f"Unsupported file extension: {ext!r}. "
-            f"Supported: {sorted(_LANG_MAP.keys())}"
+            f"Unsupported file extension: {ext!r}. Supported: {sorted(_LANG_MAP.keys())}"
         )
 
     # tree-sitter >= 0.25: Language is passed directly to Parser constructor

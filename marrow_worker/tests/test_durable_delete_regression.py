@@ -1,10 +1,11 @@
-import asyncio
-import pytest
-import httpx
-import os
 from unittest.mock import AsyncMock, patch
+
+import httpx
+import pytest
+
 from src.transport.api_client import MCPClient
 from src.transport.outbox import WorkerOutbox
+
 
 @pytest.mark.asyncio
 async def test_delete_durability_on_failure():
@@ -14,16 +15,16 @@ async def test_delete_durability_on_failure():
 
     # 2. Setup MCPClient with a mock httpx client
     mock_httpx = AsyncMock(spec=httpx.AsyncClient)
-    
+
     # Simulate network failure for DELETE requests
     mock_httpx.request.side_effect = httpx.ConnectError("Network is down")
-    
+
     client = MCPClient(
         target_url="http://mock-server",
         project_name="TestProject",
         secret_token="fake-token",
         root_dir="/mock/root",
-        outbox=outbox
+        outbox=outbox,
     )
     # Inject the mock client
     client.client = mock_httpx
@@ -52,11 +53,12 @@ async def test_delete_durability_on_failure():
     # 7. Verify outbox is now empty
     rows_after = outbox._conn.execute("SELECT id FROM outbox").fetchall()
     assert len(rows_after) == 0
-    
+
     # Verify the mock was called with DELETE
     mock_httpx.request.assert_called_with(
-        "DELETE", "/api/vectorize", 
-        json={"project_name": "TestProject", "path": "src/deleted_file.py"}
+        "DELETE",
+        "/api/vectorize",
+        json={"project_name": "TestProject", "path": "src/deleted_file.py"},
     )
 
     await outbox.close()

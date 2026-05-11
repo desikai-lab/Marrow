@@ -1,25 +1,30 @@
+import json
+import logging
 import os
 import sys
-import logging
-import httpx
 import time
-import json
-from typing import List, Dict, Any, Optional
 from pathlib import Path
+from typing import Any
+
+import httpx
 
 # Resolve monorepo root (3 levels up from this file: src/transport → src → marrow_worker → root)
 _MONOREPO_ROOT = str(Path(__file__).parents[3])
 if _MONOREPO_ROOT not in sys.path:
     sys.path.insert(0, _MONOREPO_ROOT)
 
-from marrow_common.skeleton_schema import SCHEMA_VERSION, SkeletonChunk
-from pydantic import ValidationError
+from marrow_common.skeleton_schema import SCHEMA_VERSION, SkeletonChunk  # noqa: E402
+from pydantic import ValidationError  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
+
 class MCPClient:
     """Async client for delivering pre-vectorized skeleton chunks over HTTP."""
-    def __init__(self, target_url: str, project_name: str, secret_token: str, root_dir: str, outbox=None):
+
+    def __init__(
+        self, target_url: str, project_name: str, secret_token: str, root_dir: str, outbox=None
+    ):
         self.target_url = target_url
         self.project_name = project_name
         self.root_dir = os.path.abspath(root_dir)
@@ -58,7 +63,12 @@ class MCPClient:
 
             if 400 <= response.status_code < 500:
                 error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
-                logger.error("[Transport] 4xx for %s (%s) — marking FAILED: %s", file_path, operation, error_msg)
+                logger.error(
+                    "[Transport] 4xx for %s (%s) — marking FAILED: %s",
+                    file_path,
+                    operation,
+                    error_msg,
+                )
                 if self._outbox:
                     await self._outbox.mark_failed(row_id, error_msg)
                 return
@@ -72,25 +82,35 @@ class MCPClient:
                 await self._outbox.mark_done(row_id)
 
         except (httpx.ConnectError, httpx.TimeoutException, httpx.HTTPStatusError) as e:
-            logger.warning("[Transport] Transient error for %s — row stays PENDING: %s", file_path, e)
+            logger.warning(
+                "[Transport] Transient error for %s — row stays PENDING: %s", file_path, e
+            )
         except Exception as e:
-            logger.warning("[Transport] Unexpected error for %s — row stays PENDING: %s", file_path, e)
+            logger.warning(
+                "[Transport] Unexpected error for %s — row stays PENDING: %s", file_path, e
+            )
         finally:
             duration_ms = (time.perf_counter() - start_time) * 1000
-            metrics = {"layer": "client", "operation": f"MCPClient.{operation}", "duration_ms": round(duration_ms, 2)}
-            logger.info(f'[PERF] {json.dumps(metrics)}')
+            metrics = {
+                "layer": "client",
+                "operation": f"MCPClient.{operation}",
+                "duration_ms": round(duration_ms, 2),
+            }
+            logger.info(f"[PERF] {json.dumps(metrics)}")
 
     def _make_deliver_fn(self):
         """Returns a bound coroutine callable for use by WorkerOutbox.flush_pending()."""
+
         async def _fn(row_id: int, operation: str, file_path: str, payload: dict) -> None:
             await self._deliver(row_id, operation, file_path, payload)
+
         return _fn
 
     async def send_chunks(
         self,
         absolute_filepath: str,
         file_summary: str,
-        chunks: List[Dict[str, Any]],
+        chunks: list[dict[str, Any]],
     ) -> None:
         """
         Computes the repo-relative path and POSTs the chunk-based skeleton
@@ -120,15 +140,14 @@ class MCPClient:
                 "vector": chunk.get("vector"),
                 "start_line": chunk.get("line_start"),
                 "end_line": chunk.get("line_end"),
-                "file_summary": file_summary
+                "file_summary": file_summary,
             }
             try:
                 SkeletonChunk(**data)
                 validated.append(chunk)
             except ValidationError as ve:
                 logger.warning(
-                    "[Transport] Skipping malformed chunk in %s: %s",
-                    absolute_filepath, ve.errors()
+                    "[Transport] Skipping malformed chunk in %s: %s", absolute_filepath, ve.errors()
                 )
         chunks = validated
         rel_path = os.path.relpath(absolute_filepath, start=self.root_dir).replace("\\", "/")
@@ -136,9 +155,9 @@ class MCPClient:
         payload = {
             "schema_version": SCHEMA_VERSION,
             "project_name": self.project_name,
-            "path":         rel_path,
+            "path": rel_path,
             "file_summary": file_summary,
-            "chunks":       chunks,
+            "chunks": chunks,
         }
 
         if self._outbox:
@@ -151,7 +170,8 @@ class MCPClient:
                 info = response.json()
                 logger.info(
                     "[Transport] OK — %s chunk(s) stored for %s",
-                    info.get('chunks_stored', '?'), rel_path
+                    info.get("chunks_stored", "?"),
+                    rel_path,
                 )
             except Exception as e:
                 logger.error("[Transport] Failed to deliver skeleton for %s: %s", rel_path, e)

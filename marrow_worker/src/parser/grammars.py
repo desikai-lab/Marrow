@@ -20,15 +20,19 @@ def get_language(lang_name: str) -> Language:
     if lang_name not in _langs:
         if lang_name == "python":
             import tree_sitter_python as _py  # type: ignore[import]
+
             _langs[lang_name] = Language(_py.language())
         elif lang_name == "typescript":
             import tree_sitter_typescript as _ts  # type: ignore[import]
+
             _langs[lang_name] = Language(_ts.language_typescript())
         elif lang_name == "typescript_tsx":
             import tree_sitter_typescript as _ts  # type: ignore[import]
+
             _langs[lang_name] = Language(_ts.language_tsx())
         elif lang_name == "c_sharp":
             import tree_sitter_c_sharp as _cs  # type: ignore[import]
+
             _langs[lang_name] = Language(_cs.language())
         else:
             raise ValueError(f"Unsupported language requested: {lang_name!r}")

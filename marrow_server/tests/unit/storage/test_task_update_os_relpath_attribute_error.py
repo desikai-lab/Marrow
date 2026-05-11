@@ -8,14 +8,16 @@ Fix: str(Path(new_blob_path).relative_to(project_root)).replace("\\", "/")
 This test reproduces the exact call path that triggered the crash:
   update_task(status='closed', resolution='...')
 """
-import pytest
+
 import asyncio
 from pathlib import Path
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def tmp_project(tmp_path):
@@ -49,6 +51,7 @@ Test solution.
 @pytest.fixture
 def mock_task_record():
     """Returns a minimal TaskRecord-like object for patching the repository."""
+
     class FakeRecord:
         id = 1
         key = "TEST-001"
@@ -65,6 +68,7 @@ def mock_task_record():
         where = []
         comments = None
         resolution = None
+
     return FakeRecord()
 
 
@@ -72,7 +76,10 @@ def mock_task_record():
 # Core regression test
 # ---------------------------------------------------------------------------
 
-def test_update_task_atomically_close_with_resolution_no_attribute_error_regression_b4000124(tmp_project, mock_task_record, monkeypatch):
+
+def test_update_task_atomically_close_with_resolution_no_attribute_error_regression_b4000124(
+    tmp_project, mock_task_record, monkeypatch
+):
     """
     GIVEN a task in 'open' status
     WHEN update_task_atomically is called with status='closed' and a resolution string
@@ -80,15 +87,16 @@ def test_update_task_atomically_close_with_resolution_no_attribute_error_regress
     AND the returned TaskRecord.file_path must be a valid relative path (not absolute)
     AND the path must point under the 'done' subdirectory
     """
-    import sys
     import os
+    import sys
+
     # Add src to sys.path
     src_path = os.path.abspath("src")
     if src_path not in sys.path:
         sys.path.insert(0, src_path)
 
-    from storage.uow import UnitOfWork
     from storage.entities import TaskRecord
+    from storage.uow import UnitOfWork
 
     uow = UnitOfWork(project_root=tmp_project)
 
@@ -103,11 +111,12 @@ def test_update_task_atomically_close_with_resolution_no_attribute_error_regress
     monkeypatch.setattr(uow.tasks, "upsert", fake_upsert)
 
     # Also patch table.name to avoid DB connection requirements in get_table_lock
-    uow.tasks.table = type('FakeTable', (), {'name': 'tasks'})()  # minimal stub
+    uow.tasks.table = type("FakeTable", (), {"name": "tasks"})()  # minimal stub
 
     # Patch get_table_lock to a no-op async context manager
-    import storage.db as db_module
     from contextlib import asynccontextmanager
+
+    import storage.db as db_module
 
     @asynccontextmanager
     async def fake_lock(name):
@@ -119,7 +128,10 @@ def test_update_task_atomically_close_with_resolution_no_attribute_error_regress
     result = asyncio.run(
         uow.update_task_atomically(
             "TEST-001",
-            {"status": "closed", "resolution": "Fixed by correcting os.relpath to Path.relative_to."}
+            {
+                "status": "closed",
+                "resolution": "Fixed by correcting os.relpath to Path.relative_to.",
+            },
         )
     )
 
@@ -139,14 +151,14 @@ def test_update_task_atomically_close_with_resolution_no_attribute_error_regress
 # Guard: ensure the broken call would fail on unpatched os
 # ---------------------------------------------------------------------------
 
+
 def test_os_relpath_does_not_exist():
     """
     Documents that os.relpath does not exist and confirms the fix is necessary.
     """
     import os
+
     assert not hasattr(os, "relpath"), (
         "os.relpath unexpectedly exists — stdlib may have changed; review the fix."
     )
-    assert hasattr(os.path, "relpath"), (
-        "os.path.relpath must exist for the fallback fix to work."
-    )
+    assert hasattr(os.path, "relpath"), "os.path.relpath must exist for the fallback fix to work."

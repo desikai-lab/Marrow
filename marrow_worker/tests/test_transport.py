@@ -1,8 +1,10 @@
-import pytest
-import os
 import json
-from src.transport import MCPClient
+import os
+
+import pytest
 from pytest_httpx import HTTPXMock
+
+from src.transport import MCPClient
 
 FAKE_TOKEN = "test-secret-token"
 FAKE_CHUNKS = [
@@ -78,7 +80,6 @@ async def test_mcp_client_resilience(httpx_mock: HTTPXMock, caplog):
     )
     cwd = os.getcwd()
     fake_abs_path = os.path.join(cwd, "src", "dummy.cs")
-    
 
     # Must NOT raise — failure is logged and swallowed
     with caplog.at_level("ERROR"):

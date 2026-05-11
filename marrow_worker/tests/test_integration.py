@@ -5,13 +5,12 @@ These tests verify that the grammar bindings actually produce correct tree
 structures for representative code in each supported language.
 """
 
-import pytest
 from src.parser.dispatcher import get_parser_for_extension
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def parse(ext: str, source: str):
     """Return root node of the parsed source."""
@@ -32,8 +31,11 @@ def collect_types(node) -> set[str]:
 # Python
 # ---------------------------------------------------------------------------
 
+
 class TestPython:
-    SOURCE = "class Greeter:\n    def hello(self, name: str) -> str:\n        return f'Hello, {name}'\n"
+    SOURCE = (
+        "class Greeter:\n    def hello(self, name: str) -> str:\n        return f'Hello, {name}'\n"
+    )
 
     def test_root_is_module(self):
         root = parse(".py", self.SOURCE)
@@ -58,6 +60,7 @@ class TestPython:
 # ---------------------------------------------------------------------------
 # TypeScript
 # ---------------------------------------------------------------------------
+
 
 class TestTypeScript:
     SOURCE = "interface User { id: number; name: string; }\nconst greet = (u: User): string => `Hello, ${u.name}`;\n"
@@ -86,8 +89,9 @@ class TestTypeScript:
 # TSX  (must parse JSX without ERROR nodes)
 # ---------------------------------------------------------------------------
 
+
 class TestTSX:
-    SOURCE = "const App = (): JSX.Element => (\n  <div className=\"app\"><h1>Hello</h1></div>\n);\n"
+    SOURCE = 'const App = (): JSX.Element => (\n  <div className="app"><h1>Hello</h1></div>\n);\n'
 
     def test_root_is_program(self):
         root = parse(".tsx", self.SOURCE)
@@ -108,6 +112,7 @@ class TestTSX:
 # ---------------------------------------------------------------------------
 # C#
 # ---------------------------------------------------------------------------
+
 
 class TestCSharp:
     SOURCE = (

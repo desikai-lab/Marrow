@@ -18,8 +18,7 @@ class DiagIndexCommand(BaseCommand):
 
     def register_args(self, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
-            "--project", required=True,
-            help="Project name to inspect (e.g. 'marrow_server')"
+            "--project", required=True, help="Project name to inspect (e.g. 'marrow_server')"
         )
 
     def execute(self, args: argparse.Namespace) -> None:
@@ -39,17 +38,17 @@ class DiagIndexCommand(BaseCommand):
         total = table.count_rows()
         logger.info("Index opened. Total rows: %d", total)
 
-        sample       = table.search().limit(5).to_list()
-        file_rows    = table.search().where("chunk_type = 'file'").to_list()
-        test_rows    = table.search().where("is_test = true").limit(10000).to_list()
-        notest_rows  = table.search().where("is_test = false").limit(10000).to_list()
-        proj_rows    = table.search().where(f"project = '{project}'").limit(10000).to_list()
-        full_query   = table.search().where(
-            f"project = '{project}' AND chunk_type = 'file' AND is_test = false"
-        ).to_list()
-        no_filter    = table.search().where(
-            f"project = '{project}' AND chunk_type = 'file'"
-        ).to_list()
+        sample = table.search().limit(5).to_list()
+        file_rows = table.search().where("chunk_type = 'file'").to_list()
+        test_rows = table.search().where("is_test = true").limit(10000).to_list()
+        notest_rows = table.search().where("is_test = false").limit(10000).to_list()
+        proj_rows = table.search().where(f"project = '{project}'").limit(10000).to_list()
+        full_query = (
+            table.search()
+            .where(f"project = '{project}' AND chunk_type = 'file' AND is_test = false")
+            .to_list()
+        )
+        no_filter = table.search().where(f"project = '{project}' AND chunk_type = 'file'").to_list()
 
         print(f"\n[Marrow] diag-index — project: '{project}'")
         print(f"  Total rows                                  : {total}")

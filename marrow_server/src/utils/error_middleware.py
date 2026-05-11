@@ -7,11 +7,12 @@ Usage in mcp_core.py:
     def some_tool(...):
         ...
 """
-import asyncio
+
 import functools
 import inspect
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from tools.utils.security import sanitize_error_message
 from utils.exceptions import BaseBacklogError
@@ -32,6 +33,7 @@ def mcp_error_handler(func: Callable) -> Callable:
       error dict with 'error_type': 'SystemError' and a sanitised message.
     """
     if inspect.iscoroutinefunction(func):
+
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs) -> Any:
             try:
@@ -40,8 +42,10 @@ def mcp_error_handler(func: Callable) -> Callable:
                 return _handle_domain_error(e, func.__name__)
             except Exception as e:
                 return _handle_system_error(e, func.__name__)
+
         return async_wrapper
     else:
+
         @functools.wraps(func)
         def sync_wrapper(*args, **kwargs) -> Any:
             try:
@@ -50,14 +54,12 @@ def mcp_error_handler(func: Callable) -> Callable:
                 return _handle_domain_error(e, func.__name__)
             except Exception as e:
                 return _handle_system_error(e, func.__name__)
+
         return sync_wrapper
 
 
 def _handle_domain_error(e: BaseBacklogError, func_name: str) -> dict:
-    logger.warning(
-        "[MCP][DomainError] %s in %s: %s",
-        type(e).__name__, func_name, e.message
-    )
+    logger.warning("[MCP][DomainError] %s in %s: %s", type(e).__name__, func_name, e.message)
     response = {
         "status": "error",
         "error_type": type(e).__name__,
@@ -69,11 +71,7 @@ def _handle_domain_error(e: BaseBacklogError, func_name: str) -> dict:
 
 
 def _handle_system_error(e: Exception, func_name: str) -> dict:
-    logger.error(
-        "[MCP][SystemError] %s in %s: %s",
-        type(e).__name__, func_name, e,
-        exc_info=True
-    )
+    logger.error("[MCP][SystemError] %s in %s: %s", type(e).__name__, func_name, e, exc_info=True)
     return {
         "status": "error",
         "error_type": "SystemError",

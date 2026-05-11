@@ -2,10 +2,9 @@
 Unit tests for WorkerOutbox (src/transport/outbox.py).
 All tests use an in-memory SQLite DB for isolation.
 """
+
 import asyncio
-import json
-import pytest
-from unittest.mock import AsyncMock
+
 from src.transport.outbox import WorkerOutbox
 
 
@@ -21,11 +20,7 @@ def make_outbox() -> WorkerOutbox:
 
 
 def make_outbox_batched(concurrency: int = 3) -> WorkerOutbox:
-    outbox = WorkerOutbox(
-        db_path=":memory:",
-        flush_interval=60,
-        flush_concurrency=concurrency
-    )
+    outbox = WorkerOutbox(db_path=":memory:", flush_interval=60, flush_concurrency=concurrency)
     run(outbox.setup())
     return outbox
 
@@ -103,9 +98,7 @@ def test_flush_pending_leaves_on_network_error():
         raise ConnectionError("network down")
 
     run(outbox.flush_pending(failing_deliver))  # must not raise
-    row = outbox._conn.execute(
-        "SELECT status FROM outbox WHERE id = ?", (row_id,)
-    ).fetchone()
+    row = outbox._conn.execute("SELECT status FROM outbox WHERE id = ?", (row_id,)).fetchone()
     assert row is not None
     assert row[0] == "pending"  # still pending, not deleted
 

@@ -2,8 +2,10 @@ import os
 import shutil
 import unittest
 from unittest.mock import MagicMock, patch
-from storage.repositories.skeleton_repository import SkeletonRepository
+
 from config import PROJECTS_ROOT
+from storage.repositories.skeleton_repository import SkeletonRepository
+
 
 class TestMaintenanceSafeCleanup(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -23,15 +25,15 @@ class TestMaintenanceSafeCleanup(unittest.IsolatedAsyncioTestCase):
         mock_db = MagicMock()
         mock_db.list_tables.return_value = ["test_table"]
         mock_get_db.return_value = mock_db
-        
+
         mock_table = MagicMock()
         mock_table.version = 1
         mock_table.cleanup_old_versions = MagicMock()
         mock_db.open_table.return_value = mock_table
-        
+
         # Run
         await self.repo.cleanup_old_versions(older_than_hours=1)
-        
+
         # Verify
         mock_table.cleanup_old_versions.assert_not_called()
 
@@ -41,14 +43,14 @@ class TestMaintenanceSafeCleanup(unittest.IsolatedAsyncioTestCase):
         mock_db = MagicMock()
         mock_db.list_tables.return_value = ["test_table"]
         mock_get_db.return_value = mock_db
-        
+
         mock_table = MagicMock()
         mock_table.version = 3
         mock_table.cleanup_old_versions = MagicMock()
         mock_db.open_table.return_value = mock_table
-        
+
         # Run
         await self.repo.cleanup_old_versions(older_than_hours=1)
-        
+
         # Verify
         mock_table.cleanup_old_versions.assert_called_once()

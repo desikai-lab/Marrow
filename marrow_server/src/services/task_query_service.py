@@ -1,24 +1,28 @@
 import os
-from typing import List, Dict, Any, Optional
-from config import PROJECTS_ROOT, DECOUPLED_STORAGE_ENABLED
-from storage.repositories import TaskRepository
+from typing import Any
+
+from config import DECOUPLED_STORAGE_ENABLED, PROJECTS_ROOT
 from storage.blobs import read_blob
+from storage.repositories import TaskRepository
 from utils.exceptions import (
-    StorageDisabledError, ProjectNotFoundError, TaskNotFoundError, ArtifactNotFoundError
+    ArtifactNotFoundError,
+    ProjectNotFoundError,
+    StorageDisabledError,
+    TaskNotFoundError,
 )
 
+
 async def search_tasks_logic(
-    project: str,
-    status: Optional[str] = None,
-    priority: Optional[str] = None,
-    type: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    project: str, status: str | None = None, priority: str | None = None, type: str | None = None
+) -> list[dict[str, Any]]:
     """
     Experimental task search tool via LanceDB.
     Works only when DECOUPLED_STORAGE_ENABLED=true.
     """
     if not DECOUPLED_STORAGE_ENABLED:
-        raise StorageDisabledError("Decoupled storage is disabled. Set DECOUPLED_STORAGE_ENABLED=true in .env")
+        raise StorageDisabledError(
+            "Decoupled storage is disabled. Set DECOUPLED_STORAGE_ENABLED=true in .env"
+        )
 
     project_root = os.path.join(PROJECTS_ROOT, project)
     if not os.path.exists(project_root):
@@ -27,26 +31,22 @@ async def search_tasks_logic(
     repo = TaskRepository(project_root)
     # Invoke search in LanceDB
     # Note: 'type' argument renamed to avoid conflict with builtin
-    results = await repo.search(
-        status=status,
-        priority=priority,
-        type=type,
-        project=project
-    )
-    
+    results = await repo.search(status=status, priority=priority, type=type, project=project)
+
     # Format for response (analogous to legacy search_tasks)
     return [
         {
-            "id": r.key, 
+            "id": r.key,
             "title": r.title,
             "status": r.status,
             "priority": r.priority,
-            "project": r.project
+            "project": r.project,
         }
         for r in results
     ]
 
-async def get_task_details_logic(project: str, task_id: str) -> Dict[str, Any]:
+
+async def get_task_details_logic(project: str, task_id: str) -> dict[str, Any]:
     """
     Experimental tool for retrieving task details (LanceDB + Blobs).
     Returns full task data, including problem and solution.
@@ -69,11 +69,12 @@ async def get_task_details_logic(project: str, task_id: str) -> Dict[str, Any]:
     if not os.path.exists(blob_path):
         raise ArtifactNotFoundError(
             f"Index points to missing file '{index_entry.file_path}'",
-            details={"task_id": task_id, "file_path": index_entry.file_path}
+            details={"task_id": task_id, "file_path": index_entry.file_path},
         )
-        
+
     try:
         import asyncio
+
         full_data = await asyncio.to_thread(read_blob, blob_path)
         full_data["key"] = index_entry.key
         full_data["id"] = index_entry.id

@@ -1,10 +1,10 @@
-import re
-import os
-import sys
 import io
+import os
+import re
+import sys
 
 # Ensure UTF-8 output for terminal
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 # Decouple path: Try to find session_current.md in a project artifact directory
 # Default to a relative path or environment variable
@@ -17,7 +17,7 @@ if not os.path.exists(path):
     print("Please set TASKS_DIR env variable or update the 'project' variable.")
     exit(1)
 
-content = open(path, 'r', encoding='utf-8').read()
+content = open(path, encoding="utf-8").read()
 # Localized header (English)
 section_header = "✅ Completed This Session"
 
@@ -31,4 +31,4 @@ matches = list(header_pattern.finditer(content))
 
 print(f"--- Found via regex: {len(matches)} ---")
 for i, m in enumerate(matches, 1):
-    print(f"Match {i}: Line {content[:m.start()].count('\n') + 1}")
+    print(f"Match {i}: Line {content[: m.start()].count('\n') + 1}")

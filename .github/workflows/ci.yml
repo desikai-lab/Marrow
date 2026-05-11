@@ -39,11 +39,12 @@ jobs:
       - name: Run unit tests — marrow_server
         working-directory: marrow_server
         env:
-          PYTHONPATH: src
+          PYTHONPATH: src:..
+          SECRET_TOKEN: ci-dummy-token
         run: python -m pytest tests/unit/ -v --tb=short
 
       - name: Run unit tests — marrow_worker
         working-directory: marrow_worker
         env:
-          PYTHONPATH: src
-        run: python -m pytest tests/unit/ -v --tb=short
+          PYTHONPATH: src:..
+        run: python -m pytest tests/ -v --tb=short

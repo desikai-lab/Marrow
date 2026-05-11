@@ -1,6 +1,6 @@
-import os
 import logging
-from typing import List, Optional, Dict, Any
+import os
+from typing import Any
 
 from config import PROJECTS_ROOT
 from storage.embeddings import embeddings_manager
@@ -12,11 +12,11 @@ logger = logging.getLogger("marrow.skeleton_query_service")
 async def search_code_skeletons_logic(
     project: str,
     query: str,
-    chunk_type: Optional[str] = None,
+    chunk_type: str | None = None,
     limit: int = 10,
     include_tests: bool = False,
-    root_path: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    root_path: str | None = None,
+) -> list[dict[str, Any]]:
     """
     Performs a semantic similarity search over the code_skeleton_index for the
     given project.
@@ -33,8 +33,10 @@ async def search_code_skeletons_logic(
         logger.warning("Project not found: %s", project)
         return []
 
-    from config import EMBEDDING_MODEL_CODE
     import asyncio
+
+    from config import EMBEDDING_MODEL_CODE
+
     query_vector = await asyncio.to_thread(
         embeddings_manager.generate_vector, query, model_name=EMBEDDING_MODEL_CODE
     )
@@ -56,9 +58,9 @@ async def search_code_skeletons_logic(
 async def get_exact_code_units_logic(
     project: str,
     exact_name: str,
-    chunk_type: Optional[str] = None,
+    chunk_type: str | None = None,
     include_tests: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Retrieves code units matching an exact name (e.g. a specific class or method).
     """
@@ -68,7 +70,9 @@ async def get_exact_code_units_logic(
         return []
 
     repo = SkeletonRepository(project_root)
-    return await repo.get_exact_code_units(project, exact_name, chunk_type, include_tests=include_tests)
+    return await repo.get_exact_code_units(
+        project, exact_name, chunk_type, include_tests=include_tests
+    )
 
 
 async def get_file_skeleton_logic(
@@ -76,7 +80,7 @@ async def get_file_skeleton_logic(
     path: str,
     depth: int = 0,
     summary_only: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Retrieves the chronological structural outline of a file.
     """
@@ -86,23 +90,27 @@ async def get_file_skeleton_logic(
         return []
 
     repo = SkeletonRepository(project_root)
-    return await repo.get_file_skeleton_chunks(path, project, depth=depth, summary_only=summary_only)
+    return await repo.get_file_skeleton_chunks(
+        path, project, depth=depth, summary_only=summary_only
+    )
 
 
-def _build_tree(paths: List[str], max_depth: int) -> Dict[str, Any]:
+def _build_tree(paths: list[str], max_depth: int) -> dict[str, Any]:
     """Collapses flat file paths into a nested dict tree truncated at max_depth."""
-    tree: Dict[str, Any] = {}
+    tree: dict[str, Any] = {}
     for path in paths:
-        parts = path.replace('\\', '/').split('/')
-        parts = parts[:max_depth]          # truncate at depth
+        parts = path.replace("\\", "/").split("/")
+        parts = parts[:max_depth]  # truncate at depth
         node = tree
         for part in parts[:-1]:
             node = node.setdefault(part + "/", {})
-        node.setdefault(parts[-1], None)   # leaf
+        node.setdefault(parts[-1], None)  # leaf
     return {"root": ".", "structure": tree}
 
 
-async def get_project_map_logic(project: str, depth: int = 2, include_tests: bool = False) -> Dict[str, Any]:
+async def get_project_map_logic(
+    project: str, depth: int = 2, include_tests: bool = False
+) -> dict[str, Any]:
     """Returns a live directory tree of indexed files for agent orientation."""
     project_root = os.path.join(PROJECTS_ROOT, project)
     if not os.path.exists(project_root):

@@ -1,5 +1,5 @@
-import pytest
 from src.parser import extract_skeleton
+
 
 def test_extract_csharp():
     source = b"""
@@ -28,11 +28,15 @@ namespace MyProject
 }
 """
     skeleton = extract_skeleton(source, ".cs")
-    
+
     # We expect the class, namespace, and method declarations to be preserved intact, but block bodies stubs.
-    assert "public virtual void DoWork(int count)" in skeleton or "protected virtual void DoWork(int count)" in skeleton
+    assert (
+        "public virtual void DoWork(int count)" in skeleton
+        or "protected virtual void DoWork(int count)" in skeleton
+    )
     assert "{ /* ... implementation */ }" in skeleton
     assert "Console.WriteLine" not in skeleton
+
 
 def test_extract_python():
     source = b"""
@@ -55,9 +59,10 @@ class AuthManager:
     assert "def login(self, username: str) -> bool:" in skeleton
     assert "def __init__(self, token: str):" in skeleton
     assert "self.token = token" not in skeleton
-    assert "print(f\"Logging in {username}\")" not in skeleton
+    assert 'print(f"Logging in {username}")' not in skeleton
     assert "class AuthManager:" in skeleton
     assert '"""Handles user authentication"""' in skeleton
+
 
 def test_extract_typescript():
     source = b"""
@@ -86,6 +91,7 @@ export class UserService implements User {
 
     assert "export class UserService implements User" in skeleton
     assert "constructor(id: number) { /* ... implementation */ }" in skeleton
-    assert "async fetchDetails(force: boolean): Promise<void> { /* ... implementation */ }" in skeleton
+    assert (
+        "async fetchDetails(force: boolean): Promise<void> { /* ... implementation */ }" in skeleton
+    )
     assert "await fetch" not in skeleton
-

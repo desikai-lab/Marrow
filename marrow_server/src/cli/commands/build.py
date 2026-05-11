@@ -1,19 +1,21 @@
-import sys
 import argparse
 import logging
+import sys
+
 from cli.commands.base import BaseCommand
 
 logger = logging.getLogger("admin_cli")
+
 
 class BuildCommand(BaseCommand):
     @property
     def name(self) -> str:
         return "build"
-        
+
     @property
     def help(self) -> str:
         return "Run Build Pipeline"
-        
+
     def register_args(self, parser: argparse.ArgumentParser) -> None:
         parser.add_argument("--project", required=True, help="Project name")
         parser.add_argument("--build", required=True, help="Template name (without .yaml)")
@@ -25,13 +27,13 @@ class BuildCommand(BaseCommand):
             default=[],
             help="Template variable (repeatable): --var FEATURE=Auth --var ENV=prod",
         )
-        
+
     def execute(self, args: argparse.Namespace) -> None:
+
         from tools.builds import run_project_build_logic
-        
-        from typing import Dict
-        variables: Dict[str, str] = {}
-        for item in (args.var or []):
+
+        variables: dict[str, str] = {}
+        for item in args.var or []:
             if "=" not in item:
                 logger.error("--var requires KEY=VALUE format, got: '%s'", item)
                 sys.exit(1)
@@ -41,9 +43,7 @@ class BuildCommand(BaseCommand):
         logger.info("Starting build: Project='%s', Template='%s'", args.project, args.build)
         try:
             result = run_project_build_logic(
-                args.project, args.build, 
-                verbose=args.verbose, 
-                variables=variables or None
+                args.project, args.build, verbose=args.verbose, variables=variables or None
             )
             if result.success:
                 print(f"\n[CLI] RESULT: Success. Output: {result.output_path}")
