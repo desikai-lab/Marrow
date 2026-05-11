@@ -34,8 +34,10 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
+    "pytest-httpx>=0.30",
     "ruff>=0.4",
 ]
+
 
 [project.scripts]
 marrow-worker = "main:main"
