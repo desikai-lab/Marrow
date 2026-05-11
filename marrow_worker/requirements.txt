@@ -1,0 +1,9 @@
+tree-sitter>=0.22.0
+tree-sitter-python
+tree-sitter-typescript
+tree-sitter-c-sharp
+watchdog
+pytest-asyncio
+sentence-transformers
+httpx>=0.28.1
+pytest-httpx

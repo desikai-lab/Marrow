@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Databases & Indexes
+*.db
+*.db-shm
+*.db-wal
+.db/
+
+# Configuration & Security
+.env
+.settings
+SECRET_TOKEN
+
+# Logs
+logs/
+*.log
+
+# Personal/Temp
+.history/
+scratch/
+pytest_output.txt
+request.json
+temp_test_env_*/
+
+# IDE
+.vscode/
+.idea/

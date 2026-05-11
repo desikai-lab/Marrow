@@ -1,0 +1,19 @@
+# Database
+worker_outbox.db
+*.db
+*.db-shm
+*.db-wal
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Config & History
+.env
+.history/
+.settings
+
+# Logs
+logs/
+*.log

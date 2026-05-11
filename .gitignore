@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+*.env
+.env.*
+!.env.example
+
+# LanceDB data
+data/
+*.lance/
+*.ldb
+
+# Embedding model cache
+.model_cache/
+models/
+~/.cache/huggingface/
+
+# Build outputs
+.output/
+*.output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# Marrow runtime
+session_lock
+*.lock
