@@ -13,7 +13,6 @@ keywords = ["mcp", "ai", "agents", "tree-sitter", "code-indexer", "embeddings"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.12",
 ]
 

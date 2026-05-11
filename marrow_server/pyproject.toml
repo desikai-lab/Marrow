@@ -13,7 +13,6 @@ keywords = ["mcp", "ai", "agents", "lancedb", "fastapi", "context"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
 ]
