@@ -1,0 +1,51 @@
+services:
+
+  marrow-server:
+    build:
+      context: .
+      dockerfile: marrow_server/Dockerfile
+    container_name: marrow-server
+    ports:
+      - "8000:8000"
+    volumes:
+      - marrow-data:/data
+      - marrow-projects:/projects
+    environment:
+      SECRET_TOKEN: ${SECRET_TOKEN}
+      TASKS_DIR: /data
+      DECOUPLED_STORAGE_ENABLED: "true"
+      EMBEDDING_MODEL_CODE: ${EMBEDDING_MODEL_CODE:-BAAI/bge-small-en-v1.5}
+      EMBEDDING_MODEL_TEXT: ${EMBEDDING_MODEL_TEXT:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-384}
+      VECT_DEBOUNCE_SECONDS: ${VECT_DEBOUNCE_SECONDS:-0.5}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  marrow-worker:
+    build:
+      context: .
+      dockerfile: marrow_worker/Dockerfile
+    container_name: marrow-worker
+    volumes:
+      - ${WATCH_PATHS:-./}:/watch:ro
+    environment:
+      SERVER_URL: http://marrow-server:8000
+      SECRET_TOKEN: ${SECRET_TOKEN}
+      WATCH_ROOT: /watch
+      DEBOUNCE_SECONDS: ${DEBOUNCE_SECONDS:-1.0}
+      BATCH_SIZE: ${BATCH_SIZE:-50}
+      EMBEDDING_MODEL_CODE: ${EMBEDDING_MODEL_CODE:-BAAI/bge-small-en-v1.5}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-384}
+    depends_on:
+      marrow-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  marrow-data:
+  marrow-projects:
