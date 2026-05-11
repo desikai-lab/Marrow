@@ -36,6 +36,7 @@ async def search_code_skeletons_logic(
     import asyncio
 
     from config import EMBEDDING_MODEL_CODE
+
     query_vector = await asyncio.to_thread(
         embeddings_manager.generate_vector, query, model_name=EMBEDDING_MODEL_CODE
     )
@@ -69,7 +70,9 @@ async def get_exact_code_units_logic(
         return []
 
     repo = SkeletonRepository(project_root)
-    return await repo.get_exact_code_units(project, exact_name, chunk_type, include_tests=include_tests)
+    return await repo.get_exact_code_units(
+        project, exact_name, chunk_type, include_tests=include_tests
+    )
 
 
 async def get_file_skeleton_logic(
@@ -87,23 +90,27 @@ async def get_file_skeleton_logic(
         return []
 
     repo = SkeletonRepository(project_root)
-    return await repo.get_file_skeleton_chunks(path, project, depth=depth, summary_only=summary_only)
+    return await repo.get_file_skeleton_chunks(
+        path, project, depth=depth, summary_only=summary_only
+    )
 
 
 def _build_tree(paths: list[str], max_depth: int) -> dict[str, Any]:
     """Collapses flat file paths into a nested dict tree truncated at max_depth."""
     tree: dict[str, Any] = {}
     for path in paths:
-        parts = path.replace('\\', '/').split('/')
-        parts = parts[:max_depth]          # truncate at depth
+        parts = path.replace("\\", "/").split("/")
+        parts = parts[:max_depth]  # truncate at depth
         node = tree
         for part in parts[:-1]:
             node = node.setdefault(part + "/", {})
-        node.setdefault(parts[-1], None)   # leaf
+        node.setdefault(parts[-1], None)  # leaf
     return {"root": ".", "structure": tree}
 
 
-async def get_project_map_logic(project: str, depth: int = 2, include_tests: bool = False) -> dict[str, Any]:
+async def get_project_map_logic(
+    project: str, depth: int = 2, include_tests: bool = False
+) -> dict[str, Any]:
     """Returns a live directory tree of indexed files for agent orientation."""
     project_root = os.path.join(PROJECTS_ROOT, project)
     if not os.path.exists(project_root):

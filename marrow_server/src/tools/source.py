@@ -11,7 +11,7 @@ from utils.exceptions import (
 
 logger = logging.getLogger(__name__)
 
-BINARY_DETECTION_CHUNK = 8192          # bytes sampled for binary detection
+BINARY_DETECTION_CHUNK = 8192  # bytes sampled for binary detection
 MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024  # 3 MB hard limit
 
 
@@ -86,9 +86,7 @@ def view_file_source_logic(
 
     # 2. Line number validation
     if start_line < 1 or end_line < start_line:
-        raise ValidationError(
-            "start_line must be >= 1 and end_line must be >= start_line."
-        )
+        raise ValidationError("start_line must be >= 1 and end_line must be >= start_line.")
 
     # 3. Traversal check (string-level, before any Path ops)
     _check_traversal(path)
@@ -105,9 +103,7 @@ def view_file_source_logic(
     # 6. Size + binary
     file_size = resolved.stat().st_size
     if file_size > MAX_FILE_SIZE_BYTES or _is_binary(resolved):
-        raise SourceFileError(
-            f"Unsupported file type: {path} (binary or exceeds 3 MB limit)"
-        )
+        raise SourceFileError(f"Unsupported file type: {path} (binary or exceeds 3 MB limit)")
 
     # 7. Read
     lines = _read_line_range(resolved, start_line, end_line)

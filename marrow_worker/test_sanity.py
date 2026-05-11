@@ -8,7 +8,6 @@ pretty-printed AST tree for each source snippet.
 """
 
 import sys
-import io
 
 # Ensure UTF-8 output on Windows consoles
 if hasattr(sys.stdout, "reconfigure"):
@@ -16,14 +15,15 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 from dataclasses import dataclass, field
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ParseResult:
     """Holds everything collected from a single parse run."""
+
     node_count: int
     root_type: str
     tree_lines: list[str] = field(default_factory=list)
@@ -77,12 +77,13 @@ def _parse(ext: str, source: str) -> ParseResult:
 # Test runner
 # ---------------------------------------------------------------------------
 
+
 def run_tests() -> None:
     cases = [
-        (".py",  "class Hello:\n    def greet(self): pass\n"),
-        (".ts",  "class Hello { greet(): void {} }"),
+        (".py", "class Hello:\n    def greet(self): pass\n"),
+        (".ts", "class Hello { greet(): void {} }"),
         (".tsx", "const App = () => <div>Hello</div>;"),
-        (".cs",  "class Hello { void Greet() {int i = 0; i++;} }"),
+        (".cs", "class Hello { void Greet() {int i = 0; i++;} }"),
     ]
 
     passed = 0
@@ -104,7 +105,7 @@ def run_tests() -> None:
             failed += 1
 
     print("\n" + "-" * 50)
-    print(f"Results: {passed} passed, {failed} failed")    
+    print(f"Results: {passed} passed, {failed} failed")
 
     if failed:
         sys.exit(1)

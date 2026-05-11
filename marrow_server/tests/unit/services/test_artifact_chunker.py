@@ -6,19 +6,18 @@ Covers:
 - ChunkerFactory: extension routing
 - tools.utils.markdown_fence: build_fenced_ranges / in_fenced_range helpers
 """
-import pytest
+
 from storage.artifact_chunker import (
-    ChunkInfo,
     ChunkerFactory,
     MarkdownChunker,
     TextChunker,
 )
 from tools.utils.markdown_fence import build_fenced_ranges, in_fenced_range
 
-
 # ---------------------------------------------------------------------------
 # markdown_fence helpers
 # ---------------------------------------------------------------------------
+
 
 class TestBuildFencedRanges:
     def test_build_fenced_ranges_empty_content_returns_empty_list(self):
@@ -33,7 +32,7 @@ class TestBuildFencedRanges:
         assert len(ranges) == 1
         start, end = ranges[0]
         # The opening ``` must be inside the range
-        assert content[start:start+3] == "```"
+        assert content[start : start + 3] == "```"
 
     def test_build_fenced_ranges_tilde_block_returns_one_range(self):
         content = "~~~\nsome code\n~~~"
@@ -79,6 +78,7 @@ class TestInFencedRange:
 # MarkdownChunker
 # ---------------------------------------------------------------------------
 
+
 class TestMarkdownChunker:
     def _chunk(self, content: str, max_chars: int = 5000):
         return list(MarkdownChunker().chunk(content, max_chars))
@@ -100,14 +100,7 @@ class TestMarkdownChunker:
         assert "second thing" in chunks[1].text
 
     def test_chunk_h3_split_returns_separate_chunks(self):
-        content = (
-            "## Section A\n"
-            "Intro.\n"
-            "### Sub-section A.1\n"
-            "Detail.\n"
-            "## Section B\n"
-            "More.\n"
-        )
+        content = "## Section A\nIntro.\n### Sub-section A.1\nDetail.\n## Section B\nMore.\n"
         chunks = self._chunk(content)
         assert len(chunks) == 3
         assert chunks[0].section == "## Section A"
@@ -156,6 +149,7 @@ class TestMarkdownChunker:
 # TextChunker
 # ---------------------------------------------------------------------------
 
+
 class TestTextChunker:
     def _chunk(self, content: str, max_chars: int = 5000):
         return list(TextChunker().chunk(content, max_chars))
@@ -203,6 +197,7 @@ class TestTextChunker:
 # ---------------------------------------------------------------------------
 # ChunkerFactory
 # ---------------------------------------------------------------------------
+
 
 class TestChunkerFactory:
     def test_get_md_extension_returns_markdown_chunker(self):

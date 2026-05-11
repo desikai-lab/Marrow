@@ -3,8 +3,11 @@ from collections.abc import Awaitable, Callable
 
 
 class AsyncDebouncer:
-    """Delays execution of a file processing callback until a stable period clears."""    
-    def __init__(self, loop: asyncio.AbstractEventLoop, on_stable_callback: Callable[[str], Awaitable[None]]):
+    """Delays execution of a file processing callback until a stable period clears."""
+
+    def __init__(
+        self, loop: asyncio.AbstractEventLoop, on_stable_callback: Callable[[str], Awaitable[None]]
+    ):
         self._loop = loop
         self._callback = on_stable_callback
         self._tasks: dict[str, asyncio.Task] = {}
@@ -20,7 +23,7 @@ class AsyncDebouncer:
                 # Remove self from tracking before executing callback
                 if filepath in self._tasks:
                     del self._tasks[filepath]
-                
+
                 await self._callback(filepath)
             except asyncio.CancelledError:
                 # Cancelled due to a new schedule call (debounce successful)

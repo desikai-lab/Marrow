@@ -4,11 +4,9 @@ import shutil
 
 from cli.commands.base import BaseCommand
 
-TEMPLATE_DIR = os.path.abspath(os.path.join(
-    os.path.dirname(__file__),
-    "..", "..", "..",
-    "project-template"
-))
+TEMPLATE_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "project-template")
+)
 
 
 class InitCommand(BaseCommand):
@@ -22,17 +20,15 @@ class InitCommand(BaseCommand):
 
     def register_args(self, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
-            "--project", required=True,
-            help="Project name (must be unique in TASKS_DIR)"
+            "--project", required=True, help="Project name (must be unique in TASKS_DIR)"
         )
         parser.add_argument(
-            "--tasks-dir", default=None,
-            help="Override TASKS_DIR environment variable"
+            "--tasks-dir", default=None, help="Override TASKS_DIR environment variable"
         )
 
     def execute(self, args: argparse.Namespace) -> None:
         from config import PROJECTS_ROOT
-        
+
         if args.tasks_dir:
             projects_root = os.path.join(os.path.abspath(args.tasks_dir), "projects")
         else:
@@ -68,8 +64,8 @@ class InitCommand(BaseCommand):
         print()
         print("  OPTION A — Fill manually:")
         print(f"    Open  : {spec_path}")
-        print( "    Search: FILL_IN")
-        print( "    Replace each marker with your project's actual values.")
+        print("    Search: FILL_IN")
+        print("    Replace each marker with your project's actual values.")
         print()
         print("  OPTION B — Let an agent fill the gaps:")
         print("    Send this prompt to Claude (or any capable agent):")
@@ -77,11 +73,11 @@ class InitCommand(BaseCommand):
         print("    ┌─────────────────────────────────────────────────────────┐")
         print("    │ I just initialized a new Marrow project called          │")
         print(f"    │ '{args.project}'. My stack is: [DESCRIBE YOUR STACK].  │")
-        print( "    │ Read my spec.md and replace every {{FILL_IN}} marker    │")
-        print( "    │ with the correct value for my project.                  │")
-        print( "    └─────────────────────────────────────────────────────────┘")
+        print("    │ Read my spec.md and replace every {{FILL_IN}} marker    │")
+        print("    │ with the correct value for my project.                  │")
+        print("    └─────────────────────────────────────────────────────────┘")
         print()
         print("  When spec.md is complete:")
         print("    Step 1: Start marrow_worker  →  point WATCH_ROOT at your src dir")
-        print( "    Step 2: Connect MCP client   →  see README.md#quickstart")
+        print("    Step 2: Connect MCP client   →  see README.md#quickstart")
         print()

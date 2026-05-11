@@ -6,29 +6,31 @@ from utils.exceptions import ArtifactNotFoundError
 
 logger = logging.getLogger(__name__)
 
+
 def _parse_phase(session_text: str) -> int:
     """Extract the current pipeline phase number from session_current.md text.
-    
+
     Looks for a line matching 'Phase N' (case-insensitive, optional surrounding text).
     Returns 1 (discovery) if the field is absent or unparseable.
     """
     match = re.search(r"(?:Phase|Step)[:\s]+(\d+)", session_text, re.IGNORECASE)
     if match and isinstance(match.group(1), str) and match.group(1) != "":
-        return int(match.group(1))    
+        return int(match.group(1))
     logger.warning("No phase number found in session text; defaulting to phase 1 (discovery).")
     return 1
+
 
 def _parse_next_agent(session_text: str) -> str:
     match = re.search(r"next_agent_role[:\s\*]+(.+)", session_text, re.IGNORECASE)
     if match:
-        return match.group(1)   
+        return match.group(1)
     logger.warning("No next agent found in session text; defaulting to phase 1 (discovery).")
     return None
 
 
 def _select_agent_role(phase: int) -> str:
     """Map a pipeline phase number to the appropriate phase-specific guideline file path.
-    
+
     Phase 1–3   → Discovery Agent
     Phase 4–6   → Architecture Agent
     Phase 7–11  → Planning Agent
@@ -47,7 +49,7 @@ def _select_agent_role(phase: int) -> str:
 def get_session_context_logic(project: str) -> str:
     """Read session state, detect the active pipeline phase, and return an assembled
     context bundle: session state + core guidelines + phase-appropriate guidelines.
-    
+
     Fallback behaviour:
     - session_current.md missing → session section is empty; phase defaults to 1.
     - Phase field absent/unparseable → phase defaults to 1.
@@ -58,13 +60,15 @@ def get_session_context_logic(project: str) -> str:
         session_text = read_artifact_logic(project, "session.md")
         spec = read_artifact_logic(project, "spec.md")
     except ArtifactNotFoundError:
-        logger.warning("session_current.md not found for project '%s'; proceeding with empty session.", project)
+        logger.warning(
+            "session_current.md not found for project '%s'; proceeding with empty session.", project
+        )
         session_text = ""
         spec = ""
 
     # 2. Detect current phase
     agent_role = _parse_next_agent(session_text)
-    
+
     if agent_role is None:
         phase = _parse_phase(session_text)
         agent_role = _select_agent_role(phase)
@@ -87,17 +91,17 @@ def get_session_context_logic(project: str) -> str:
         f"=== SPEC:===\n{spec}\n"
     )
 
+
 class GuidelinesFactory:
     _guidelines = {
-        'Discovery Agent': "docs/manuals/guidelines/discovery.md",
-        'Architecture Agent': "docs/manuals/guidelines/discovery.md",
-        'Planning Agent': "docs/manuals/guidelines/planning.md",
-        'Execution Agent': "docs/manuals/guidelines/execution.md"
+        "Discovery Agent": "docs/manuals/guidelines/discovery.md",
+        "Architecture Agent": "docs/manuals/guidelines/discovery.md",
+        "Planning Agent": "docs/manuals/guidelines/planning.md",
+        "Execution Agent": "docs/manuals/guidelines/execution.md",
     }
-    
+
     @classmethod
     def get_guideline(cls, agent_role: str) -> str:
         if agent_role not in cls._guidelines:
             raise ValueError(f"Unknown pipeline role: '{agent_role}'")
         return cls._guidelines[agent_role]
-    

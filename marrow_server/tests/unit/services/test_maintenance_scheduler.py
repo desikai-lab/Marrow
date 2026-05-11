@@ -1,10 +1,11 @@
+import asyncio
 import os
 import shutil
 import unittest
-import asyncio
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
 from transport.app_factory import maintenance_loop
-import transport.app_factory
+
 
 class TestMaintenanceScheduler(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -12,12 +13,12 @@ class TestMaintenanceScheduler(unittest.IsolatedAsyncioTestCase):
         if os.path.exists(self.test_root):
             shutil.rmtree(self.test_root)
         os.makedirs(self.test_root)
-        
+
         # Create two projects
         os.makedirs(os.path.join(self.test_root, "project1", ".db"))
         with open(os.path.join(self.test_root, "project1", ".db", "index.lancedb"), "w") as f:
             f.write("dummy")
-            
+
         os.makedirs(os.path.join(self.test_root, "project2", ".db"))
         with open(os.path.join(self.test_root, "project2", ".db", "index.lancedb"), "w") as f:
             f.write("dummy")
@@ -35,19 +36,21 @@ class TestMaintenanceScheduler(unittest.IsolatedAsyncioTestCase):
             # Setup mocks
             inst1 = AsyncMock()
             inst1.run.side_effect = RuntimeError("Project 1 failed")
-            
+
             inst2 = AsyncMock()
-            inst2.run.return_value = MagicMock(errors=[], files_compacted=True, versions_cleaned=True, ghosts_pruned=0)
-            
+            inst2.run.return_value = MagicMock(
+                errors=[], files_compacted=True, versions_cleaned=True, ghosts_pruned=0
+            )
+
             mock_service.side_effect = [inst1, inst2]
-            
+
             # We only want to run one cycle
             mock_sleep.side_effect = [None, asyncio.CancelledError()]
-            
+
             try:
                 await maintenance_loop()
             except asyncio.CancelledError:
                 pass
-                
+
             # Verify both were called despite the first one failing
             self.assertEqual(mock_service.call_count, 2)

@@ -24,9 +24,7 @@ def setup_logging(log_file: str = "logs/server.log", level: int = logging.INFO) 
         root.handlers.clear()
 
     # Formatter: [Timestamp] [LoggerName] [Level] Message
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     # Console Handler
     console_handler = logging.StreamHandler()
@@ -36,11 +34,13 @@ def setup_logging(log_file: str = "logs/server.log", level: int = logging.INFO) 
 
     # Daily Rotating File Handler (rotates at midnight, keeps 30 days)
     file_handler = TimedRotatingFileHandler(
-        log_file, when='midnight', backupCount=30, encoding='utf-8'
+        log_file, when="midnight", backupCount=30, encoding="utf-8"
     )
-    file_handler.suffix = '%Y-%m-%d'
+    file_handler.suffix = "%Y-%m-%d"
     file_handler.setLevel(level)
     file_handler.setFormatter(formatter)
     root.addHandler(file_handler)
 
-    logging.info("Logging initialized. File target: %s | Level: %s", log_file, logging.getLevelName(level))
+    logging.info(
+        "Logging initialized. File target: %s | Level: %s", log_file, logging.getLevelName(level)
+    )

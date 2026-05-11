@@ -18,9 +18,7 @@ def build_fenced_ranges(content: str) -> list[tuple[int, int]]:
         open_f = fences[i]
         marker = open_f.group(1)
         # The closing marker must be the same length or longer
-        close_p = re.compile(
-            rf"^{re.escape(marker[0])}{{{len(marker)},}}\s*$", re.MULTILINE
-        )
+        close_p = re.compile(rf"^{re.escape(marker[0])}{{{len(marker)},}}\s*$", re.MULTILINE)
         close_f = close_p.search(content, open_f.end())
         if close_f:
             fenced_ranges.append((open_f.start(), close_f.end()))

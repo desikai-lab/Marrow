@@ -1,6 +1,4 @@
-import os
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 
 def test_sentence_transformer_called_with_local_files_only():
@@ -13,6 +11,7 @@ def test_sentence_transformer_called_with_local_files_only():
 
     with patch("sentence_transformers.SentenceTransformer", mock_st_class):
         from src.embedding.lazy_model import LazyEncoder
+
         enc = LazyEncoder()
         enc.__enter__()
 

@@ -48,7 +48,7 @@ class SkeletonCommandService:
                 valid_chunks.append(chunk)
             except ValidationError as ve:
                 logger.warning("[Ingest] Skipping malformed chunk: %s", ve.errors())
-        
+
         # Create a new payload with only valid chunks
         payload = payload.model_copy(update={"chunks": valid_chunks})
         project_root = os.path.join(PROJECTS_ROOT, payload.project_name)

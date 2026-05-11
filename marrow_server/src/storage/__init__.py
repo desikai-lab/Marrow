@@ -18,5 +18,5 @@ __all__ = [
     "validate_status_change",
     "check_integrity",
     "get_artifact_table",
-    "upsert_task"
+    "upsert_task",
 ]

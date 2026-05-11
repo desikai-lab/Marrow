@@ -12,11 +12,11 @@ from storage.validation import validate_status_change
 from utils.exceptions import DomainProtectionError, TaskNotFoundError
 
 VALID_TRANSITIONS = {
-    'open': ['paused', 'closed', 'analysis', 'blocked'],
-    'blocked': ['closed', 'paused', 'open'],
-    'paused': ['open', 'closed'],
-    'analysis': ['open', 'closed', 'paused'],
-    'closed': []
+    "open": ["paused", "closed", "analysis", "blocked"],
+    "blocked": ["closed", "paused", "open"],
+    "paused": ["open", "closed"],
+    "analysis": ["open", "closed", "paused"],
+    "closed": [],
 }
 
 # Files that may never be fully overwritten — only appended/section-patched
@@ -24,9 +24,10 @@ PROTECTED_FILES = [
     "memory/decisions.md",
 ]
 
+
 class UnitOfWork:
     """Business-transaction orchestrator (Blob + LanceDB)."""
-    
+
     def __init__(self, project_root: str):
         self.project_root = project_root
         self.tasks = TaskRepository(project_root)
@@ -40,12 +41,13 @@ class UnitOfWork:
             if normalized == protected:
                 raise DomainProtectionError(
                     f"Direct overwrite of '{path}' is forbidden. Use append_section.",
-                    details={"protected_file": path}
+                    details={"protected_file": path},
                 )
 
     async def update_task_atomically(self, task_key: str, new_data: dict[str, Any]) -> TaskRecord:
         """Atomically updates a task (Blob + LanceDB) with Rollback support."""
         from storage.db import get_table_lock
+
         async with get_table_lock(self.tasks.table.name):
             current_record = await self.tasks.get_by_key(task_key)
         if not current_record:
@@ -72,7 +74,7 @@ class UnitOfWork:
         history_dir = Path(self.project_root) / ".history" / task_key
         history_dir.mkdir(parents=True, exist_ok=True)
         backup_path = history_dir / f"{task_key}.md.bak"
-        
+
         if os.path.exists(file_path):
             await asyncio.to_thread(shutil.copy2, file_path, backup_path)
 
@@ -88,7 +90,7 @@ class UnitOfWork:
             # Phase 1: Write Blob
             new_blob_path = await asyncio.to_thread(write_blob, self.project_root, updated_data)
             new_abs_path = str(new_blob_path.absolute())
-            
+
             record = TaskRecord(
                 id=current_record.id,
                 key=task_key,
@@ -96,7 +98,9 @@ class UnitOfWork:
                 type=updated_data.get("type", "F"),
                 status=updated_data.get("status", "open"),
                 priority=updated_data.get("priority", "medium"),
-                file_path=str(Path(new_blob_path).relative_to(self.project_root)).replace("\\", "/"),
+                file_path=str(Path(new_blob_path).relative_to(self.project_root)).replace(
+                    "\\", "/"
+                ),
                 updated=updated_data["updated"],
                 project=current_record.project,
                 problem=updated_data.get("problem"),
@@ -104,16 +108,16 @@ class UnitOfWork:
                 blocked_by=updated_data.get("blocked_by", []),
                 where=updated_data.get("where", []),
                 comments=updated_data.get("comments"),
-                resolution=updated_data.get("resolution")
+                resolution=updated_data.get("resolution"),
             )
 
             # Phase 2: Update Index via Repository
             await self.tasks.upsert(record)
-            
+
             # Success! Cleanup: delete the old blob file if the status changed and the file was relocated
             if old_abs_path != new_abs_path and os.path.exists(old_abs_path):
-                 await asyncio.to_thread(os.remove, old_abs_path)
-                 
+                await asyncio.to_thread(os.remove, old_abs_path)
+
             return record
 
         except Exception as e:
@@ -122,7 +126,9 @@ class UnitOfWork:
                 await asyncio.to_thread(shutil.copy2, backup_path, file_path)
             raise e
 
-    async def move_task_status_atomically(self, task_key: str, new_status: str, resolution: str | None = None) -> TaskRecord:
+    async def move_task_status_atomically(
+        self, task_key: str, new_status: str, resolution: str | None = None
+    ) -> TaskRecord:
         """Moves a task to a new status with transition validation."""
         current = await self.tasks.get_by_key(task_key)
         if not current:
@@ -136,16 +142,16 @@ class UnitOfWork:
             if old_status != ns_lower:
                 raise ValueError(f"Invalid transition from '{old_status}' to '{new_status}'")
 
-        return await self.update_task_atomically(task_key, {"status": new_status, "resolution": resolution})
+        return await self.update_task_atomically(
+            task_key, {"status": new_status, "resolution": resolution}
+        )
 
     async def move_tasks_batch_atomically(
-        self,
-        task_keys: list[str],
-        new_status: str,
-        resolution: str | None = None
+        self, task_keys: list[str], new_status: str, resolution: str | None = None
     ) -> dict:
         """Batch status move: single lock, bulk LanceDB upsert, single auto-unblock pass."""
         from storage.db import get_table_lock
+
         _file_lock = get_table_lock(self.tasks.table.name)
 
         # key → original absolute path (for rollback)
@@ -162,7 +168,7 @@ class UnitOfWork:
                 full_data = await asyncio.to_thread(read_blob, abs_path)
                 validate_status_change(full_data, {"status": new_status, "resolution": resolution})
                 validated.append((record, full_data, abs_path))
-                original_paths[key] = abs_path                
+                original_paths[key] = abs_path
 
             # Phase B — Backup + write new blobs
             prepared = []  # list of (old_abs_path, new_record)
@@ -189,7 +195,9 @@ class UnitOfWork:
                     type=updated_data.get("type", "F"),
                     status=updated_data.get("status", new_status),
                     priority=updated_data.get("priority", "medium"),
-                    file_path=str(Path(new_blob_path).relative_to(self.project_root)).replace("\\", "/"),
+                    file_path=str(Path(new_blob_path).relative_to(self.project_root)).replace(
+                        "\\", "/"
+                    ),
                     updated=now,
                     project=record.project,
                     problem=updated_data.get("problem"),
@@ -197,7 +205,7 @@ class UnitOfWork:
                     blocked_by=updated_data.get("blocked_by", []),
                     where=updated_data.get("where", []),
                     comments=updated_data.get("comments"),
-                    resolution=updated_data.get("resolution")
+                    resolution=updated_data.get("resolution"),
                 )
                 prepared.append((str(Path(abs_path).absolute()), new_record))
 
@@ -206,7 +214,9 @@ class UnitOfWork:
                 ids = [r.id for _, r in prepared]
                 id_list = ", ".join(str(i) for i in ids)
                 await asyncio.to_thread(self.tasks.table.delete, f"id IN ({id_list})")
-                await asyncio.to_thread(self.tasks.table.add, [r.to_index_row() for _, r in prepared])
+                await asyncio.to_thread(
+                    self.tasks.table.add, [r.to_index_row() for _, r in prepared]
+                )
 
                 # Phase D — Delete old blobs
                 for old_abs_path, _ in prepared:

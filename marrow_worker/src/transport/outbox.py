@@ -4,6 +4,7 @@ Ensures that chunk payloads survive worker restarts. Delivery is attempted
 immediately; on failure, rows remain PENDING and are flushed on next startup
 or by the background flush loop.
 """
+
 import asyncio
 import json
 import logging
@@ -135,13 +136,17 @@ class WorkerOutbox:
                 except Exception as e:
                     logger.warning(
                         "[Outbox] Batch flush failed for row %d (%s): %s",
-                        row_id, file_path, e,
+                        row_id,
+                        file_path,
+                        e,
                     )
 
-        await asyncio.gather(*[
-            _deliver_one(row_id, op, fp, payload_json)
-            for row_id, op, fp, _chunk_count, payload_json in rows
-        ])
+        await asyncio.gather(
+            *[
+                _deliver_one(row_id, op, fp, payload_json)
+                for row_id, op, fp, _chunk_count, payload_json in rows
+            ]
+        )
 
     async def background_flush_loop(self, deliver_fn: DeliverFn) -> None:
         """Runs forever, flushing pending rows every flush_interval seconds."""
@@ -167,6 +172,7 @@ class WorkerOutbox:
         ).fetchone()[0]
         if count >= _FAILED_ROW_WARN_THRESHOLD:
             logger.warning(
-                "[Outbox] WARNING: %d FAILED rows in outbox. "
-                "Inspect %s for details.", count, self._db_path
+                "[Outbox] WARNING: %d FAILED rows in outbox. Inspect %s for details.",
+                count,
+                self._db_path,
             )

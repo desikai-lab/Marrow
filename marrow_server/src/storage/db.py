@@ -14,6 +14,7 @@ _connections: dict = {}  # cache: {db_path: lancedb.DBConnection}
 _table_locks: dict[str, asyncio.Lock] = {}
 _rebuild_queues: dict[str, asyncio.Queue] = {}
 
+
 def get_table_lock(table_name: str) -> asyncio.Lock:
     """Returns (or creates) a per-table asyncio.Lock.
     Serialises concurrent writers to eliminate LanceDB file-lock contention.
@@ -22,12 +23,13 @@ def get_table_lock(table_name: str) -> asyncio.Lock:
         _table_locks[table_name] = asyncio.Lock()
     return _table_locks[table_name]
 
+
 def schedule_index_rebuild(table) -> None:
     """Non-blocking signal to rebuild the index. Safe to call from sync or async context."""
     table_name = getattr(table, "name", "unknown")
     if table_name not in _rebuild_queues:
         _rebuild_queues[table_name] = asyncio.Queue(maxsize=1)
-    
+
     # Needs a running loop to put into queue; if no loop (e.g. startup/scripts), skip
     try:
         asyncio.get_running_loop()
@@ -36,7 +38,8 @@ def schedule_index_rebuild(table) -> None:
         except asyncio.QueueFull:
             pass  # rebuild already pending; drop duplicate
     except RuntimeError:
-        pass # No loop running
+        pass  # No loop running
+
 
 async def index_rebuild_worker(table_name: str, debounce_s: int = 60) -> None:
     """
@@ -48,6 +51,7 @@ async def index_rebuild_worker(table_name: str, debounce_s: int = 60) -> None:
     This prevents spending minutes fighting an active write stream.
     """
     import logging
+
     logger = logging.getLogger("marrow.db")
 
     # Ensure queue exists
@@ -57,9 +61,9 @@ async def index_rebuild_worker(table_name: str, debounce_s: int = 60) -> None:
     queue = _rebuild_queues[table_name]
 
     while True:
-        table = await queue.get()          # block until write activity
-        await asyncio.sleep(debounce_s)    # wait for burst to settle
-        while not queue.empty():           # drain remaining signals
+        table = await queue.get()  # block until write activity
+        await asyncio.sleep(debounce_s)  # wait for burst to settle
+        while not queue.empty():  # drain remaining signals
             queue.get_nowait()
 
         # If a new write arrived during the debounce, skip and wait again
@@ -74,9 +78,12 @@ async def index_rebuild_worker(table_name: str, debounce_s: int = 60) -> None:
             err_str = str(e).lower()
             if "conflict" in err_str or "preempted" in err_str or "retryable" in err_str:
                 # Writes are still active — abandon and wait for next write signal
-                logger.info("[DB] Optimization skipped (concurrent write active); will retry after next write.")
+                logger.info(
+                    "[DB] Optimization skipped (concurrent write active); will retry after next write."
+                )
             else:
                 logger.warning("[DB] index optimize failed (non-fatal): %s", e)
+
 
 def get_db(project_root: str) -> lancedb.DBConnection:
     """Returns (or creates) a LanceDB connection for the given project."""
@@ -104,6 +111,7 @@ def list_table_names(db: lancedb.DBConnection) -> list[str]:
     # Legacy API: plain list or iterable of strings
     return list(result)
 
+
 def get_table(project_root: str) -> lancedb.table.Table:
     """Returns the task_index table, creating it if it does not exist."""
     db = get_db(project_root)
@@ -111,6 +119,7 @@ def get_table(project_root: str) -> lancedb.table.Table:
     if "task_index" not in tables:
         return db.create_table("task_index", schema=TASK_SCHEMA, exist_ok=True)
     return db.open_table("task_index")
+
 
 def get_artifact_table(project_root: str) -> lancedb.table.Table:
     """Returns the artifact_index table, creating it if it does not exist."""
@@ -120,6 +129,7 @@ def get_artifact_table(project_root: str) -> lancedb.table.Table:
         return db.create_table("artifact_index", schema=ARTIFACT_SCHEMA, exist_ok=True)
     return db.open_table("artifact_index")
 
+
 def get_chunk_table(project_root: str) -> lancedb.table.Table:
     """Returns the artifact_chunks table, creating it if it does not exist."""
     db = get_db(project_root)
@@ -127,6 +137,7 @@ def get_chunk_table(project_root: str) -> lancedb.table.Table:
     if "artifact_chunks" not in tables:
         return db.create_table("artifact_chunks", schema=ARTIFACT_CHUNK_SCHEMA, exist_ok=True)
     return db.open_table("artifact_chunks")
+
 
 def get_skeleton_table(project_root: str) -> lancedb.table.Table:
     """Returns (or creates) the code_skeleton_index table for SKEL-7."""
@@ -140,13 +151,14 @@ def get_skeleton_table(project_root: str) -> lancedb.table.Table:
 # create_index_if_needed removed in PERF-04 / PERF-02.
 # Use schedule_index_rebuild(table) and index_rebuild_worker instead.
 
+
 def init_db(project_root: str):
     """Full initialization: creates directories and tables."""
     Path(project_root, ".db", "index.lancedb").mkdir(parents=True, exist_ok=True)
     Path(project_root, ".db", "blobs", "active").mkdir(parents=True, exist_ok=True)
     Path(project_root, ".db", "blobs", "paused").mkdir(parents=True, exist_ok=True)
     Path(project_root, ".db", "blobs", "done").mkdir(parents=True, exist_ok=True)
-    
+
     get_table(project_root)
     get_artifact_table(project_root)
     get_chunk_table(project_root)

@@ -8,6 +8,7 @@ from storage.repositories.skeleton_repository import SkeletonRepository
 
 logger = logging.getLogger("marrow.maintenance")
 
+
 @dataclass
 class MaintenanceReport:
     project_root: str
@@ -16,6 +17,7 @@ class MaintenanceReport:
     ghosts_pruned: int = 0
     duration_ms: float = 0.0
     errors: list[str] = field(default_factory=list)
+
 
 class MaintenanceService:
     def __init__(
@@ -76,7 +78,9 @@ class MaintenanceService:
                 logger.info(f"Table is empty for {self.project_name}, skipping ghost pruning.")
                 return pruned_count
 
-            indexed_paths = await self.skeleton_repo.get_all_indexed_paths(self.project_name, include_tests=True)
+            indexed_paths = await self.skeleton_repo.get_all_indexed_paths(
+                self.project_name, include_tests=True
+            )
             for path in indexed_paths:
                 abs_path = Path(self.project_root) / path
                 if not abs_path.exists():

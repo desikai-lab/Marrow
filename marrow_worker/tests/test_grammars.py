@@ -7,10 +7,10 @@ from tree_sitter import Language
 
 from src.parser.grammars import get_language, supported_languages
 
-
 # ---------------------------------------------------------------------------
 # Positive cases: every supported language loads
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("lang_name", supported_languages())
 def test_get_language_returns_language_object(lang_name):
@@ -31,6 +31,7 @@ def test_get_language_is_singleton(lang_name):
 # Negative cases
 # ---------------------------------------------------------------------------
 
+
 def test_get_language_raises_on_unknown():
     """get_language() must raise ValueError for an unknown language name."""
     with pytest.raises(ValueError, match="Unsupported language"):
@@ -40,6 +41,7 @@ def test_get_language_raises_on_unknown():
 # ---------------------------------------------------------------------------
 # Metadata
 # ---------------------------------------------------------------------------
+
 
 def test_supported_languages_returns_list():
     langs = supported_languages()

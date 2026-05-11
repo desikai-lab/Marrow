@@ -2,13 +2,15 @@
 tests/test_vectorize_endpoint.py
 Tests for SKEL-7: POST /api/vectorize endpoint.
 """
-import pytest
+
 import asyncio
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
 
+from config import EMBEDDING_DIMENSIONS, SECRET_TOKEN
 from transport.app_factory import app
-from config import SECRET_TOKEN, EMBEDDING_DIMENSIONS
 
 client = TestClient(app, raise_server_exceptions=False)
 
@@ -58,16 +60,17 @@ AUTH_HEADERS = {"Authorization": f"Bearer {SECRET_TOKEN}"}
 # Test 1 — Valid payload with correct token returns 200 and correct count
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_vectorize_logic_valid_payload_returns_stored_chunks_count():
     with patch(
         "services.skeleton_command_service.skeleton_command_service.ingest",
-        new_callable=MagicMock, # We'll return a coroutine manually or use AsyncMock
+        new_callable=MagicMock,  # We'll return a coroutine manually or use AsyncMock
     ) as mock_ingest:
         # Mock as async
         mock_ingest.return_value = asyncio.Future()
         mock_ingest.return_value.set_result(3)
-        
+
         response = client.post(
             "/api/vectorize",
             json=VALID_PAYLOAD,
@@ -85,6 +88,7 @@ async def test_vectorize_logic_valid_payload_returns_stored_chunks_count():
 # Test 2 — Missing Authorization header → 401
 # ---------------------------------------------------------------------------
 
+
 def test_vectorize_logic_missing_auth_header_returns_401():
     response = client.post("/api/vectorize", json=VALID_PAYLOAD)
     assert response.status_code == 401
@@ -93,6 +97,7 @@ def test_vectorize_logic_missing_auth_header_returns_401():
 # ---------------------------------------------------------------------------
 # Test 3 — Wrong token value → 401
 # ---------------------------------------------------------------------------
+
 
 def test_vectorize_logic_invalid_token_returns_401():
     response = client.post(
@@ -107,6 +112,7 @@ def test_vectorize_logic_invalid_token_returns_401():
 # Test 4 — Empty chunks list → 422 (Pydantic validation)
 # ---------------------------------------------------------------------------
 
+
 def test_vectorize_empty_chunks():
     payload = {**VALID_PAYLOAD, "chunks": []}
     response = client.post("/api/vectorize", json=payload, headers=AUTH_HEADERS)
@@ -116,6 +122,7 @@ def test_vectorize_empty_chunks():
 # ---------------------------------------------------------------------------
 # Test 5 — Wrong vector dimension → 422 (Pydantic validation)
 # ---------------------------------------------------------------------------
+
 
 def test_vectorize_wrong_vector_dimension():
     bad_chunk = {**VALID_CHUNK, "vector": [0.1, 0.2, 0.3]}  # only 3 floats, not 384
@@ -129,6 +136,7 @@ def test_vectorize_wrong_vector_dimension():
 # ---------------------------------------------------------------------------
 # Test 6 — Idempotency: posting the same path twice stores clean count
 # ---------------------------------------------------------------------------
+
 
 def test_vectorize_idempotency():
     call_counts = []
@@ -155,6 +163,7 @@ def test_vectorize_idempotency():
 # ---------------------------------------------------------------------------
 # Test 7 — Service exception bubbles up as 500
 # ---------------------------------------------------------------------------
+
 
 def test_vectorize_service_error_returns_500():
     with patch(

@@ -12,9 +12,10 @@ from utils.metrics import track_time
 
 logger = logging.getLogger("marrow.task_repository")
 
+
 class TaskRepository:
     """Repository for task access via LanceDB."""
-    
+
     def __init__(self, project_root: str):
         self.project_root = project_root
         self.table = get_table(project_root)
@@ -30,17 +31,19 @@ class TaskRepository:
             file_path=row.get("file_path"),
             updated=row.get("updated"),
             project=row.get("project"),
-            vector=row.get("vector")
+            vector=row.get("vector"),
         )
 
     async def _ensure_vector(self, record: TaskRecord) -> TaskRecord:
         """Generates a vector if one is not already present."""
-        if getattr(record, 'vector', None) is None:
+        if getattr(record, "vector", None) is None:
             text_to_embed = f"{record.title} {getattr(record, 'problem', '') or ''}".strip()
             if text_to_embed:
                 logger.debug(f"Generating vector for task {record.key}...")
                 record.vector = await asyncio.to_thread(
-                    embeddings_manager.generate_vector, text_to_embed, model_name=EMBEDDING_MODEL_TEXT
+                    embeddings_manager.generate_vector,
+                    text_to_embed,
+                    model_name=EMBEDDING_MODEL_TEXT,
                 )
         return record
 
@@ -49,6 +52,7 @@ class TaskRepository:
         record = await self._ensure_vector(record)
         await asyncio.to_thread(self.table.add, [record.to_index_row()])
         from storage.db import schedule_index_rebuild
+
         schedule_index_rebuild(self.table)
 
     async def upsert(self, record: TaskRecord) -> None:
@@ -57,6 +61,7 @@ class TaskRepository:
         record = await self._ensure_vector(record)
         await asyncio.to_thread(self.table.add, [record.to_index_row()])
         from storage.db import schedule_index_rebuild
+
         schedule_index_rebuild(self.table)
 
     async def delete(self, task_id: int) -> None:
@@ -90,8 +95,13 @@ class TaskRepository:
         return self._row_to_record(results[0]) if results else None
 
     @track_time(layer="repository")
-    async def search(self, status: str | None = None, priority: str | None = None, 
-               type: str | None = None, project: str | None = None) -> list[TaskRecord]:
+    async def search(
+        self,
+        status: str | None = None,
+        priority: str | None = None,
+        type: str | None = None,
+        project: str | None = None,
+    ) -> list[TaskRecord]:
         """Searches tasks by filter criteria."""
         filters = []
         if status:
@@ -106,7 +116,7 @@ class TaskRepository:
         if filters:
             where_clause = " AND ".join(filters)
             query = query.where(where_clause, prefilter=True)
-            
+
         results = await asyncio.to_thread(query.to_list)
         return [self._row_to_record(r) for r in results]
 
@@ -121,4 +131,6 @@ class TaskRepository:
             return []
 
         results = await asyncio.to_thread(self.table.search(query_vector).limit(limit).to_list)
-        return [{"record": self._row_to_record(r), "distance": r.get("_distance", 0.0)} for r in results]
+        return [
+            {"record": self._row_to_record(r), "distance": r.get("_distance", 0.0)} for r in results
+        ]

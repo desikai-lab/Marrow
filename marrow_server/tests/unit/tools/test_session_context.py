@@ -1,10 +1,11 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
 from tools.session_context import _parse_phase, _select_agent_role, get_session_context_logic
 from utils.exceptions import ArtifactNotFoundError
 
-class TestSessionContext(unittest.TestCase):
 
+class TestSessionContext(unittest.TestCase):
     def test_parse_phase_valid_string_returns_phase_number(self):
         self.assertEqual(_parse_phase("Current Phase: 5"), 5)
         self.assertEqual(_parse_phase("We are at phase 12 now"), 12)
@@ -45,11 +46,11 @@ class TestSessionContext(unittest.TestCase):
             if path == "docs/manuals/guidelines/planning.md":
                 return "PLANNING CONTENT"
             return "ERROR"
-            
+
         mock_read.side_effect = side_effect
-        
+
         result = get_session_context_logic("TestProj")
-        
+
         self.assertIn("=== YOUR ROLE: Planning Agent ===", result)
         self.assertIn("Phase 8", result)
         self.assertIn("CORE CONTENT", result)
@@ -66,30 +67,32 @@ class TestSessionContext(unittest.TestCase):
             if path == "docs/manuals/guidelines/discovery.md":
                 return "DISCOVERY CONTENT"
             return "ERROR"
-            
+
         mock_read.side_effect = side_effect
-        
+
         # Should default to phase 1 -> Discovery Agent
         result = get_session_context_logic("TestProj")
-        
+
         self.assertIn("=== SESSION STATE ===\n\n", result)
         self.assertIn("DISCOVERY CONTENT", result)
         self.assertIn("=== PHASE GUIDELINES (Discovery Agent) ===", result)
 
     @patch("tools.session_context.read_artifact_logic")
-    def test_get_session_context_logic_missing_guidelines_raises_artifact_not_found_error(self, mock_read):
+    def test_get_session_context_logic_missing_guidelines_raises_artifact_not_found_error(
+        self, mock_read
+    ):
         def side_effect(project, path):
             if path == "session.md":
                 return "Phase 12"
             if path == "docs/manuals/guidelines/core.md":
                 raise ArtifactNotFoundError("core", path)
             return "ERROR"
-            
+
         mock_read.side_effect = side_effect
-        
+
         with self.assertRaises(ArtifactNotFoundError):
             get_session_context_logic("TestProj")
 
+
 if __name__ == "__main__":
     unittest.main()
-

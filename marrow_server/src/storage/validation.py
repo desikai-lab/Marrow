@@ -9,11 +9,11 @@ def validate_status_change(current_entry: dict[str, Any], new_data: dict[str, An
     new_status = new_data.get("status")
     if not new_status:
         return
-        
+
     old_status = current_entry.get("status", "").lower()
     if old_status == new_status.lower():
         return
-        
+
     # Status changed — validate resolution
     resolution = new_data.get("resolution", "").strip()
     if not resolution or len(resolution) < 5:

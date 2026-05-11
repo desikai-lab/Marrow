@@ -50,7 +50,9 @@ def load_project_settings(project: str) -> ProjectSettings:
     settings_path = Path(PROJECTS_ROOT) / project / ".settings"
 
     if not settings_path.exists():
-        logger.debug("No .settings file found for project '%s' — source tools unavailable.", project)
+        logger.debug(
+            "No .settings file found for project '%s' — source tools unavailable.", project
+        )
         _settings_cache[project] = settings
         return settings
 
@@ -67,7 +69,8 @@ def load_project_settings(project: str) -> ProjectSettings:
         logger.critical(
             "SOURCE_ROOT '%s' for project '%s' does not exist or is not a directory. "
             "Source tools disabled.",
-            resolved, project
+            resolved,
+            project,
         )
         _settings_cache[project] = settings
         return settings
