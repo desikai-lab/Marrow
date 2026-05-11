@@ -17,12 +17,13 @@ def test_lazy_encoder_context():
         np.array([0.2] * 384, dtype="float32"),
     ]
 
+    # LazyEncoder uses a lazy import: `from sentence_transformers import SentenceTransformer`
+    # inside __enter__, so we must patch the class on the sentence_transformers module itself,
+    # not on embedding.lazy_model (which has no module-level reference to patch).
     with patch(
-        "embedding.lazy_model.SentenceTransformer",
+        "sentence_transformers.SentenceTransformer",
         return_value=fake_model,
-        create=True,
     ):
-
 
         with encoder as enc:
             assert enc._model is not None
@@ -39,4 +40,3 @@ def test_lazy_encoder_context():
 
     # After context closes, _model must be destroyed entirely
     assert encoder._model is None
-
