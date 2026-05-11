@@ -1,6 +1,8 @@
 import os
 import re
+
 from config import PROJECTS_ROOT
+
 
 def sanitize_error_message(message: str) -> str:
     """

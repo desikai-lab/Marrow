@@ -1,6 +1,7 @@
 import argparse
 from abc import ABC, abstractmethod
 
+
 class BaseCommand(ABC):
     """
     Abstract interface for all CLI commands.

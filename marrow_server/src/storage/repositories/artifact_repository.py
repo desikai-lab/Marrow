@@ -1,11 +1,12 @@
-import logging
 import asyncio
-from typing import List, Optional, Dict, Any
-from storage.db import get_artifact_table, get_chunk_table, get_table_lock, schedule_index_rebuild
-from storage.entities import ArtifactRecord, ArtifactChunkRecord
-from storage.embeddings import embeddings_manager
-from config import MAX_EMBED_CHARS, EMBEDDING_MODEL_TEXT
+import logging
+from typing import Any
+
+from config import EMBEDDING_MODEL_TEXT, MAX_EMBED_CHARS
 from storage.artifact_chunker import ChunkerFactory
+from storage.db import get_artifact_table, get_chunk_table, schedule_index_rebuild
+from storage.embeddings import embeddings_manager
+from storage.entities import ArtifactChunkRecord, ArtifactRecord
 from utils.metrics import track_time
 
 logger = logging.getLogger("marrow.artifact_repository")
@@ -25,7 +26,7 @@ class ArtifactRepository:
         return record
         
 
-    def _row_to_record(self, row: Dict[str, Any]) -> ArtifactRecord:
+    def _row_to_record(self, row: dict[str, Any]) -> ArtifactRecord:
         return ArtifactRecord(
             path=row.get("path"),
             updated=row.get("updated"),
@@ -62,7 +63,7 @@ class ArtifactRepository:
             logger.warning(f"Artifact {old_path} not found in index for renaming.")
 
     @track_time(layer="repository")
-    async def semantic_search(self, query_text: str, limit: int = 5) -> List[Dict[str, Any]]:
+    async def semantic_search(self, query_text: str, limit: int = 5) -> list[dict[str, Any]]:
         query_vector = await asyncio.to_thread(
             embeddings_manager.generate_vector, query_text, model_name=EMBEDDING_MODEL_TEXT
         )
@@ -106,7 +107,7 @@ class ArtifactChunkRepository:
             logger.warning(f"No chunks vectorised for artifact {path}.")
 
     @track_time(layer="repository")
-    async def semantic_search(self, query_text: str, limit: int = 5) -> List[Dict[str, Any]]:
+    async def semantic_search(self, query_text: str, limit: int = 5) -> list[dict[str, Any]]:
         query_vector = await asyncio.to_thread(
             embeddings_manager.generate_vector, query_text, model_name=EMBEDDING_MODEL_TEXT
         )

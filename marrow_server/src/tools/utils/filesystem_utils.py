@@ -3,7 +3,8 @@ import shutil
 import sys
 import threading
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any
+
 from config import PROJECTS_ROOT
 
 _file_lock = threading.Lock()
@@ -59,7 +60,7 @@ def create_artifact_backup(project: str, rel_path: str):
     except Exception as e:
         print(f"Backup error for {rel_path}: {e}", file=sys.stderr)
 
-def list_directory_contents(path: str, recursive: bool = False, base_path: str = None) -> List[Dict[str, str]]:
+def list_directory_contents(path: str, recursive: bool = False, base_path: str = None) -> list[dict[str, str]]:
     """Lists files and folders in a directory. Returns [{'name', 'type'}]."""
     if not os.path.exists(path) or not os.path.isdir(path):
         return []
@@ -107,7 +108,7 @@ def recycle_file(project: str, rel_path: str) -> str:
     shutil.move(real_src, target_path)
     return f"File {rel_path} moved to recycle bin."
 
-def get_artifact_history(project: str, rel_path: str) -> List[Dict[str, Any]]:
+def get_artifact_history(project: str, rel_path: str) -> list[dict[str, Any]]:
     """Returns a list of available backups for the artifact."""
     prj_path = validate_project_path(project)
     name, ext = os.path.splitext(os.path.basename(rel_path))

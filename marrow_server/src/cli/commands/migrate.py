@@ -1,6 +1,8 @@
-import sys
 import argparse
+import sys
+
 from cli.commands.base import BaseCommand
+
 
 class MigrateCommand(BaseCommand):
     @property

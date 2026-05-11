@@ -8,8 +8,8 @@ import asyncio
 import json
 import logging
 import sqlite3
-from datetime import datetime, timezone
-from typing import Awaitable, Callable, Optional
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class WorkerOutbox:
         self._db_path = db_path
         self._flush_interval = flush_interval
         self._flush_concurrency = flush_concurrency
-        self._conn: Optional[sqlite3.Connection] = None
+        self._conn: sqlite3.Connection | None = None
 
     async def setup(self) -> None:
         """Open the DB, enable WAL mode, and create the schema."""
@@ -64,7 +64,7 @@ class WorkerOutbox:
     ) -> int:
         """Write a PENDING row and return its row_id."""
         assert self._conn, "WorkerOutbox.setup() must be called before enqueue()"
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         cur = self._conn.execute(
             "INSERT INTO outbox (operation, file_path, chunk_count, payload, created_at) "
             "VALUES (?, ?, ?, ?, ?)",

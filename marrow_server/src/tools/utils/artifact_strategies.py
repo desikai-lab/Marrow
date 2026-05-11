@@ -1,16 +1,20 @@
 import os
 from abc import ABC, abstractmethod
-from typing import Optional, List, Dict, Any, Tuple, Literal
+from typing import Literal
+
 from tools.utils.markdown_utils import (
-    extract_markdown_section, clean_section_name, 
-    strip_duplicated_header, find_all_sections
+    clean_section_name,
+    extract_markdown_section,
+    find_all_sections,
+    strip_duplicated_header,
 )
 from tools.validators.artifact_validation import validate_section_not_exists
+
 
 # --- HELPER ---
 def apply_read_filters(
     text: str, 
-    max_chars: Optional[int], 
+    max_chars: int | None, 
     skip_chars: int, 
     line_numbers: bool, 
     start_line: int = 1,
@@ -104,7 +108,7 @@ class FullReadStrategy(ReadStrategy):
         if os.path.getsize(path) > 1024 * 1024 and not skip_chars and not kwargs.get("force", False):
             raise ValueError("File too large (>1MB). Use pagination (skip_chars) or 'lines' mode.")
             
-        with open(path, "r", encoding="utf-8-sig", errors="replace", newline="") as f:
+        with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
             text = f.read()
             
         return apply_read_filters(
@@ -124,7 +128,7 @@ class SectionReadStrategy(ReadStrategy):
         self.validate(**kwargs)
         section_name = kwargs.get("section_name")
         
-        with open(path, "r", encoding="utf-8-sig", errors="replace", newline="") as f:
+        with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
             content = f.read()
             
         section_text, start_pos, _ = extract_markdown_section(content, section_name)
@@ -152,7 +156,7 @@ class LinesReadStrategy(ReadStrategy):
         end_line = kwargs.get("end_line")
         
         lines = []
-        with open(path, "r", encoding="utf-8-sig", errors="replace", newline="") as f:
+        with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
             for i, line in enumerate(f, 1):
                 if i >= start_line:
                     lines.append(line.rstrip('\n'))  # strip trailing \n for correct apply_read_filters behaviour
@@ -209,7 +213,7 @@ class AppendSectionStrategy(SaveStrategy):
     def save(self, path: str, content: str, **kwargs) -> str:
         existing_content = ""
         if os.path.exists(path):
-            with open(path, "r", encoding="utf-8-sig", errors="replace", newline="") as f:
+            with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
                 existing_content = f.read()
         
         final_content = self.transform(existing_content, content, **kwargs)
@@ -241,7 +245,7 @@ class ReplaceSectionStrategy(SaveStrategy):
         return existing_content[:start].rstrip() + header + new_content + "\n" + existing_content[end:].lstrip()
 
     def save(self, path: str, content: str, **kwargs) -> str:
-        with open(path, "r", encoding="utf-8", errors="replace") as f:
+        with open(path, encoding="utf-8", errors="replace") as f:
             existing_content = f.read()
             
         final_content = self.transform(existing_content, content, **kwargs)
@@ -275,7 +279,7 @@ class ReplaceChunkStrategy(SaveStrategy):
         return "".join(pre) + new_content + "".join(post)
 
     def save(self, path: str, content: str, **kwargs) -> str:
-        with open(path, "r", encoding="utf-8-sig", errors="replace", newline="") as f:
+        with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
             existing_content = f.read()
             
         final_content = self.transform(existing_content, content, **kwargs)
@@ -296,14 +300,14 @@ class PatchStrategy(SaveStrategy):
             
         count = existing_content.count(old_str)
         if count == 0:
-            raise ValueError(f"Patch target string not found.")
+            raise ValueError("Patch target string not found.")
         if count > 1:
             raise ValueError(f"Patch target string found {count} times. The match must be unique.")
             
         return existing_content.replace(old_str, new_content)
 
     def save(self, path: str, content: str, **kwargs) -> str:
-        with open(path, "r", encoding="utf-8-sig", errors="replace", newline="") as f:
+        with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
             existing_content = f.read()
             
         final_content = self.transform(existing_content, content, **kwargs)
@@ -331,7 +335,7 @@ class DeleteSectionStrategy(SaveStrategy):
         return (existing_content[:start].rstrip() + "\n\n" + existing_content[end:].lstrip()).strip() + "\n"
 
     def save(self, path: str, content: str, **kwargs) -> str:
-        with open(path, "r", encoding="utf-8", errors="replace") as f:
+        with open(path, encoding="utf-8", errors="replace") as f:
             existing_content = f.read()
             
         final_content = self.transform(existing_content, content, **kwargs)

@@ -1,6 +1,6 @@
+import logging
 import os
 import sys
-import logging
 from pathlib import Path
 
 # Resolve monorepo root (3 levels up: services → src → marrow_server → root)
@@ -8,10 +8,10 @@ _MONOREPO_ROOT = str(Path(__file__).parents[3])
 if _MONOREPO_ROOT not in sys.path:
     sys.path.insert(0, _MONOREPO_ROOT)
 
+from datetime import UTC, datetime
+
 from marrow_common.skeleton_schema import SkeletonChunk
 from pydantic import ValidationError
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, List
 
 from config import PROJECTS_ROOT
 from storage.entities import SkeletonChunkRecord
@@ -59,11 +59,11 @@ class SkeletonCommandService:
             os.makedirs(project_root, exist_ok=True)
             logger.info("Auto-created project directory: %s", project_root)
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         is_test = any(p in payload.path.lower() for p in ["tests/", "/tests/", "test_", "/test_"])
 
-        records: List[SkeletonChunkRecord] = [
+        records: list[SkeletonChunkRecord] = [
             SkeletonChunkRecord(
                 path=payload.path,
                 project=payload.project_name,

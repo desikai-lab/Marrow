@@ -1,5 +1,6 @@
-import re
 import logging
+import re
+
 from tools.artifacts import read_artifact_logic
 from utils.exceptions import ArtifactNotFoundError
 

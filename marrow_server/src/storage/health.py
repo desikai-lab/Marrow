@@ -1,10 +1,12 @@
 import os
-from typing import List, Dict, Any, Set
 from pathlib import Path
-from storage.db import get_table
-from storage.blobs import read_blob
+from typing import Any
 
-def check_integrity(project_root: str) -> Dict[str, Any]:
+from storage.blobs import read_blob
+from storage.db import get_table
+
+
+def check_integrity(project_root: str) -> dict[str, Any]:
     """
     Comprehensive database integrity scanner (Integrity Scanner).
     Implements BS-2.3 and BS-2.4 (Phase 2).

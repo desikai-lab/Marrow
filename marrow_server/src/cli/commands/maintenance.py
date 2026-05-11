@@ -1,9 +1,10 @@
-import os
-import sys
 import argparse
 import asyncio
-import logging
+import os
+import sys
+
 from cli.commands.base import BaseCommand
+
 
 class MaintenanceCommand(BaseCommand):
     @property
@@ -23,8 +24,8 @@ class MaintenanceCommand(BaseCommand):
         
     def execute(self, args: argparse.Namespace) -> None:
         from config import PROJECTS_ROOT
-        from storage.repositories.skeleton_repository import SkeletonRepository
         from services.maintenance_service import MaintenanceService
+        from storage.repositories.skeleton_repository import SkeletonRepository
         
         async def run_for_project(project_name: str):
             project_root = os.path.join(PROJECTS_ROOT, project_name)

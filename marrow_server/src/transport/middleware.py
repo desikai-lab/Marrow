@@ -1,12 +1,13 @@
-import os
+import json
 import logging
-import sys
+import os
+import time
+import uuid
+
 from fastapi import Request
 from starlette.responses import JSONResponse
+
 from config import SECRET_TOKEN
-import time
-import json
-import uuid
 from utils.metrics import get_perf_logger
 
 logger = logging.getLogger("marrow.transport.middleware")
@@ -98,7 +99,7 @@ class SSEHeadersMiddleware:
                     headers.append((b"cache-control", b"no-cache"))
                     headers.append((b"mcp-protocol-version", b"2024-11-05"))
                     message["headers"] = headers
-                    debug_log(f">>> [SSE DEBUG] Final SSE headers set")
+                    debug_log(">>> [SSE DEBUG] Final SSE headers set")
             
             elif message["type"] == "http.response.body":
                 body = message.get("body", b"")
@@ -113,9 +114,12 @@ class SSEHeadersMiddleware:
                         host = b"localhost:8000"
                         proto = b"http"
                         for k, v in scope.get("headers", []):
-                            if k.lower() == b"x-forwarded-host": host = v
-                            elif k.lower() == b"host" and host == b"localhost:8000": host = v
-                            elif k.lower() == b"x-forwarded-proto": proto = v
+                            if k.lower() == b"x-forwarded-host":
+                                host = v
+                            elif k.lower() == b"host" and host == b"localhost:8000":
+                                host = v
+                            elif k.lower() == b"x-forwarded-proto":
+                                proto = v
                         base_url = proto.rstrip(b":") + b"://" + host
                     body = body.replace(b"data: /messages", b"data: " + base_url + b"/messages")
                     message["body"] = body
@@ -164,9 +168,12 @@ class TokenAuthMiddleware:
             forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("x-original-host")
             forwarded_proto = request.headers.get("x-forwarded-proto", "https")
             base_url_env = os.getenv("BASE_URL", "").rstrip("/")
-            if forwarded_host: base_url = f"{forwarded_proto}://{forwarded_host}"
-            elif base_url_env: base_url = base_url_env
-            else: base_url = str(request.base_url).rstrip("/")
+            if forwarded_host:
+                base_url = f"{forwarded_proto}://{forwarded_host}"
+            elif base_url_env:
+                base_url = base_url_env
+            else:
+                base_url = str(request.base_url).rstrip("/")
             
             path_cleaned = path.strip("/")
             metadata_url = f"{base_url}/.well-known/oauth-protected-resource/{path_cleaned}"

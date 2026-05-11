@@ -1,6 +1,7 @@
-from typing import Dict, Any
+from typing import Any
 
-def validate_status_change(current_entry: Dict[str, Any], new_data: Dict[str, Any]) -> None:
+
+def validate_status_change(current_entry: dict[str, Any], new_data: dict[str, Any]) -> None:
     """
     Validates that the 'resolution' field is present when changing status.
     Enforces rule BS-2.5: status changes require a justification (minimum 5 characters).

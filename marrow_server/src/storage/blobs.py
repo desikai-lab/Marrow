@@ -1,14 +1,15 @@
-import shutil
-from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, Optional
+from pathlib import Path
+from typing import Any
+
 import yaml
+
 from utils.metrics import track_time
 
 FRONTMATTER_META_KEYS = {"id", "key", "title", "type", "status", "priority",
                          "blocked_by", "where", "updated", "project"}
 
-def _blob_path(project_root: str, task_key: str, status: str, year: Optional[str] = None) -> Path:
+def _blob_path(project_root: str, task_key: str, status: str, year: str | None = None) -> Path:
     """Builds the blob file path. Appends a year subdirectory for done/ blobs."""
     base = Path(project_root) / ".db" / "blobs"
     status_lower = status.lower()
@@ -21,7 +22,7 @@ def _blob_path(project_root: str, task_key: str, status: str, year: Optional[str
         return base / "active" / f"{task_key}.md"
 
 @track_time(layer="blob")
-def write_blob(project_root: str, task: Dict[str, Any]) -> Path:
+def write_blob(project_root: str, task: dict[str, Any]) -> Path:
     """Writes a task to a .md file with Frontmatter. Returns the file path."""
     # Use the key for the path (e.g. F1.md)
     path = _blob_path(project_root, task["key"], task.get("status", ""))
@@ -45,7 +46,7 @@ def write_blob(project_root: str, task: Dict[str, Any]) -> Path:
     return path
 
 @track_time(layer="blob")
-def read_blob(blob_path: str | Path) -> Dict[str, Any]:
+def read_blob(blob_path: str | Path) -> dict[str, Any]:
     """Parses a .md file with Frontmatter. Returns a dict of all task fields."""
     path = Path(blob_path)
     if not path.exists():

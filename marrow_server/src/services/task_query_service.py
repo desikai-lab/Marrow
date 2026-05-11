@@ -1,18 +1,23 @@
 import os
-from typing import List, Dict, Any, Optional
-from config import PROJECTS_ROOT, DECOUPLED_STORAGE_ENABLED
-from storage.repositories import TaskRepository
+from typing import Any
+
+from config import DECOUPLED_STORAGE_ENABLED, PROJECTS_ROOT
 from storage.blobs import read_blob
+from storage.repositories import TaskRepository
 from utils.exceptions import (
-    StorageDisabledError, ProjectNotFoundError, TaskNotFoundError, ArtifactNotFoundError
+    ArtifactNotFoundError,
+    ProjectNotFoundError,
+    StorageDisabledError,
+    TaskNotFoundError,
 )
+
 
 async def search_tasks_logic(
     project: str,
-    status: Optional[str] = None,
-    priority: Optional[str] = None,
-    type: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    status: str | None = None,
+    priority: str | None = None,
+    type: str | None = None
+) -> list[dict[str, Any]]:
     """
     Experimental task search tool via LanceDB.
     Works only when DECOUPLED_STORAGE_ENABLED=true.
@@ -46,7 +51,7 @@ async def search_tasks_logic(
         for r in results
     ]
 
-async def get_task_details_logic(project: str, task_id: str) -> Dict[str, Any]:
+async def get_task_details_logic(project: str, task_id: str) -> dict[str, Any]:
     """
     Experimental tool for retrieving task details (LanceDB + Blobs).
     Returns full task data, including problem and solution.

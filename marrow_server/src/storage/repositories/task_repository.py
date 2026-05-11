@@ -1,11 +1,13 @@
-import logging
 import asyncio
+import logging
+from typing import Any
+
 import pyarrow.compute as pc
-from typing import List, Optional, Dict, Any
-from storage.db import get_table
-from storage.entities import TaskRecord
-from storage.embeddings import embeddings_manager
+
 from config import EMBEDDING_MODEL_TEXT
+from storage.db import get_table
+from storage.embeddings import embeddings_manager
+from storage.entities import TaskRecord
 from utils.metrics import track_time
 
 logger = logging.getLogger("marrow.task_repository")
@@ -17,7 +19,7 @@ class TaskRepository:
         self.project_root = project_root
         self.table = get_table(project_root)
 
-    def _row_to_record(self, row: Dict[str, Any]) -> TaskRecord:
+    def _row_to_record(self, row: dict[str, Any]) -> TaskRecord:
         return TaskRecord(
             id=row.get("id"),
             key=row.get("key"),
@@ -72,7 +74,7 @@ class TaskRepository:
         return 1
 
     @track_time(layer="repository")
-    async def get_by_id(self, task_id: int) -> Optional[TaskRecord]:
+    async def get_by_id(self, task_id: int) -> TaskRecord | None:
         """Finds a task by its integer ID."""
         results = await asyncio.to_thread(
             self.table.search().where(f"id = {task_id}", prefilter=True).limit(1).to_list
@@ -80,7 +82,7 @@ class TaskRepository:
         return self._row_to_record(results[0]) if results else None
 
     @track_time(layer="repository")
-    async def get_by_key(self, key: str) -> Optional[TaskRecord]:
+    async def get_by_key(self, key: str) -> TaskRecord | None:
         """Finds a task by its string key (e.g. 'F1')."""
         results = await asyncio.to_thread(
             self.table.search().where(f"key = '{key}'", prefilter=True).limit(1).to_list
@@ -88,8 +90,8 @@ class TaskRepository:
         return self._row_to_record(results[0]) if results else None
 
     @track_time(layer="repository")
-    async def search(self, status: Optional[str] = None, priority: Optional[str] = None, 
-               type: Optional[str] = None, project: Optional[str] = None) -> List[TaskRecord]:
+    async def search(self, status: str | None = None, priority: str | None = None, 
+               type: str | None = None, project: str | None = None) -> list[TaskRecord]:
         """Searches tasks by filter criteria."""
         filters = []
         if status: filters.append(f"status = '{status}'")
@@ -106,7 +108,7 @@ class TaskRepository:
         return [self._row_to_record(r) for r in results]
 
     @track_time(layer="repository")
-    async def semantic_search(self, query_text: str, limit: int = 5) -> List[Dict[str, Any]]:
+    async def semantic_search(self, query_text: str, limit: int = 5) -> list[dict[str, Any]]:
         """Semantic search by task meaning.
         Returns dicts with keys 'record: TaskRecord' and 'distance: float'"""
         query_vector = await asyncio.to_thread(

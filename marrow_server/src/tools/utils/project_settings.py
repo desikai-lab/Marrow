@@ -1,7 +1,6 @@
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from config import PROJECTS_ROOT
 
@@ -13,7 +12,7 @@ _settings_cache: dict[str, "ProjectSettings"] = {}
 
 @dataclass
 class ProjectSettings:
-    source_root: Optional[Path] = None
+    source_root: Path | None = None
     source_tools_available: bool = False
 
 
@@ -80,7 +79,7 @@ def load_project_settings(project: str) -> ProjectSettings:
     return settings
 
 
-def get_source_root(project: str) -> Optional[Path]:
+def get_source_root(project: str) -> Path | None:
     """
     Public API. Returns the validated SOURCE_ROOT Path for the project,
     or None if not configured or invalid.

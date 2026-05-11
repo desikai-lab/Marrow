@@ -2,6 +2,7 @@ import logging
 import os
 from logging.handlers import TimedRotatingFileHandler
 
+
 def setup_logging(log_file: str = "logs/server.log", level: int = logging.INFO) -> None:
     """
     Configures the root logger to output to both the console and a daily rotating log file.

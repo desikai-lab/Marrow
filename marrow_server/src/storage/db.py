@@ -1,8 +1,15 @@
-import lancedb
-from pathlib import Path
-from storage.entities import TASK_SCHEMA, ARTIFACT_SCHEMA, ARTIFACT_CHUNK_SCHEMA, SKELETON_CHUNK_SCHEMA
-
 import asyncio
+from pathlib import Path
+
+import lancedb
+
+from storage.entities import (
+    ARTIFACT_CHUNK_SCHEMA,
+    ARTIFACT_SCHEMA,
+    SKELETON_CHUNK_SCHEMA,
+    TASK_SCHEMA,
+)
+
 _connections: dict = {}  # cache: {db_path: lancedb.DBConnection}
 _table_locks: dict[str, asyncio.Lock] = {}
 _rebuild_queues: dict[str, asyncio.Queue] = {}
@@ -23,7 +30,7 @@ def schedule_index_rebuild(table) -> None:
     
     # Needs a running loop to put into queue; if no loop (e.g. startup/scripts), skip
     try:
-        loop = asyncio.get_running_loop()
+        asyncio.get_running_loop()
         try:
             _rebuild_queues[table_name].put_nowait(table)
         except asyncio.QueueFull:

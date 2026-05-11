@@ -1,12 +1,13 @@
-import secrets
-import hashlib
 import base64
+import hashlib
 import os
-from typing import Optional
+import secrets
 from urllib.parse import urlencode
-from fastapi import APIRouter, Request, Form
-from fastapi.responses import RedirectResponse, HTMLResponse
+
+from fastapi import APIRouter, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.responses import JSONResponse
+
 from config import SECRET_TOKEN
 from transport.middleware import debug_log
 
@@ -16,13 +17,16 @@ _auth_codes = {}
 
 @router.get("/.well-known/oauth-authorization-server")
 @router.get("/.well-known/oauth-authorization-server/{path:path}")
-async def oauth_authorization_server(request: Request, path: Optional[str] = ""):
+async def oauth_authorization_server(request: Request, path: str | None = ""):
     forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("x-original-host")
     forwarded_proto = request.headers.get("x-forwarded-proto", "https")
     base_url_env = os.getenv("BASE_URL", "").rstrip("/")
-    if forwarded_host: base_url = f"{forwarded_proto}://{forwarded_host}"
-    elif base_url_env: base_url = base_url_env
-    else: base_url = str(request.base_url).rstrip("/")
+    if forwarded_host:
+        base_url = f"{forwarded_proto}://{forwarded_host}"
+    elif base_url_env:
+        base_url = base_url_env
+    else:
+        base_url = str(request.base_url).rstrip("/")
     
     # Debug log for OAuth server requests
     debug_log(f">>> [DEBUG] OAuth Server requested. Host: {forwarded_host}, Proto: {forwarded_proto}, Base: {base_url}")
@@ -49,9 +53,12 @@ async def mcp_server_discovery(request: Request):
     forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("x-original-host")
     forwarded_proto = request.headers.get("x-forwarded-proto", "https")
     base_url_env = os.getenv("BASE_URL", "").rstrip("/")
-    if forwarded_host: base_url = f"{forwarded_proto}://{forwarded_host}"
-    elif base_url_env: base_url = base_url_env
-    else: base_url = str(request.base_url).rstrip("/")
+    if forwarded_host:
+        base_url = f"{forwarded_proto}://{forwarded_host}"
+    elif base_url_env:
+        base_url = base_url_env
+    else:
+        base_url = str(request.base_url).rstrip("/")
     
     return {
         "mcp-version": "1.0",
@@ -65,13 +72,16 @@ async def mcp_server_discovery(request: Request):
 
 @router.get("/.well-known/oauth-protected-resource")
 @router.get("/.well-known/oauth-protected-resource/{path:path}")
-async def oauth_protected_resource(request: Request, path: Optional[str] = ""):
+async def oauth_protected_resource(request: Request, path: str | None = ""):
     forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("x-original-host")
     forwarded_proto = request.headers.get("x-forwarded-proto", "https")
     base_url_env = os.getenv("BASE_URL", "").rstrip("/")
-    if forwarded_host: base_url = f"{forwarded_proto}://{forwarded_host}"
-    elif base_url_env: base_url = base_url_env
-    else: base_url = str(request.base_url).rstrip("/")
+    if forwarded_host:
+        base_url = f"{forwarded_proto}://{forwarded_host}"
+    elif base_url_env:
+        base_url = base_url_env
+    else:
+        base_url = str(request.base_url).rstrip("/")
     
     resource_url = f"{base_url}/{path}" if path else base_url
     
@@ -84,8 +94,10 @@ async def oauth_protected_resource(request: Request, path: Optional[str] = ""):
 
 @router.post("/register")
 async def register_client(request: Request):
-    try: body = await request.json()
-    except: body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
     client_id = body.get("client_id") or secrets.token_urlsafe(12)
     return JSONResponse({
         "client_id": client_id,
@@ -119,7 +131,8 @@ async def token(request: Request):
     code = data.get("code")
     code_verifier = data.get("code_verifier", "")
     stored = _auth_codes.pop(code, None)
-    if not stored: return JSONResponse({"error": "invalid_grant"}, status_code=400)
+    if not stored:
+        return JSONResponse({"error": "invalid_grant"}, status_code=400)
     
     digest = hashlib.sha256(code_verifier.encode()).digest()
     computed_challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode()

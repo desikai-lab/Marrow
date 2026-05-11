@@ -1,14 +1,16 @@
-from config import check_startup_config
-from app import app
-from utils.logger_setup import setup_logging
-import uvicorn
-import os
 import logging
+import os
+
+import uvicorn
+
+from app import app
+from config import check_startup_config
+from utils.logger_setup import setup_logging
 
 # Ensure UTF-8 for console output on Windows
 if os.name == 'nt':
-    import sys
     import io
+    import sys
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 if __name__ == "__main__":

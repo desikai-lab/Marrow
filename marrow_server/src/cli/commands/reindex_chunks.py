@@ -1,8 +1,10 @@
-import os
-import logging
 import argparse
+import logging
+import os
 from datetime import datetime
+
 from tqdm import tqdm
+
 from cli.commands.base import BaseCommand
 
 logger = logging.getLogger("admin_cli")
@@ -22,7 +24,7 @@ class ReindexChunksCommand(BaseCommand):
         parser.add_argument("--dry-run", action="store_true", help="Do not save to database")
         
     def execute(self, args: argparse.Namespace) -> None:
-        from config import PROJECTS_ROOT, DECOUPLED_STORAGE_ENABLED
+        from config import DECOUPLED_STORAGE_ENABLED, PROJECTS_ROOT
         from storage import init_db
         from storage.repositories import ArtifactChunkRepository
         from tools.utils.cleaner import ContentCleaner
@@ -52,7 +54,7 @@ class ReindexChunksCommand(BaseCommand):
             if not args.dry_run:
                 try:
                     repo.table.delete("true")
-                except:
+                except Exception:
                     pass
                     
             for root, dirs, files in os.walk(project_root):
@@ -75,7 +77,7 @@ class ReindexChunksCommand(BaseCommand):
         for rel_path in tqdm(files_to_index, desc="Chunks", unit="file"):
             try:
                 full_path = os.path.join(project_root, rel_path)
-                with open(full_path, "r", encoding="utf-8") as f:
+                with open(full_path, encoding="utf-8") as f:
                     content = f.read()
                     
                 clean_content = ContentCleaner.clean(content)

@@ -1,19 +1,23 @@
-import os
-import logging
 import asyncio
-import time
-from typing import List, Dict, Any, Tuple
+import logging
+import os
 from datetime import datetime
-from tools.utils.filesystem_utils import validate_artifact_path, validate_project_path, create_artifact_backup
-from tools.utils.artifact_strategies import ArtifactStrategyFactory
-from tools.utils.cleaner import ContentCleaner
+from typing import Any
+
 # legacy reference removed
 from config import VECT_DEBOUNCE_SECONDS
+from tools.utils.artifact_strategies import ArtifactStrategyFactory
+from tools.utils.cleaner import ContentCleaner
+from tools.utils.filesystem_utils import (
+    create_artifact_backup,
+    validate_artifact_path,
+    validate_project_path,
+)
 
 logger = logging.getLogger("marrow.pipeline")
 
 class PipelineContext:
-    def __init__(self, project: str, updates: List[Dict[str, Any]]):
+    def __init__(self, project: str, updates: list[dict[str, Any]]):
         self.project = project
         self.project_root = validate_project_path(project)
         self.updates = updates
@@ -82,7 +86,7 @@ class PersistHandler(BaseHandler):
                 file_exists = os.path.exists(abs_path)
                 if file_exists:
                     def read_file():
-                        with open(abs_path, "r", encoding="utf-8-sig", errors="replace", newline="") as f:
+                        with open(abs_path, encoding="utf-8-sig", errors="replace", newline="") as f:
                             return f.read()
                     current_content = await asyncio.to_thread(read_file)
                 
@@ -157,7 +161,7 @@ class VectorizationHandler(BaseHandler):
                 if not os.path.exists(abs_path): continue
                 
                 def read_file():
-                    with open(abs_path, "r", encoding="utf-8", errors="replace") as f:
+                    with open(abs_path, encoding="utf-8", errors="replace") as f:
                         return f.read()
                 content = await asyncio.to_thread(read_file)
                 
@@ -186,7 +190,7 @@ class VectorizationHandler(BaseHandler):
 
         return await super().handle(ctx)
 
-async def save_project_artifacts_logic(project: str, updates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+async def save_project_artifacts_logic(project: str, updates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Batch artifact processing pipeline (Phase 3)."""
     ctx = PipelineContext(project, updates)
     

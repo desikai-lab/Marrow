@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+
 from storage.repositories.task_repository import TaskRepository
 
 if TYPE_CHECKING:

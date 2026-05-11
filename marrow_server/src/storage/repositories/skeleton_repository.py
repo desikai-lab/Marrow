@@ -1,10 +1,10 @@
 import asyncio
 import logging
-from typing import List, Optional, Dict, Any
+from typing import Any
 
 import pyarrow as pa
 
-from storage.db import get_skeleton_table, get_table_lock, schedule_index_rebuild, list_table_names
+from storage.db import get_skeleton_table, get_table_lock, list_table_names, schedule_index_rebuild
 from storage.entities import SkeletonChunkRecord
 from utils.metrics import track_time
 
@@ -34,7 +34,7 @@ class SkeletonRepository:
         self,
         path: str,
         project: str,
-        records: List[SkeletonChunkRecord],
+        records: list[SkeletonChunkRecord],
         **kwargs,
     ) -> int:
         """
@@ -106,6 +106,7 @@ class SkeletonRepository:
         Raises RuntimeError (joining per-table messages) if any table fails.
         """
         import datetime
+
         from storage.db import get_db
         delta = datetime.timedelta(hours=older_than_hours)
         db = get_db(self.project_root)
@@ -166,20 +167,20 @@ class SkeletonRepository:
     @track_time(layer="repository")
     async def semantic_search(
         self,
-        query_vector: List[float],
-        project: Optional[str] = None,
-        chunk_type: Optional[str] = None,
+        query_vector: list[float],
+        project: str | None = None,
+        chunk_type: str | None = None,
         limit: int = 10,
         include_tests: bool = False,
-        root_path: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        root_path: str | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Vector similarity search with optional prefilters on project and chunk_type.
         Returns a list of dicts (without the raw vector column).
         """
         query = self.table.search(query_vector)
 
-        filters: List[str] = []
+        filters: list[str] = []
         if project:
             filters.append(f"project = '{project}'")
         if chunk_type:
@@ -215,9 +216,9 @@ class SkeletonRepository:
         self,
         project: str,
         exact_name: str,
-        chunk_type: Optional[str] = None,
+        chunk_type: str | None = None,
         include_tests: bool = False,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Bypasses semantic search to find code units (classes, methods, properties) by their exact name.
         """
@@ -256,7 +257,7 @@ class SkeletonRepository:
         project: str,
         depth: int = 0,
         summary_only: bool = False,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Retrieves all skeleton chunks for a file, sorted by start_line.
         depth: 0=all, 1=class/namespace names only, 2=class+method signatures.
@@ -299,7 +300,7 @@ class SkeletonRepository:
         return formatted
 
     @track_time(layer="repository")
-    async def get_all_indexed_paths(self, project: str, include_tests: bool = False) -> List[str]:
+    async def get_all_indexed_paths(self, project: str, include_tests: bool = False) -> list[str]:
         """Returns unique file paths from file-level chunks in the skeleton index."""
         safe_project = project.replace("'", "''")
         where_clause = f"project = '{safe_project}' AND chunk_type = 'file'"

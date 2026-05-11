@@ -1,19 +1,18 @@
-import os
-import re
-import shutil
-import sys
 import logging
-from typing import List, Dict, Any, Optional, Tuple, Literal
-from datetime import datetime
+import os
+from typing import Any, Literal
+
+from config import DECOUPLED_STORAGE_ENABLED
 from storage.uow import UnitOfWork
-from tools.utils.filesystem_utils import (
-    validate_artifact_path, validate_project_path, create_artifact_backup,
-    get_artifact_history, restore_backup, recycle_file
-)
-from tools.utils.markdown_utils import extract_markdown_section, clean_section_name, strip_duplicated_header, find_all_sections
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
-from tools.validators.artifact_validation import validate_section_not_exists
-from config import DECOUPLED_STORAGE_ENABLED, PROJECTS_ROOT
+from tools.utils.filesystem_utils import (
+    create_artifact_backup,
+    get_artifact_history,
+    recycle_file,
+    restore_backup,
+    validate_artifact_path,
+    validate_project_path,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +52,7 @@ def read_artifact_logic(
     strategy = ArtifactStrategyFactory.get_read_strategy(mode)
     return strategy.read(target_path, direction=direction, **kwargs)
 
-def list_artifacts_logic(project: str, rel_dir: str = "", recursive: bool = False) -> List[Dict[str, str]]:
+def list_artifacts_logic(project: str, rel_dir: str = "", recursive: bool = False) -> list[dict[str, str]]:
     """Lists artifacts in a folder. Returns objects with {'name', 'type'}.
     Uses the shared directory listing utility."""
     from tools.utils.filesystem_utils import list_directory_contents
@@ -97,7 +96,7 @@ async def delete_project_artifact_logic(project: str, rel_path: str) -> str:
             
     return msg
 
-async def search_project_artifacts_logic(project: str, query: str) -> List[Dict[str, Any]]:
+async def search_project_artifacts_logic(project: str, query: str) -> list[dict[str, Any]]:
     """Global search across all text artifacts in the project."""
     # Phase 3: Cascade Search (Semantic + Grep)
     results = []
@@ -113,7 +112,7 @@ async def search_project_artifacts_logic(project: str, query: str) -> List[Dict[
                 file_path_abs = os.path.join(project_root, res["record"].path)
                 if os.path.exists(file_path_abs):
                     try:
-                        with open(file_path_abs, "r", encoding="utf-8", errors="replace") as _f:
+                        with open(file_path_abs, encoding="utf-8", errors="replace") as _f:
                             snippet_text = _f.read(300).strip()
                             if snippet_text:
                                 # Collapse newlines for compact JSON output
@@ -128,7 +127,7 @@ async def search_project_artifacts_logic(project: str, query: str) -> List[Dict[
                     "content": snippet,
                     "distance": res.get("distance", 0)
                 })
-        except (ImportError, Exception) as e:
+        except (ImportError, Exception):
             logger.error("Semantic search failed", exc_info=True)
 
 
@@ -139,8 +138,6 @@ async def search_project_artifacts_logic(project: str, query: str) -> List[Dict[
     search_dirs = [art_root, prj_path]
     
     query_lower = query.lower()
-    
-    seen_files = set(r["path"] for r in results)
     
     for base_dir in search_dirs:
         if not os.path.exists(base_dir): continue
@@ -155,7 +152,7 @@ async def search_project_artifacts_logic(project: str, query: str) -> List[Dict[
                 
                 try:
                     rel_to_prj = os.path.relpath(full_path, prj_path).replace("\\", "/")
-                    with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+                    with open(full_path, encoding="utf-8", errors="replace") as f:
                         for i, line in enumerate(f, 1):
                             if query_lower in line.lower():
                                 results.append({
@@ -183,7 +180,7 @@ def get_project_artifact_outline_logic(project: str, rel_path: str) -> str:
         raise FileNotFoundError(f"File {rel_path} not found.")
         
     outline = []
-    with open(target_path, "r", encoding="utf-8", errors="replace") as f:
+    with open(target_path, encoding="utf-8", errors="replace") as f:
         for line in f:
             if line.strip().startswith("#"):
                 outline.append(line.strip())
@@ -192,7 +189,7 @@ def get_project_artifact_outline_logic(project: str, rel_path: str) -> str:
         return "No Markdown headings found in the file."
     return "\n".join(outline)
 
-def list_artifact_history_logic(project: str, rel_path: str) -> List[Dict[str, Any]]:
+def list_artifact_history_logic(project: str, rel_path: str) -> list[dict[str, Any]]:
     """Returns a list of available artifact versions."""
     return get_artifact_history(project, rel_path)
 
@@ -202,8 +199,8 @@ def restore_project_artifact_logic(project: str, rel_path: str, backup_name: str
 
 def read_project_artifacts_logic(
     project: str,
-    reads: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
+    reads: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     results = []
     for req in reads:
         path = req.get("path")

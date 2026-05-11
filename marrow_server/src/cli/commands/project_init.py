@@ -1,8 +1,8 @@
 import argparse
 import os
 import shutil
-from cli.commands.base import BaseCommand
 
+from cli.commands.base import BaseCommand
 
 TEMPLATE_DIR = os.path.abspath(os.path.join(
     os.path.dirname(__file__),
@@ -75,13 +75,13 @@ class InitCommand(BaseCommand):
         print("    Send this prompt to Claude (or any capable agent):")
         print()
         print("    ┌─────────────────────────────────────────────────────────┐")
-        print(f"    │ I just initialized a new Marrow project called          │")
+        print("    │ I just initialized a new Marrow project called          │")
         print(f"    │ '{args.project}'. My stack is: [DESCRIBE YOUR STACK].  │")
         print( "    │ Read my spec.md and replace every {{FILL_IN}} marker    │")
         print( "    │ with the correct value for my project.                  │")
         print( "    └─────────────────────────────────────────────────────────┘")
         print()
         print("  When spec.md is complete:")
-        print(f"    Step 1: Start marrow_worker  →  point WATCH_ROOT at your src dir")
+        print("    Step 1: Start marrow_worker  →  point WATCH_ROOT at your src dir")
         print( "    Step 2: Connect MCP client   →  see README.md#quickstart")
         print()

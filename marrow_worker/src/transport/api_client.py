@@ -1,19 +1,20 @@
+import json
+import logging
 import os
 import sys
-import logging
-import httpx
 import time
-import json
-from typing import List, Dict, Any, Optional
 from pathlib import Path
+from typing import Any
+
+import httpx
 
 # Resolve monorepo root (3 levels up from this file: src/transport → src → marrow_worker → root)
 _MONOREPO_ROOT = str(Path(__file__).parents[3])
 if _MONOREPO_ROOT not in sys.path:
     sys.path.insert(0, _MONOREPO_ROOT)
 
-from marrow_common.skeleton_schema import SCHEMA_VERSION, SkeletonChunk
-from pydantic import ValidationError
+from marrow_common.skeleton_schema import SCHEMA_VERSION, SkeletonChunk  # noqa: E402
+from pydantic import ValidationError  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +91,7 @@ class MCPClient:
         self,
         absolute_filepath: str,
         file_summary: str,
-        chunks: List[Dict[str, Any]],
+        chunks: list[dict[str, Any]],
     ) -> None:
         """
         Computes the repo-relative path and POSTs the chunk-based skeleton

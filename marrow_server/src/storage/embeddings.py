@@ -1,6 +1,5 @@
-import os
 import logging
-from typing import List, Optional, Dict
+from typing import Optional
 
 # Logging setup
 logger = logging.getLogger("marrow.embeddings")
@@ -18,11 +17,11 @@ class EmbeddingManager:
     Uses the Singleton pattern to cache the model in memory.
     """
     _instance: Optional['EmbeddingManager'] = None
-    _models: Dict[str, 'TextEmbedding'] = {}
+    _models: dict[str, 'TextEmbedding'] = {}
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(EmbeddingManager, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
     def _get_model(self, model_name: str) -> Optional['TextEmbedding']:
@@ -40,7 +39,7 @@ class EmbeddingManager:
                 return None
         return self._models[model_name]
 
-    def generate_vector(self, text: str, model_name: Optional[str] = None) -> Optional[List[float]]:
+    def generate_vector(self, text: str, model_name: str | None = None) -> list[float] | None:
         """
         Generates a vector for the given text using the specified model.
         If model_name is not provided, EMBEDDING_MODEL_NAME from config is used.

@@ -1,6 +1,7 @@
 import re
-from typing import List, Optional
+
 from tools.utils.cleaner_presets import PRESETS
+
 
 class ContentCleaner:
     """
@@ -9,7 +10,7 @@ class ContentCleaner:
     """
     
     @staticmethod
-    def clean(content: str, use_presets: Optional[List[str]] = None) -> str:
+    def clean(content: str, use_presets: list[str] | None = None) -> str:
         """Applies cleaning rules to the given text."""
         if not content:
             return ""

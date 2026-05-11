@@ -1,12 +1,13 @@
-from typing import Set, List, Any, Dict, Optional, Literal, Annotated
-from pydantic import BaseModel, field_validator, model_validator, ConfigDict, Field
+from typing import Annotated, Any, Literal
 
-VALID_TASK_TYPES: Set[str] = {"F", "B", "TD"}
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+VALID_TASK_TYPES: set[str] = {"F", "B", "TD"}
 
 class TaskInput(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    project: Annotated[Optional[str], Field(default=None, description="Project name (e.g. 'YourProject', 'MCP')")] = None
+    project: Annotated[str | None, Field(default=None, description="Project name (e.g. 'YourProject', 'MCP')")] = None
     type: Annotated[str, Field(description="Task type: F (feature), B (bug), TD (tech debt)")]
     title: Annotated[str, Field(description="Short task title")]
     where: Annotated[Any, Field(default=[], description="List of affected files or modules")] = []
@@ -37,14 +38,14 @@ class ReadRequest(BaseModel):
     path: Annotated[str, Field(description="Path to the artifact (e.g. 'README.md' or 'docs/spec.md')")]
     mode: Annotated[Literal["full", "section", "lines"], Field(default="full", description="Read mode: 'full' (entire file), 'section' (single section), 'lines' (line range)")] = "full"
     direction: Annotated[Literal["begin", "end"], Field(default="begin", description="Read direction: 'begin' (from start) or 'end' (from the end of file)")] = "begin"
-    section_name: Annotated[Optional[str], Field(default=None, description="Section header (for mode='section')")] = None
+    section_name: Annotated[str | None, Field(default=None, description="Section header (for mode='section')")] = None
     start_line: Annotated[int, Field(default=1, description="Starting line (for mode='lines' or pagination)")] = 1
-    end_line: Annotated[Optional[int], Field(default=None, description="Ending line (for mode='lines')")] = None
+    end_line: Annotated[int | None, Field(default=None, description="Ending line (for mode='lines')")] = None
     max_chars: Annotated[int, Field(default=10000, description="Response character limit")] = 10000
     skip_chars: Annotated[int, Field(default=0, description="Characters to skip from the beginning of selection")] = 0
     line_numbers: Annotated[bool, Field(default=False, description="Include line numbers in response")] = False
     
-    extra_fields: Annotated[Dict[str, Any], Field(default_factory=dict, description="Additional dynamic parameters")]
+    extra_fields: Annotated[dict[str, Any], Field(default_factory=dict, description="Additional dynamic parameters")]
 
 class WriteRequest(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -54,12 +55,12 @@ class WriteRequest(BaseModel):
     mode: Annotated[Literal["replace_file", "replace_section", "append_section", "replace_chunk", "patch", "delete_section"], 
                    Field(default="replace_file", description="Write mode: replace_file, replace_section, append_section, replace_chunk, patch, delete_section")] = "replace_file"
 
-    extra_fields: Annotated[Dict[str, Any], Field(default_factory=dict, description="Additional dynamic parameters (e.g. old_str, start_line)")]
+    extra_fields: Annotated[dict[str, Any], Field(default_factory=dict, description="Additional dynamic parameters (e.g. old_str, start_line)")]
 
-    section_name: Annotated[Optional[str], Field(default=None, description="Section header (for append/replace/delete_section)")] = None
-    old_str: Annotated[Optional[str], Field(default=None, description="String to find and replace (mode='patch' only)")] = None
+    section_name: Annotated[str | None, Field(default=None, description="Section header (for append/replace/delete_section)")] = None
+    old_str: Annotated[str | None, Field(default=None, description="String to find and replace (mode='patch' only)")] = None
     start_line: Annotated[int, Field(default=1, description="Starting line (mode='replace_chunk' only)")] = 1
-    end_line: Annotated[Optional[int], Field(default=None, description="Ending line (mode='replace_chunk' only)")] = None
+    end_line: Annotated[int | None, Field(default=None, description="Ending line (mode='replace_chunk' only)")] = None
     header_level: Annotated[int, Field(default=2, description="Markdown header level (e.g. 2 for '##')")] = 2
 
     @model_validator(mode="after")

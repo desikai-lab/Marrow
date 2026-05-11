@@ -1,20 +1,21 @@
 import os
-import yaml
 import re
-from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
-from pathlib import Path
 from datetime import datetime
+from typing import Any
 
-from storage import TaskRecord, write_blob, upsert_task, init_db
+import yaml
+
 from config import PROJECTS_ROOT, get_project_files
+from storage import TaskRecord, init_db, upsert_task, write_blob
+
 
 @dataclass
 class MigrationReport:
     project: str
     created: int = 0
     skipped: int = 0
-    errors: List[Dict[str, Any]] = field(default_factory=list)
+    errors: list[dict[str, Any]] = field(default_factory=list)
 
 def extract_int_id(key: str) -> int:
     """Extracts a number from a key like 'F123' -> 123.
@@ -59,7 +60,7 @@ def sync_initial(project: str, dry_run: bool = False, force: bool = False) -> Mi
         if not yaml_path or not os.path.exists(yaml_path):
             continue
             
-        with open(yaml_path, "r", encoding="utf-8") as f:
+        with open(yaml_path, encoding="utf-8") as f:
             try:
                 tasks = yaml.safe_load(f)
                 if not isinstance(tasks, list):
@@ -127,7 +128,7 @@ def sync_initial(project: str, dry_run: bool = False, force: bool = False) -> Mi
 
     return report
 
-def load_task_from_blob(abs_path: str, project_name: str) -> Optional[TaskRecord]:
+def load_task_from_blob(abs_path: str, project_name: str) -> TaskRecord | None:
     """
     Loads a task from a Markdown file (.md).
     Extracts the YAML metadata block.
@@ -136,7 +137,7 @@ def load_task_from_blob(abs_path: str, project_name: str) -> Optional[TaskRecord
         return None
         
     try:
-        with open(abs_path, "r", encoding="utf-8") as f:
+        with open(abs_path, encoding="utf-8") as f:
             content = f.read()
             
         # Search for Frontmatter block: --- \n YAML \n ---

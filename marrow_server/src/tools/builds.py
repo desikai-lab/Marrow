@@ -1,48 +1,51 @@
 import os
-import yaml
-from typing import List, Dict, Any, Literal, Optional, Union
-from pydantic import BaseModel, Field, ValidationError
-from tools.utils.filesystem_utils import validate_project_path, validate_artifact_path
 from dataclasses import dataclass
+from typing import Literal
+
+import yaml
+from pydantic import BaseModel, Field, ValidationError
+
+from tools.utils.filesystem_utils import validate_artifact_path, validate_project_path
+
 
 @dataclass
 class BuildResult:
     success: bool
-    output_path: Optional[str]
+    output_path: str | None
     steps_run: int
-    warnings: List[str]
-    error: Optional[str] = None
+    warnings: list[str]
+    error: str | None = None
 
 class OutputConfig(BaseModel):
     format: Literal["single_file", "directory"]
-    filename: Optional[str] = None
-    dir_name: Optional[str] = None
+    filename: str | None = None
+    dir_name: str | None = None
 
 class SanitizeRule(BaseModel):
     """Content sanitization rule applied before build assembly."""
-    regex: Optional[str] = None
+    regex: str | None = None
     replace: str = ""
-    remove_section: Optional[str] = None
-    replace_text: Optional[str] = None
-    with_text: Optional[str] = None
-    preset: Optional[str] = None
+    remove_section: str | None = None
+    replace_text: str | None = None
+    with_text: str | None = None
+    preset: str | None = None
 
 class StepConfig(BaseModel):
     action: str
-    content: Optional[str] = None
-    path: Optional[str] = None
-    project: Optional[str] = None  # Cross-project artifact source (None = current project)
-    mode: Optional[str] = None
-    section_name: Optional[str] = None
-    filename: Optional[str] = None
-    sanitize: Optional[List[SanitizeRule]] = None
+    content: str | None = None
+    path: str | None = None
+    project: str | None = None  # Cross-project artifact source (None = current project)
+    mode: str | None = None
+    section_name: str | None = None
+    filename: str | None = None
+    sanitize: list[SanitizeRule] | None = None
     
     # Fields for validation and RegEx extraction
-    regex: Optional[str] = None
-    expected: Optional[Union[str, int, float, bool]] = None
-    error_message: Optional[str] = None
-    skip_reference: Optional[bool] = False
-    use_findall: Optional[bool] = False
+    regex: str | None = None
+    expected: str | int | float | bool | None = None
+    error_message: str | None = None
+    skip_reference: bool | None = False
+    use_findall: bool | None = False
     
     # Allows other fields gracefully
     model_config = {"extra": "allow"}
@@ -56,10 +59,10 @@ MANIFEST_SCHEMA_VERSION = 1
 
 class BuildManifest(BaseModel):
     name: str
-    version: Union[str, VersionConfig]
+    version: str | VersionConfig
     schema_version: int = Field(default=1)
     output: OutputConfig
-    steps: List[StepConfig]
+    steps: list[StepConfig]
 
 def parse_manifest(project: str, build_name: str) -> BuildManifest:
     """Reads and validates the build manifest (Phase 1)."""
@@ -73,7 +76,7 @@ def parse_manifest(project: str, build_name: str) -> BuildManifest:
     if not os.path.exists(manifest_path):
         raise FileNotFoundError(f"Manifest '{build_name}' not found in {builds_dir}")
         
-    with open(manifest_path, "r", encoding="utf-8") as f:
+    with open(manifest_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
         
     if not data or not isinstance(data, dict):
@@ -112,7 +115,7 @@ def resolve_dynamic_version(project: str, config: VersionConfig) -> str:
     if not os.path.exists(source_path):
         raise FileNotFoundError(f"Source file for versioning not found: {source_path}")
         
-    with open(source_path, "r", encoding="utf-8") as f:
+    with open(source_path, encoding="utf-8") as f:
         content = f.read()
         
     match = re.search(config.regex, content)
@@ -145,7 +148,7 @@ def prepare_release_directory(project: str, manifest: BuildManifest, context) ->
     os.makedirs(release_dir_path, exist_ok=True)
     return release_dir_path
 
-def run_project_build_logic(project: str, build_name: str, verbose: bool = False, variables: Optional[Dict[str, str]] = None) -> BuildResult:
+def run_project_build_logic(project: str, build_name: str, verbose: bool = False, variables: dict[str, str] | None = None) -> BuildResult:
     """
     Executes a build based on a YAML manifest.
     Integrates Phases 1, 2, 3, and 4. Writes an exception log on failure.
@@ -162,7 +165,7 @@ def run_project_build_logic(project: str, build_name: str, verbose: bool = False
     
     
         # Build context up front so it can be used for path rendering
-        from tools.build_processors import ProcessorFactory, BuildContext
+        from tools.build_processors import BuildContext, ProcessorFactory
         context = BuildContext(project, manifest, "", verbose=verbose, variables=variables)
         
         # Phase 2

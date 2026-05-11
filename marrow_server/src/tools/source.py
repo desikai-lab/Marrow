@@ -1,13 +1,12 @@
 import logging
 from pathlib import Path
-from typing import List
 
 from tools.utils.project_settings import get_source_root
 from utils.exceptions import (
-    InvalidPathError,
-    ValidationError,
     ArtifactNotFoundError,
+    InvalidPathError,
     SourceFileError,
+    ValidationError,
 )
 
 logger = logging.getLogger(__name__)
@@ -44,11 +43,11 @@ def _is_binary(file_path: Path) -> bool:
         return False
 
 
-def _read_line_range(file_path: Path, start_line: int, end_line: int) -> List[str]:
+def _read_line_range(file_path: Path, start_line: int, end_line: int) -> list[str]:
     """Read only the requested line range. Does not load the entire file into memory."""
-    lines: List[str] = []
+    lines: list[str] = []
     try:
-        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+        with open(file_path, encoding="utf-8", errors="replace") as f:
             for current, line in enumerate(f, start=1):
                 if current < start_line:
                     continue

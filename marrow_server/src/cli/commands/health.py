@@ -1,8 +1,10 @@
+import argparse
+import json
 import os
 import sys
-import json
-import argparse
+
 from cli.commands.base import BaseCommand
+
 
 class HealthCommand(BaseCommand):
     @property

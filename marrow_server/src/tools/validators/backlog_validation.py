@@ -1,6 +1,6 @@
-from typing import List
 
-def validate_task_title_unique(new_title: str, existing_tasks: List[dict], project: str):
+
+def validate_task_title_unique(new_title: str, existing_tasks: list[dict], project: str):
     """
     Validates that the task title is unique among existing tasks.
     Comparison is case-insensitive.

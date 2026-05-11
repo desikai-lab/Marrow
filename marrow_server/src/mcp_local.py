@@ -1,8 +1,8 @@
-from mcp_core import mcp
-import uvicorn
 import os
-import sys # Import sys here
-from config import check_startup_config, SECRET_TOKEN
+import sys  # Import sys here
+
+from config import check_startup_config
+from mcp_core import mcp
 
 # Ensure UTF-8 for console
 if os.name == 'nt':

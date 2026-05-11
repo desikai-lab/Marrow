@@ -1,7 +1,10 @@
 from dataclasses import dataclass
+
 from tree_sitter import Node
-from src.parser.lang_config import CONFIG_BY_EXT, LangSyntaxConfig
+
 from src.parser.dispatcher import get_parser_for_extension
+from src.parser.lang_config import CONFIG_BY_EXT, LangSyntaxConfig
+
 
 @dataclass
 class ReplacementRange:

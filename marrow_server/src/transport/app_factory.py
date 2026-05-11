@@ -1,24 +1,27 @@
+import asyncio
 import os
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from mcp_core import mcp
+from storage.db import index_rebuild_worker
 from transport.middleware import (
     DebugLoggingMiddleware,
     FixHostHeaderMiddleware,
     SSEHeadersMiddleware,
-    TokenAuthMiddleware,
     TimingMiddleware,
+    TokenAuthMiddleware,
 )
 from transport.oauth_router import router as oauth_router
 from transport.vectorize_router import router as vectorize_router
-from storage.db import index_rebuild_worker
-import asyncio
 
 # Build the MCP ASGI application.
 mcp_asgi = mcp.streamable_http_app()
 
 import logging as _logging
+
 
 async def maintenance_loop() -> None:
     """Background task: runs MaintenanceService for all known projects every N hours.
@@ -28,9 +31,10 @@ async def maintenance_loop() -> None:
     aborts the cycle or kills the loop.
     """
     import os
+
     from config import PROJECTS_ROOT
-    from storage.repositories.skeleton_repository import SkeletonRepository
     from services.maintenance_service import MaintenanceService
+    from storage.repositories.skeleton_repository import SkeletonRepository
 
     interval = int(os.getenv("MAINTENANCE_INTERVAL_SECONDS", "1800"))
     _logger = _logging.getLogger("marrow.maintenance_scheduler")

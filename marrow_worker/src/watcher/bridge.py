@@ -1,8 +1,11 @@
 import asyncio
-from typing import Callable, Awaitable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from watchdog.events import FileSystemEventHandler, FileSystemEvent
+
+from watchdog.events import FileSystemEvent, FileSystemEventHandler
+
 from src.watcher.debouncer import AsyncDebouncer
+
 
 class SkeletonEventBridge(FileSystemEventHandler):
     """Bridges threaded watchdog file events into the asyncio main loop."""    

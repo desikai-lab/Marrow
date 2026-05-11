@@ -1,9 +1,11 @@
-import os
-import logging
 import argparse
-from pathlib import Path
+import logging
+import os
 from datetime import datetime
+from pathlib import Path
+
 from tqdm import tqdm
+
 from cli.commands.base import BaseCommand
 
 logger = logging.getLogger("admin_cli")
@@ -23,7 +25,7 @@ class ReindexCommand(BaseCommand):
         parser.add_argument("--dry-run", action="store_true", help="Do not save to database")
         
     def execute(self, args: argparse.Namespace) -> None:
-        from config import PROJECTS_ROOT, DECOUPLED_STORAGE_ENABLED
+        from config import DECOUPLED_STORAGE_ENABLED, PROJECTS_ROOT
         from storage import init_db
         
         if not DECOUPLED_STORAGE_ENABLED:
@@ -45,8 +47,8 @@ class ReindexCommand(BaseCommand):
             self._reindex_artifacts(args.project, project_root, args.dry_run)
 
     def _reindex_tasks(self, project_name: str, project_root: str, dry_run: bool):
-        from storage.migrate import load_task_from_blob
         from storage import upsert_task
+        from storage.migrate import load_task_from_blob
         
         blobs_path = os.path.join(project_root, ".db", "blobs")
         if not os.path.exists(blobs_path):
@@ -77,9 +79,9 @@ class ReindexCommand(BaseCommand):
         logger.info(f"Finished: {success_count} tasks reindexed.")
 
     def _reindex_artifacts(self, project_name: str, project_root: str, dry_run: bool):
-        from storage import get_artifact_table, ArtifactRecord
-        from tools.utils.cleaner import ContentCleaner
+        from storage import ArtifactRecord, get_artifact_table
         from storage.embeddings import embeddings_manager
+        from tools.utils.cleaner import ContentCleaner
         
         logger.info(f"Reindexing artifacts for project '{project_name}'...")
         
@@ -100,7 +102,7 @@ class ReindexCommand(BaseCommand):
         if not dry_run:
             try:
                 table.delete("true")
-            except:
+            except Exception:
                  pass
 
         success_count = 0
@@ -109,7 +111,7 @@ class ReindexCommand(BaseCommand):
         for file_path in tqdm(all_files, desc="Artifacts", unit="file"):
             try:
                 rel_path = os.path.relpath(file_path, project_root).replace("\\", "/")
-                with open(file_path, "r", encoding="utf-8") as f:
+                with open(file_path, encoding="utf-8") as f:
                     content = f.read()
                 
                 clean_content = ContentCleaner.clean(content)

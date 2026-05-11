@@ -1,15 +1,15 @@
+import asyncio
 import os
 import shutil
-import asyncio
 from datetime import datetime
-from typing import Dict, Any, Optional, List, Set
 from pathlib import Path
+from typing import Any
 
-from storage.validation import validate_status_change
-from storage.blobs import write_blob, read_blob
+from storage.blobs import read_blob, write_blob
 from storage.entities import TaskRecord
-from storage.repositories import TaskRepository, ArtifactRepository, ArtifactChunkRepository
-from utils.exceptions import TaskNotFoundError, DomainProtectionError
+from storage.repositories import ArtifactChunkRepository, ArtifactRepository, TaskRepository
+from storage.validation import validate_status_change
+from utils.exceptions import DomainProtectionError, TaskNotFoundError
 
 VALID_TRANSITIONS = {
     'open': ['paused', 'closed', 'analysis', 'blocked'],
@@ -43,7 +43,7 @@ class UnitOfWork:
                     details={"protected_file": path}
                 )
 
-    async def update_task_atomically(self, task_key: str, new_data: Dict[str, Any]) -> TaskRecord:
+    async def update_task_atomically(self, task_key: str, new_data: dict[str, Any]) -> TaskRecord:
         """Atomically updates a task (Blob + LanceDB) with Rollback support."""
         from storage.db import get_table_lock
         async with get_table_lock(self.tasks.table.name):
@@ -122,7 +122,7 @@ class UnitOfWork:
                 await asyncio.to_thread(shutil.copy2, backup_path, file_path)
             raise e
 
-    async def move_task_status_atomically(self, task_key: str, new_status: str, resolution: Optional[str] = None) -> TaskRecord:
+    async def move_task_status_atomically(self, task_key: str, new_status: str, resolution: str | None = None) -> TaskRecord:
         """Moves a task to a new status with transition validation."""
         current = await self.tasks.get_by_key(task_key)
         if not current:
@@ -140,16 +140,16 @@ class UnitOfWork:
 
     async def move_tasks_batch_atomically(
         self,
-        task_keys: List[str],
+        task_keys: list[str],
         new_status: str,
-        resolution: Optional[str] = None
+        resolution: str | None = None
     ) -> dict:
         """Batch status move: single lock, bulk LanceDB upsert, single auto-unblock pass."""
         from storage.db import get_table_lock
         _file_lock = get_table_lock(self.tasks.table.name)
 
         # key → original absolute path (for rollback)
-        original_paths: Dict[str, str] = {}
+        original_paths: dict[str, str] = {}
 
         async with _file_lock:
             # Phase A — Validate all (fail-fast)
@@ -230,7 +230,7 @@ class UnitOfWork:
                 raise
 
             # Phase E — Auto-unblock pass
-            completed_keys: Set[str] = set(task_keys)
+            completed_keys: set[str] = set(task_keys)
             unblocked = []
             active_tasks = await self.tasks.search(status="open")
             for t in active_tasks:

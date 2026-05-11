@@ -1,9 +1,8 @@
 import asyncio
-import time
 import logging
-from pathlib import Path
+import time
 from dataclasses import dataclass, field
-from typing import List
+from pathlib import Path
 
 from storage.repositories.skeleton_repository import SkeletonRepository
 
@@ -16,7 +15,7 @@ class MaintenanceReport:
     files_compacted: bool = False
     ghosts_pruned: int = 0
     duration_ms: float = 0.0
-    errors: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
 class MaintenanceService:
     def __init__(
@@ -48,7 +47,7 @@ class MaintenanceService:
         )
         return report
 
-    async def _cleanup_versions(self, errors: List[str]) -> bool:
+    async def _cleanup_versions(self, errors: list[str]) -> bool:
         try:
             await self.skeleton_repo.cleanup_old_versions(self.older_than_hours)
             return True
@@ -58,7 +57,7 @@ class MaintenanceService:
             errors.append(msg)
             return False
 
-    async def _compact_files(self, errors: List[str]) -> bool:
+    async def _compact_files(self, errors: list[str]) -> bool:
         try:
             await self.skeleton_repo.compact_files()
             return True
@@ -68,7 +67,7 @@ class MaintenanceService:
             errors.append(msg)
             return False
 
-    async def _prune_ghost_records(self, errors: List[str]) -> int:
+    async def _prune_ghost_records(self, errors: list[str]) -> int:
         pruned_count = 0
         try:
             # Check row count first

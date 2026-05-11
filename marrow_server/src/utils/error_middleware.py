@@ -7,11 +7,11 @@ Usage in mcp_core.py:
     def some_tool(...):
         ...
 """
-import asyncio
 import functools
 import inspect
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from tools.utils.security import sanitize_error_message
 from utils.exceptions import BaseBacklogError

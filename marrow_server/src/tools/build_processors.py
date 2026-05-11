@@ -1,26 +1,24 @@
-import re
 import os
+import re
 import shutil
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Type
-
-
-from tools.builds import StepConfig, BuildManifest, SanitizeRule
-from tools.utils.filesystem_utils import validate_artifact_path, validate_project_path
-from tools.utils.markdown_utils import extract_markdown_section
 
 # TODO: move to utils.
 # In the future, direct artifact calls may be extracted into a dedicated sandbox.
-from tools.artifacts import read_artifact_logic, get_project_artifact_outline_logic
+from tools.artifacts import get_project_artifact_outline_logic, read_artifact_logic
+from tools.builds import BuildManifest, SanitizeRule, StepConfig
 from tools.utils.cleaner_presets import PRESETS
+from tools.utils.filesystem_utils import validate_artifact_path, validate_project_path
+from tools.utils.markdown_utils import extract_markdown_section
+
 
 class BuildContext:
-    def __init__(self, project: str, manifest: BuildManifest, release_dir: str, verbose: bool = False, variables: Optional[dict[str, str]] = None):
+    def __init__(self, project: str, manifest: BuildManifest, release_dir: str, verbose: bool = False, variables: dict[str, str] | None = None):
         import datetime
         self.project = project
         self.manifest = manifest
         self.release_dir = release_dir
-        self.output_buffer: List[str] = []
+        self.output_buffer: list[str] = []
         self.verbose = verbose
 
         resolved: dict[str, str] = {}
@@ -40,6 +38,7 @@ class BuildContext:
 
 from tools.utils.markdown_fence import build_fenced_ranges, in_fenced_range
 from tools.utils.template_renderer import TemplateRenderer
+
 
 def _extract_section_for_regex(content: str, section_header: str) -> str:
     """
@@ -70,7 +69,7 @@ def _extract_section_for_regex(content: str, section_header: str) -> str:
 
     return content[start_pos:end_pos].strip("\n")
 
-def apply_filters(content: str, rules: Optional[List[SanitizeRule]]) -> str:
+def apply_filters(content: str, rules: list[SanitizeRule] | None) -> str:
     """Applies sanitization rules to content sequentially."""
     if not rules:
         return content
@@ -101,11 +100,11 @@ def apply_filters(content: str, rules: Optional[List[SanitizeRule]]) -> str:
     return result
 
 class ProcessorFactory:
-    _registry: Dict[str, Type['StepProcessor']] = {}
+    _registry: dict[str, type['StepProcessor']] = {}
 
     @classmethod
     def register(cls, action: str):
-        def wrapper(processor_cls: Type['StepProcessor']):
+        def wrapper(processor_cls: type['StepProcessor']):
             cls._registry[action] = processor_cls
             return processor_cls
         return wrapper
@@ -224,7 +223,7 @@ class Specification(ABC):
     def error_message(self) -> str: ...
 
 class RegexMatchSpec(Specification):
-    def __init__(self, regex: str, expected: str, step_path: str, custom_error: Optional[str] = None):
+    def __init__(self, regex: str, expected: str, step_path: str, custom_error: str | None = None):
         self.regex = regex
         self.expected = str(expected).strip()
         self.step_path = step_path
@@ -249,7 +248,7 @@ class RegexMatchSpec(Specification):
         return self._error
 
 class RegexFindallSpec(Specification):
-    def __init__(self, regex: str, expected: str, step_path: str, custom_error: Optional[str] = None):
+    def __init__(self, regex: str, expected: str, step_path: str, custom_error: str | None = None):
         self.regex = regex
         self.expected = str(expected).strip()
         self.step_path = step_path
@@ -292,7 +291,7 @@ class ValidateProcessor(StepProcessor):
         if not os.path.exists(full_path):
             raise FileNotFoundError(f"Validation source file not found: {step.path}")
             
-        with open(full_path, "r", encoding="utf-8") as f:
+        with open(full_path, encoding="utf-8") as f:
             content = f.read()
             
         if step.section_name:

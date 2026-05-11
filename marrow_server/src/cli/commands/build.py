@@ -1,6 +1,7 @@
-import sys
 import argparse
 import logging
+import sys
+
 from cli.commands.base import BaseCommand
 
 logger = logging.getLogger("admin_cli")
@@ -27,10 +28,9 @@ class BuildCommand(BaseCommand):
         )
         
     def execute(self, args: argparse.Namespace) -> None:
+
         from tools.builds import run_project_build_logic
-        
-        from typing import Dict
-        variables: Dict[str, str] = {}
+        variables: dict[str, str] = {}
         for item in (args.var or []):
             if "=" not in item:
                 logger.error("--var requires KEY=VALUE format, got: '%s'", item)

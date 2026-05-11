@@ -7,7 +7,7 @@ This is the TRANSPORT layer contract only.
 Do NOT confuse with storage/models.py:SkeletonChunkRecord (LanceDB schema).
 """
 from enum import Enum
-from typing import List, Optional
+
 from pydantic import BaseModel
 
 SCHEMA_VERSION = "1.0"
@@ -38,6 +38,6 @@ class SkeletonChunk(BaseModel):
     start_line:    int
     end_line:      int
     skeleton_text: str
-    vector:        List[float]
+    vector:        list[float]
     is_test:       bool = False
-    file_summary:  Optional[str] = None
+    file_summary:  str | None = None

@@ -1,6 +1,8 @@
-import pyarrow as pa
 from dataclasses import dataclass, field
-from typing import List, Optional, Any, Dict
+from typing import Any
+
+import pyarrow as pa
+
 from config import EMBEDDING_DIMENSIONS
 
 # PyArrow schema for LanceDB
@@ -31,17 +33,17 @@ class TaskRecord:
     project: str
     
     # Fields from the blob body (not in the LanceDB index):
-    problem: Optional[str] = None
-    solution: Optional[str] = None
-    blocked_by: List[str] = field(default_factory=list)
-    where: List[str] = field(default_factory=list)
-    comments: Optional[str] = None
-    resolution: Optional[str] = None
+    problem: str | None = None
+    solution: str | None = None
+    blocked_by: list[str] = field(default_factory=list)
+    where: list[str] = field(default_factory=list)
+    comments: str | None = None
+    resolution: str | None = None
     
     # Vector for semantic search
-    vector: Optional[List[float]] = None
+    vector: list[float] | None = None
 
-    def to_index_row(self) -> Dict[str, Any]:
+    def to_index_row(self) -> dict[str, Any]:
         """Returns only the LanceDB-schema fields."""
         row = {
             "id": self.id,
@@ -71,9 +73,9 @@ class ArtifactRecord:
     """DTO for storing artifact vectors."""
     path: str
     updated: str
-    vector: Optional[List[float]] = None
+    vector: list[float] | None = None
 
-    def to_index_row(self) -> Dict[str, Any]:
+    def to_index_row(self) -> dict[str, Any]:
         return {
             "path": self.path,
             "updated": self.updated,
@@ -96,9 +98,9 @@ class ArtifactChunkRecord:
     start_line: int
     end_line: int
     updated: str
-    vector: Optional[List[float]] = None
+    vector: list[float] | None = None
 
-    def to_index_row(self) -> Dict[str, Any]:
+    def to_index_row(self) -> dict[str, Any]:
         return {
             "path": self.path,
             "section": self.section,
@@ -137,9 +139,9 @@ class SkeletonChunkRecord:
     end_line: int
     updated: str
     is_test: bool = False
-    vector: Optional[List[float]] = None
+    vector: list[float] | None = None
 
-    def to_index_row(self) -> Dict[str, Any]:
+    def to_index_row(self) -> dict[str, Any]:
         return {
             "path":          self.path,
             "project":       self.project,

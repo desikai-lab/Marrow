@@ -1,4 +1,6 @@
 import os
+import sys
+
 from dotenv import load_dotenv
 
 # Load environment variables from .env
@@ -47,7 +49,6 @@ def get_project_files(project: str) -> dict:
         "done": os.path.join(project_dir, "backlog_done.yaml")
     }
 
-import sys
 
 def check_startup_config():
     """Checks startup configuration for the default project (YourProject)."""

@@ -1,7 +1,7 @@
 import re
-from typing import Tuple, Optional, List
 
-def extract_markdown_section(content: str, section_header: str) -> Tuple[Optional[str], Optional[int], Optional[int]]:
+
+def extract_markdown_section(content: str, section_header: str) -> tuple[str | None, int | None, int | None]:
     """
     Searches for a Markdown section by its header.
     Returns (section_text_with_header, start_index, end_index).
@@ -27,7 +27,7 @@ def extract_markdown_section(content: str, section_header: str) -> Tuple[Optiona
     section_content = content[start_pos:end_pos].strip("\n")
     return section_content, start_pos, end_pos
 
-def find_all_sections(content: str, section_header: str) -> List[Tuple[int, int]]:
+def find_all_sections(content: str, section_header: str) -> list[tuple[int, int]]:
     """Finds all occurrences of a section by header. Returns a list of (start, end) ranges."""
     clean_header = section_header.lstrip("#").strip()
     header_regex = re.escape(clean_header).replace(r"\ ", r"\s+").replace(r" ", r"\s+")
@@ -77,7 +77,7 @@ def insert_text_at_marker(content: str, marker: str, text: str, mode: str = "bef
         return content.replace(marker, text + marker)
     return content.replace(marker, marker + text)
 
-def extract_metadata_value(content: str, label: str) -> Optional[str]:
+def extract_metadata_value(content: str, label: str) -> str | None:
     """Finds a Label: Value in the content, accounting for possible prefixes (blockquotes, bold)."""
     # Regex matches the label even when embedded inside markdown markup (> 📌 **Label: Value**)
     match = re.search(rf"^[^\r\n]*?{re.escape(label)}\s*:\s*(.*)$", content, re.MULTILINE | re.IGNORECASE)

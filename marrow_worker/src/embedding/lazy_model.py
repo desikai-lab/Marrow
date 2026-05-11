@@ -1,6 +1,7 @@
 import gc
+
 import torch
-from typing import List
+
 
 class LazyEncoder:
     """
@@ -33,7 +34,7 @@ class LazyEncoder:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    def encode(self, texts: List[str]) -> List[List[float]]:
+    def encode(self, texts: list[str]) -> list[list[float]]:
         if not self._model:
             raise RuntimeError("Model must be loaded inside `with LazyEncoder() as enc:` context.")
         
