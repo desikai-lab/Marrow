@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "marrow-common"
 version = "1.1.0"
 description = "Shared schema for Marrow — SkeletonChunk and schema versioning"
-license = { file = "../LICENSE" }
+license = "MIT"
 requires-python = ">=3.12"
 keywords = ["mcp", "ai", "agents", "schema"]
 classifiers = [

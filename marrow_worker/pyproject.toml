@@ -7,7 +7,7 @@ name = "marrow-worker"
 version = "1.1.0"
 description = "Persistent MCP intelligence backend for AI coding agents — file watcher and skeleton indexer"
 readme = "README.md"
-license = { file = "../LICENSE" }
+license = "MIT"
 requires-python = ">=3.12"
 keywords = ["mcp", "ai", "agents", "tree-sitter", "code-indexer", "embeddings"]
 classifiers = [
