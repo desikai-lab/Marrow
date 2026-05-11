@@ -95,7 +95,8 @@ async def add_tasks_logic(tasks_input: list[TaskInput], project: str) -> str:
             
             t_id = f"{ti.type}{next_id}"
             blocked_by = ti.blocked_by if ti.blocked_by else []
-            if isinstance(blocked_by, str): blocked_by = [blocked_by]
+            if isinstance(blocked_by, str):
+                blocked_by = [blocked_by]
             
             # Prepare blob data
             blob_data = ti.model_dump()

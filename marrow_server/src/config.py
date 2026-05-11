@@ -58,14 +58,13 @@ def check_startup_config():
     default_project = "YourProject"
     files = get_project_files(default_project)
     
-    all_ok = True
     for key, path in files.items():
         exists = os.path.exists(path)
         status = "[OK]" if exists else "[ERR]"
         size = f"{os.path.getsize(path):,} bytes" if exists else "not found"
         print(f"   {status} [{default_project}:{key}] {os.path.basename(path)} -- {size}", file=sys.stderr)
         if not exists:
-            all_ok = False
+            pass  # all_ok tracking removed (was unused)
     
     # if not all_ok:
     print("\n   [WRN] Default project 'YourProject' files incomplete. Check migration status.", file=sys.stderr)

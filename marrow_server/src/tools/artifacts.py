@@ -118,7 +118,7 @@ async def search_project_artifacts_logic(project: str, query: str) -> list[dict[
                                 # Collapse newlines for compact JSON output
                                 snippet_text = " ".join(snippet_text.split())
                                 snippet = f"[Semantic Match] {snippet_text}..."
-                    except:
+                    except Exception:
                         pass
 
                 results.append({
@@ -140,15 +140,19 @@ async def search_project_artifacts_logic(project: str, query: str) -> list[dict[
     query_lower = query.lower()
     
     for base_dir in search_dirs:
-        if not os.path.exists(base_dir): continue
+        if not os.path.exists(base_dir):
+            continue
         
         for root, dirs, files in os.walk(base_dir):
-            if ".db" in root or ".history" in root: continue
+            if ".db" in root or ".history" in root:
+                continue
             dirs[:] = [d for d in dirs if not d.startswith(".")]
             for file in files:
-                if file.startswith("."): continue
+                if file.startswith("."):
+                    continue
                 full_path = os.path.join(root, file)
-                if os.path.getsize(full_path) > 1024 * 1024: continue
+                if os.path.getsize(full_path) > 1024 * 1024:
+                    continue
                 
                 try:
                     rel_to_prj = os.path.relpath(full_path, prj_path).replace("\\", "/")
@@ -160,8 +164,9 @@ async def search_project_artifacts_logic(project: str, query: str) -> list[dict[
                                     "line": i,
                                     "content": line.strip()
                                 })
-                            if len(results) >= 100: return results
-                except:
+                            if len(results) >= 100:
+                                return results
+                except Exception:
                     continue
     return results
 

@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Resolve monorepo root (3 levels up: services → src → marrow_server → root)
@@ -8,14 +9,12 @@ _MONOREPO_ROOT = str(Path(__file__).parents[3])
 if _MONOREPO_ROOT not in sys.path:
     sys.path.insert(0, _MONOREPO_ROOT)
 
-from datetime import UTC, datetime
+from marrow_common.skeleton_schema import SkeletonChunk  # noqa: E402
+from pydantic import ValidationError  # noqa: E402
 
-from marrow_common.skeleton_schema import SkeletonChunk
-from pydantic import ValidationError
-
-from config import PROJECTS_ROOT
-from storage.entities import SkeletonChunkRecord
-from storage.repositories.skeleton_repository import SkeletonRepository
+from config import PROJECTS_ROOT  # noqa: E402
+from storage.entities import SkeletonChunkRecord  # noqa: E402
+from storage.repositories.skeleton_repository import SkeletonRepository  # noqa: E402
 
 logger = logging.getLogger("marrow.skeleton_command_service")
 

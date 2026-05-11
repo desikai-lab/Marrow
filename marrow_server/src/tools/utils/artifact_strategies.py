@@ -235,8 +235,10 @@ class ReplaceSectionStrategy(SaveStrategy):
         
         clean_name = clean_section_name(section_name)
         ranges = find_all_sections(existing_content, clean_name)
-        if not ranges: raise ValueError(f"Section '{section_name}' not found.")
-        if len(ranges) > 1: raise ValueError(f"Multiple sections named '{section_name}' found. Fix manually.")
+        if not ranges:
+            raise ValueError(f"Section '{section_name}' not found.")
+        if len(ranges) > 1:
+            raise ValueError(f"Multiple sections named '{section_name}' found. Fix manually.")
             
         start, end = ranges[0]
         new_content = strip_duplicated_header(new_content, clean_name)
@@ -265,7 +267,8 @@ class ReplaceChunkStrategy(SaveStrategy):
         
         lines = existing_content.splitlines(keepends=True)
         if existing_content and not existing_content.endswith('\n'):
-            if lines: lines[-1] += '\n'
+            if lines:
+                lines[-1] += '\n'
             
         if start_line < 1 or start_line > len(lines) + 1:
             raise ValueError(f"Invalid start line: {start_line}. File has {len(lines)} lines.")
@@ -365,11 +368,13 @@ class ArtifactStrategyFactory:
     @classmethod
     def get_read_strategy(cls, mode: str) -> ReadStrategy:
         strategy = cls._read_map.get(mode)
-        if not strategy: raise ValueError(f"Unknown read mode: {mode}")
+        if not strategy:
+            raise ValueError(f"Unknown read mode: {mode}")
         return strategy
 
     @classmethod
     def get_save_strategy(cls, mode: str) -> SaveStrategy:
         strategy = cls._save_map.get(mode)
-        if not strategy: raise ValueError(f"Unknown write mode: {mode}")
+        if not strategy:
+            raise ValueError(f"Unknown write mode: {mode}")
         return strategy

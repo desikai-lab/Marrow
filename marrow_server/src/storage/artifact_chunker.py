@@ -77,7 +77,6 @@ class TextChunker(ChunkerStrategy):
         current_end_line = 0
         chunk_index = 1
         
-        lines = content.split('\n')
 
         def get_line_count(text):
             return text.count('\n') + 1 if text else 0

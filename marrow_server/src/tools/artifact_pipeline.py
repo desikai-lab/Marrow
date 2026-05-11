@@ -158,7 +158,8 @@ class VectorizationHandler(BaseHandler):
         for path in success_paths:
             try:
                 abs_path = validate_artifact_path(ctx.project, path)
-                if not os.path.exists(abs_path): continue
+                if not os.path.exists(abs_path):
+                    continue
                 
                 def read_file():
                     with open(abs_path, encoding="utf-8", errors="replace") as f:

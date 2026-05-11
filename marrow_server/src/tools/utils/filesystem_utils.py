@@ -70,7 +70,8 @@ def list_directory_contents(path: str, recursive: bool = False, base_path: str =
         base_path = path
 
     for item in os.listdir(path):
-        if item.startswith("."): continue
+        if item.startswith("."):
+            continue
             
         full_path = os.path.join(path, item)
         rel_to_base = os.path.relpath(full_path, base_path).replace("\\", "/")

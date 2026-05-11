@@ -36,8 +36,8 @@ class BuildContext:
 
         self.variables = resolved
 
-from tools.utils.markdown_fence import build_fenced_ranges, in_fenced_range
-from tools.utils.template_renderer import TemplateRenderer
+from tools.utils.markdown_fence import build_fenced_ranges, in_fenced_range  # noqa: E402
+from tools.utils.template_renderer import TemplateRenderer  # noqa: E402
 
 
 def _extract_section_for_regex(content: str, section_header: str) -> str:

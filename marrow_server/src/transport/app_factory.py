@@ -20,7 +20,7 @@ from transport.vectorize_router import router as vectorize_router
 # Build the MCP ASGI application.
 mcp_asgi = mcp.streamable_http_app()
 
-import logging as _logging
+import logging as _logging  # noqa: E402
 
 
 async def maintenance_loop() -> None:

@@ -94,11 +94,14 @@ class TaskRepository:
                type: str | None = None, project: str | None = None) -> list[TaskRecord]:
         """Searches tasks by filter criteria."""
         filters = []
-        if status: filters.append(f"status = '{status}'")
-        if priority: filters.append(f"priority = '{priority}'")
-        if type: filters.append(f"type = '{type}'")
-        if project: filters.append(f"project = '{project}'")
-        
+        if status:
+            filters.append(f"status = '{status}'")
+        if priority:
+            filters.append(f"priority = '{priority}'")
+        if type:
+            filters.append(f"type = '{type}'")
+        if project:
+            filters.append(f"project = '{project}'")
         query = self.table.search()
         if filters:
             where_clause = " AND ".join(filters)

@@ -65,7 +65,7 @@ def get_session_context_logic(project: str) -> str:
     # 2. Detect current phase
     agent_role = _parse_next_agent(session_text)
     
-    if agent_role == None:
+    if agent_role is None:
         phase = _parse_phase(session_text)
         agent_role = _select_agent_role(phase)
 
