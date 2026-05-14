@@ -1,4 +1,3 @@
-
 import pytest
 
 from storage.db import init_db

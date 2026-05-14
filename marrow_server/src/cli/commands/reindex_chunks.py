@@ -30,8 +30,6 @@ class ReindexChunksCommand(BaseCommand):
         from storage.repositories import ArtifactChunkRepository
         from tools.utils.cleaner import ContentCleaner
 
-
-
         project_root = os.path.abspath(os.path.join(PROJECTS_ROOT, args.project))
         if not os.path.exists(project_root):
             logger.error(f"Project not found: {args.project}")

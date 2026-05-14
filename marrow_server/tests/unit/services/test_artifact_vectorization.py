@@ -57,7 +57,6 @@ class TestArtifactVectorization(unittest.TestCase):
         except Exception:
             pass
 
-
     def test_clean_noise_content_removes_metadata_and_logs(self):
         """Verifies cleaning content of noise (comments, logs)."""
         content = """
@@ -147,7 +146,6 @@ Some actual content.
 
     def test_semantic_search_indexed_artifact_returns_relevant_result(self):
         """Verifies vector index operation and cascade search."""
-
 
         path = "docs/search_test.md"
         content = "This is a very specific artifact about vector search engines and AI."

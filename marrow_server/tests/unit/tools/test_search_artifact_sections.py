@@ -58,7 +58,8 @@ Make sure ports 8080 and 5432 are free.
         assert "distance" in best_match
 
         # Verify we can still perform search (distances will be uniform)
-        results_db = await uow.chunks.semantic_search("Where is the SQLite database path set?", limit=1)
+        results_db = await uow.chunks.semantic_search(
+            "Where is the SQLite database path set?", limit=1
+        )
         assert len(results_db) == 1
         assert "section" in results_db[0]
-

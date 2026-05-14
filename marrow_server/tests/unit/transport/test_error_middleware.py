@@ -4,7 +4,6 @@ Unit tests for the mcp_error_handler decorator and domain exceptions.
 Run: pytest tests/test_error_middleware.py -v
 """
 
-
 from utils.error_middleware import mcp_error_handler
 from utils.exceptions import (
     ArtifactNotFoundError,

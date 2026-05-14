@@ -74,7 +74,6 @@ async def test_add_tasks_logic_valid_task_and_duplicate_title_raises_value_error
                 TaskInput(type="TD", title="Experimental Debt 3", problem="p3", solution="s3"),
             ]
 
-
             result2 = await add_tasks_logic(tasks, TEST_PROJECT)
             print(f"Result 2: {result2}")
             assert "Successfully added 2 task(s)" in result2
@@ -94,7 +93,6 @@ async def test_add_tasks_logic_valid_task_and_duplicate_title_raises_value_error
 
     finally:
         teardown_test_project()
-
 
 
 if __name__ == "__main__":
