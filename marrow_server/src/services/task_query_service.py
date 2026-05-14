@@ -1,13 +1,12 @@
 import os
 from typing import Any
 
-from config import DECOUPLED_STORAGE_ENABLED, PROJECTS_ROOT
+from config import PROJECTS_ROOT
 from storage.blobs import read_blob
 from storage.repositories import TaskRepository
 from utils.exceptions import (
     ArtifactNotFoundError,
     ProjectNotFoundError,
-    StorageDisabledError,
     TaskNotFoundError,
 )
 
@@ -17,12 +16,7 @@ async def search_tasks_logic(
 ) -> list[dict[str, Any]]:
     """
     Experimental task search tool via LanceDB.
-    Works only when DECOUPLED_STORAGE_ENABLED=true.
     """
-    if not DECOUPLED_STORAGE_ENABLED:
-        raise StorageDisabledError(
-            "Decoupled storage is disabled. Set DECOUPLED_STORAGE_ENABLED=true in .env"
-        )
 
     project_root = os.path.join(PROJECTS_ROOT, project)
     if not os.path.exists(project_root):
@@ -51,8 +45,6 @@ async def get_task_details_logic(project: str, task_id: str) -> dict[str, Any]:
     Experimental tool for retrieving task details (LanceDB + Blobs).
     Returns full task data, including problem and solution.
     """
-    if not DECOUPLED_STORAGE_ENABLED:
-        raise StorageDisabledError("Decoupled storage is disabled")
 
     project_root = os.path.join(PROJECTS_ROOT, project)
     if not os.path.exists(project_root):

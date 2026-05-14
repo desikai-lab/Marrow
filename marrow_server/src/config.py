@@ -11,8 +11,7 @@ SECRET_TOKEN = os.getenv("SECRET_TOKEN")
 if not SECRET_TOKEN:
     raise RuntimeError("SECRET_TOKEN is not set. Create a .env file with a SECRET_TOKEN variable.")
 
-# --- Decoupled Storage & Vectors (Phase 1-3) ---
-DECOUPLED_STORAGE_ENABLED = os.getenv("DECOUPLED_STORAGE_ENABLED", "false").lower() == "true"
+# --- Embedding Settings ---
 
 # Phase 3: Embedding Settings
 EMBEDDING_MODEL_CODE = os.getenv("EMBEDDING_MODEL_CODE", "BAAI/bge-small-en-v1.5")

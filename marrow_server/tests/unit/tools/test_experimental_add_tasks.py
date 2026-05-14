@@ -1,12 +1,11 @@
 import asyncio
 import os
 import shutil
+from unittest.mock import patch
 
 import pytest
 
-from unittest.mock import patch
-
-from config import DECOUPLED_STORAGE_ENABLED, PROJECTS_ROOT
+from config import PROJECTS_ROOT
 from models import TaskInput
 from services.task_command_service import add_tasks_logic
 from storage.db import init_db
@@ -35,10 +34,6 @@ def teardown_test_project():
 
 @pytest.mark.asyncio
 async def test_add_tasks_logic_valid_task_and_duplicate_title_raises_value_error():
-    if not DECOUPLED_STORAGE_ENABLED:
-        print("Skipping test: DECOUPLED_STORAGE_ENABLED is False")
-        return
-
     setup_test_project()
     try:
         with patch(

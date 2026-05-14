@@ -9,7 +9,7 @@ from unittest.mock import patch
 # Add project root to paths
 sys.path.append(os.getcwd())
 
-from config import DECOUPLED_STORAGE_ENABLED, PROJECTS_ROOT
+from config import PROJECTS_ROOT
 from storage.uow import UnitOfWork
 from tools.artifact_pipeline import (
     GroupingHandler,
@@ -147,8 +147,7 @@ Some actual content.
 
     def test_semantic_search_indexed_artifact_returns_relevant_result(self):
         """Verifies vector index operation and cascade search."""
-        if not DECOUPLED_STORAGE_ENABLED:
-            self.skipTest("Decoupled storage not enabled")
+
 
         path = "docs/search_test.md"
         content = "This is a very specific artifact about vector search engines and AI."

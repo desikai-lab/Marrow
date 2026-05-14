@@ -2,7 +2,6 @@ import logging
 import os
 from typing import Any, Literal
 
-from config import DECOUPLED_STORAGE_ENABLED
 from storage.uow import UnitOfWork
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
 from tools.utils.filesystem_utils import (
@@ -85,14 +84,13 @@ async def move_project_artifact_logic(project: str, src_path: str, dest_path: st
 
     safe_move_file(real_src, real_dest)
 
-    # Phase 3: Sync index if enabled
-    if DECOUPLED_STORAGE_ENABLED:
-        try:
-            project_root = validate_project_path(project)
-            uow = UnitOfWork(project_root)
-            await uow.artifacts.rename(src_path, dest_path)
-        except (ImportError, Exception):
-            pass  # Indexing might not be fully implemented yet (Task 4)
+    # Phase 3: Sync index
+    try:
+        project_root = validate_project_path(project)
+        uow = UnitOfWork(project_root)
+        await uow.artifacts.rename(src_path, dest_path)
+    except (ImportError, Exception):
+        pass  # Indexing might not be fully implemented yet (Task 4)
 
     return f"Artifact moved: {src_path} -> {dest_path}"
 
@@ -101,14 +99,13 @@ async def delete_project_artifact_logic(project: str, rel_path: str) -> str:
     """Safe delete: moves the file to the .recycle_bin."""
     msg = recycle_file(project, rel_path)
 
-    # Phase 3: Sync index if enabled
-    if DECOUPLED_STORAGE_ENABLED:
-        try:
-            project_root = validate_project_path(project)
-            uow = UnitOfWork(project_root)
-            await uow.artifacts.delete(rel_path)
-        except (ImportError, Exception):
-            pass
+    # Phase 3: Sync index
+    try:
+        project_root = validate_project_path(project)
+        uow = UnitOfWork(project_root)
+        await uow.artifacts.delete(rel_path)
+    except (ImportError, Exception):
+        pass
 
     return msg
 
@@ -118,36 +115,35 @@ async def search_project_artifacts_logic(project: str, query: str) -> list[dict[
     # Phase 3: Cascade Search (Semantic + Grep)
     results = []
 
-    if DECOUPLED_STORAGE_ENABLED:
-        try:
-            project_root = validate_project_path(project)
-            uow = UnitOfWork(project_root)
-            semantic_results = await uow.artifacts.semantic_search(query, limit=10)
-            for res in semantic_results:
-                # Extract the file beginning (snippet), as vectorization indexes the file start
-                snippet = "[Semantic vector match in file] (Read file for details)"
-                file_path_abs = os.path.join(project_root, res["record"].path)
-                if os.path.exists(file_path_abs):
-                    try:
-                        with open(file_path_abs, encoding="utf-8", errors="replace") as _f:
-                            snippet_text = _f.read(300).strip()
-                            if snippet_text:
-                                # Collapse newlines for compact JSON output
-                                snippet_text = " ".join(snippet_text.split())
-                                snippet = f"[Semantic Match] {snippet_text}..."
-                    except Exception:
-                        pass
+    try:
+        project_root = validate_project_path(project)
+        uow = UnitOfWork(project_root)
+        semantic_results = await uow.artifacts.semantic_search(query, limit=10)
+        for res in semantic_results:
+            # Extract the file beginning (snippet), as vectorization indexes the file start
+            snippet = "[Semantic vector match in file] (Read file for details)"
+            file_path_abs = os.path.join(project_root, res["record"].path)
+            if os.path.exists(file_path_abs):
+                try:
+                    with open(file_path_abs, encoding="utf-8", errors="replace") as _f:
+                        snippet_text = _f.read(300).strip()
+                        if snippet_text:
+                            # Collapse newlines for compact JSON output
+                            snippet_text = " ".join(snippet_text.split())
+                            snippet = f"[Semantic Match] {snippet_text}..."
+                except Exception:
+                    pass
 
-                results.append(
-                    {
-                        "path": res["record"].path,
-                        "line": 1,  # Vectorization indexes the header/start, so line 1 is returned
-                        "content": snippet,
-                        "distance": res.get("distance", 0),
-                    }
-                )
-        except (ImportError, Exception):
-            logger.error("Semantic search failed", exc_info=True)
+            results.append(
+                {
+                    "path": res["record"].path,
+                    "line": 1,  # Vectorization indexes the header/start, so line 1 is returned
+                    "content": snippet,
+                    "distance": res.get("distance", 0),
+                }
+            )
+    except (ImportError, Exception):
+        logger.error("Semantic search failed", exc_info=True)
 
     # Classic grep-style search (fallback / supplement)
     prj_path = validate_project_path(project)
