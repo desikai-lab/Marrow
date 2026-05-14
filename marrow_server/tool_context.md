@@ -126,7 +126,7 @@ Artifacts are plain Markdown files stored under `projects/{project}/artifacts/`.
 |---|---|
 | `TASKS_DIR` | Root path for the Marrow data vault (projects + LanceDB). |
 | `SECRET_TOKEN` | Bearer token required for all API requests. |
-| `DECOUPLED_STORAGE_ENABLED` | `true` to use the full LanceDB+blob architecture. |
+
 | `EMBEDDING_MODEL_TEXT` | Sentence-transformer model for artifact embeddings. |
 | `EMBEDDING_MODEL_CODE` | Model for code skeleton embeddings. |
 | `EMBEDDING_DIMENSIONS` | Vector dimension size (must match the model). |

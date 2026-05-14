@@ -33,8 +33,6 @@ SKIP_DIRS = {
 }
 
 
-
-
 def setup_logging(log_file: str = "logs/worker.log", level: int = logging.INFO) -> None:
     """Configures the root logger to output to both console and a daily rotating log file."""
     log_dir = os.path.dirname(log_file)

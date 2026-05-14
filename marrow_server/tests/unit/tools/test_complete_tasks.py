@@ -315,12 +315,11 @@ class TestEmptyTaskIdsReturnsEarly:
     """Empty list → returns summary message, no storage calls."""
 
     def test_empty_task_ids_returns_early(self):
-        with patch("services.task_command_service.DECOUPLED_STORAGE_ENABLED", True):
-            with patch("services.task_command_service.PROJECTS_ROOT", "/fake"):
-                with patch("os.path.isdir", return_value=True):
-                    import asyncio
+        with patch("services.task_command_service.PROJECTS_ROOT", "/fake"):
+            with patch("os.path.isdir", return_value=True):
+                import asyncio
 
-                    from services.task_command_service import complete_tasks_logic
+                from services.task_command_service import complete_tasks_logic
 
-                    result = asyncio.run(complete_tasks_logic([], "SomeProject"))
+                result = asyncio.run(complete_tasks_logic([], "SomeProject"))
         assert "No task IDs" in result

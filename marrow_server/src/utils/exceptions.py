@@ -45,12 +45,6 @@ class DomainProtectionError(BaseBacklogError):
     pass
 
 
-class StorageDisabledError(BaseBacklogError):
-    """Operation requires DECOUPLED_STORAGE_ENABLED=true, but the flag is off."""
-
-    pass
-
-
 class ValidationError(BaseBacklogError):
     """Business-rule validation failed (e.g. duplicate task title, invalid status transition)."""
 

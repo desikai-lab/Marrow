@@ -11,7 +11,6 @@ Create a `.env` file in the `marrow_server/` root with the following content:
 ```env
 SECRET_TOKEN=your_very_secret_token_at_least_16_chars
 TASKS_DIR=C:/Path/To/Your/Marrow/Data
-DECOUPLED_STORAGE_ENABLED=true
 
 # Embedding models (pre-download required — HF_HUB_OFFLINE=1 is recommended)
 EMBEDDING_MODEL_CODE=BAAI/bge-small-en-v1.5

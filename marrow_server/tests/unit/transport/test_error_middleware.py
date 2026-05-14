@@ -4,7 +4,6 @@ Unit tests for the mcp_error_handler decorator and domain exceptions.
 Run: pytest tests/test_error_middleware.py -v
 """
 
-
 from utils.error_middleware import mcp_error_handler
 from utils.exceptions import (
     ArtifactNotFoundError,
@@ -12,7 +11,6 @@ from utils.exceptions import (
     DomainProtectionError,
     InvalidPathError,
     ProjectNotFoundError,
-    StorageDisabledError,
     TaskNotFoundError,
     ValidationError,
 )
@@ -57,10 +55,6 @@ class TestDomainErrorsCaught:
         )()
         assert result["error_type"] == "DomainProtectionError"
         assert result["details"]["protected_file"] == "memory/decisions.md"
-
-    def test_mcp_error_handler_storage_disabled_returns_correct_error_type(self):
-        result = _raises(StorageDisabledError("Storage off"))()
-        assert result["error_type"] == "StorageDisabledError"
 
     def test_mcp_error_handler_validation_error_returns_correct_error_type(self):
         result = _raises(ValidationError("Duplicate title"))()

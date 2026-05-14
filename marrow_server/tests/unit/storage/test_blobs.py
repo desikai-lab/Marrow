@@ -1,4 +1,3 @@
-
 import pytest
 
 from storage.blobs import _blob_path, delete_blob, read_blob, write_blob

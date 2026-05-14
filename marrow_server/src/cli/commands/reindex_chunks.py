@@ -25,14 +25,10 @@ class ReindexChunksCommand(BaseCommand):
         parser.add_argument("--dry-run", action="store_true", help="Do not save to database")
 
     def execute(self, args: argparse.Namespace) -> None:
-        from config import DECOUPLED_STORAGE_ENABLED, PROJECTS_ROOT
+        from config import PROJECTS_ROOT
         from storage import init_db
         from storage.repositories import ArtifactChunkRepository
         from tools.utils.cleaner import ContentCleaner
-
-        if not DECOUPLED_STORAGE_ENABLED:
-            logger.error("DECOUPLED_STORAGE_ENABLED=false. Reindexing impossible.")
-            return
 
         project_root = os.path.abspath(os.path.join(PROJECTS_ROOT, args.project))
         if not os.path.exists(project_root):

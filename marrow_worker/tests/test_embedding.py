@@ -24,7 +24,6 @@ def test_lazy_encoder_context():
         "sentence_transformers.SentenceTransformer",
         return_value=fake_model,
     ):
-
         with encoder as enc:
             assert enc._model is not None
 

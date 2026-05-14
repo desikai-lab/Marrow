@@ -7,14 +7,14 @@ This is the TRANSPORT layer contract only.
 Do NOT confuse with storage/models.py:SkeletonChunkRecord (LanceDB schema).
 """
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel
 
 SCHEMA_VERSION = "1.0"
 
 
-class ChunkType(str, Enum):
+class ChunkType(StrEnum):
     """Canonical chunk type values. New types must be added here first."""
 
     file = "file"

@@ -69,7 +69,7 @@ Create a `.env` file in the `marrow_server/` root:
 ```env
 SECRET_TOKEN=your_secure_token_min_16_chars
 TASKS_DIR=C:/Path/To/Your/Marrow/Data
-DECOUPLED_STORAGE_ENABLED=true
+
 
 # Embedding models
 EMBEDDING_MODEL_CODE=BAAI/bge-small-en-v1.5

@@ -2,22 +2,19 @@ import asyncio
 import os
 from typing import Any
 
-from config import DECOUPLED_STORAGE_ENABLED, PROJECTS_ROOT
+from config import PROJECTS_ROOT
 from models import TaskInput
 from storage.blobs import write_blob
 from storage.entities import TaskRecord
 from storage.uow import UnitOfWork
 from tools.utils.filesystem_utils import get_now_iso
-from utils.exceptions import ProjectNotFoundError, StorageDisabledError, ValidationError
+from utils.exceptions import ProjectNotFoundError, ValidationError
 
 
 async def update_task_logic(project: str, task_id: str, updates: dict[str, Any]) -> dict[str, Any]:
     """
     Experimental task update tool (Atomic 2PC).
-    Works only when DECOUPLED_STORAGE_ENABLED=true.
     """
-    if not DECOUPLED_STORAGE_ENABLED:
-        raise StorageDisabledError("Decoupled storage is disabled")
 
     project_root = os.path.join(PROJECTS_ROOT, project)
     if not os.path.exists(project_root):
@@ -38,10 +35,7 @@ async def update_task_logic(project: str, task_id: str, updates: dict[str, Any])
 async def complete_tasks_logic(task_ids: list[str], project: str) -> str:
     """
     Batch-close tasks atomically (single lock, bulk LanceDB upsert, auto-unblock).
-    Works only when DECOUPLED_STORAGE_ENABLED=true.
     """
-    if not DECOUPLED_STORAGE_ENABLED:
-        raise StorageDisabledError("Decoupled storage is disabled")
     if not task_ids:
         return "No task IDs provided."
     project_root = os.path.join(PROJECTS_ROOT, project)
@@ -64,8 +58,6 @@ async def add_tasks_logic(tasks_input: list[TaskInput], project: str) -> str:
     Experimental tool for adding tasks via Decoupled Storage.
     Uses TaskInput from models.py.
     """
-    if not DECOUPLED_STORAGE_ENABLED:
-        raise StorageDisabledError("Decoupled storage is disabled")
 
     project_root = os.path.join(PROJECTS_ROOT, project)
     if not os.path.exists(project_root):
