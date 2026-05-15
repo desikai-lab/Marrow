@@ -352,10 +352,4 @@ async def run_project_build(
     result = await asyncio.to_thread(
         run_project_build_logic, project, build_name, variables=variables
     )
-    return {
-        "success": result.success,
-        "output_path": result.output_path,
-        "steps_run": result.steps_run,
-        "warnings": result.warnings,
-        "error": result.error,
-    }
+    return result.model_dump()

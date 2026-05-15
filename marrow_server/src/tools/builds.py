@@ -1,5 +1,4 @@
 import os
-from dataclasses import dataclass
 from typing import Literal
 
 import yaml
@@ -8,12 +7,11 @@ from pydantic import BaseModel, Field, ValidationError
 from tools.utils.filesystem_utils import validate_artifact_path, validate_project_path
 
 
-@dataclass
-class BuildResult:
+class BuildResult(BaseModel):
     success: bool
-    output_path: str | None
-    steps_run: int
-    warnings: list[str]
+    output_path: str | None = None
+    steps_run: int = 0
+    warnings: list[str] = Field(default_factory=list)  # TODO: populate from processors (F-04)
     error: str | None = None
 
 
