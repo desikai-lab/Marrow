@@ -201,5 +201,33 @@ class TestGetSessionContextLogicAdrInjection(unittest.TestCase):
         self.assertTrue(any("0000-index.md" in m for m in log.output))
 
 
+class TestExtractAdrSummary(unittest.TestCase):
+    def test_summary_present_prepends_title_and_source(self):
+        from tools.session_context import _extract_adr_summary
+
+        adr_text = (
+            "# ADR-07: Pipeline Standard\n"
+            "**Date:** 2026-03-21\n\n"
+            "## Summary\n"
+            "This is the summary content.\n\n"
+            "## Context\n"
+            "Context here."
+        )
+        result = _extract_adr_summary(adr_text, "docs/decisions/adr/0007-pipeline-standard.md")
+        expected = (
+            "# ADR-07: Pipeline Standard\n"
+            "**Source:** `docs/decisions/adr/0007-pipeline-standard.md`\n\n"
+            "This is the summary content."
+        )
+        self.assertEqual(result, expected)
+
+    def test_summary_missing_returns_full_text(self):
+        from tools.session_context import _extract_adr_summary
+
+        adr_text = "# ADR-08: No Summary\n**Date:** 2026-03-21\n\n## Context\nContext here."
+        result = _extract_adr_summary(adr_text, "docs/decisions/adr/0008-no-summary.md")
+        self.assertEqual(result, adr_text)
+
+
 if __name__ == "__main__":
     unittest.main()
