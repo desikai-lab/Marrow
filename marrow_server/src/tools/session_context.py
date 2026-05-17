@@ -69,6 +69,23 @@ def _parse_foundational_adr_paths(index_text: str) -> list[str]:
     return [f"docs/decisions/{href[1:-1]}" for href in hrefs]
 
 
+def _extract_adr_summary(adr_text: str) -> str:
+    """Return the content of the '## Summary' section if present.
+
+    Falls back to the full ADR text if no Summary section exists,
+    ensuring zero regression on ADRs that have not been updated.
+    The header match is case-insensitive.
+    """
+    match = re.search(
+        r"##\s+Summary\s*\n(.*?)(?=\n##|\Z)",
+        adr_text,
+        re.DOTALL | re.IGNORECASE,
+    )
+    if match:
+        return match.group(1).strip()
+    return adr_text
+
+
 def get_session_context_logic(project: str) -> str:
     """Read session state, detect the active pipeline phase, and return an assembled
     context bundle: session state + core guidelines + phase-appropriate guidelines.
@@ -112,7 +129,7 @@ def get_session_context_logic(project: str) -> str:
         foundational_paths = _parse_foundational_adr_paths(index_text)
         for adr_path in foundational_paths:
             try:
-                adr_parts.append(read_artifact_logic(project, adr_path))
+                adr_parts.append(_extract_adr_summary(read_artifact_logic(project, adr_path)))
             except ArtifactNotFoundError:
                 logger.warning(
                     "Foundational ADR not found for project '%s': %s — skipping.",
