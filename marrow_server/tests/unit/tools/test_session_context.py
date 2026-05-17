@@ -94,5 +94,140 @@ class TestSessionContext(unittest.TestCase):
             get_session_context_logic("TestProj")
 
 
+class TestParseFounationalAdrPaths(unittest.TestCase):
+    def test_valid_index_returns_correct_paths(self):
+        index_text = (
+            "## Foundational ADRs 🔴\n"
+            "| ID | Title | Status |\n"
+            "|---|---|---|\n"
+            "| 0007 | [Pipeline Standard](adr/0007-pipeline-standard.md) | Accepted |\n"
+            "| 0008 | [Three-Tier Arch](adr/0008-three-tier-arch.md) | Accepted |\n"
+            "| 0010 | [Auto-unblock](adr/0010-auto-unblock.md) | Accepted |\n"
+            "\n## Contextual ADRs 🟢\n"
+            "| 0001 | [Entry Point Split](adr/0001-entry-point-split.md) | Accepted |\n"
+        )
+        from tools.session_context import _parse_foundational_adr_paths
+
+        result = _parse_foundational_adr_paths(index_text)
+        self.assertEqual(
+            result,
+            [
+                "docs/decisions/adr/0007-pipeline-standard.md",
+                "docs/decisions/adr/0008-three-tier-arch.md",
+                "docs/decisions/adr/0010-auto-unblock.md",
+            ],
+        )
+
+    def test_missing_section_returns_empty_list(self):
+        from tools.session_context import _parse_foundational_adr_paths
+
+        result = _parse_foundational_adr_paths("## Some Other Section\nno links here")
+        self.assertEqual(result, [])
+
+
+class TestGetSessionContextLogicAdrInjection(unittest.TestCase):
+    _MINIMAL_INDEX = (
+        "## Foundational ADRs 🔴\n"
+        "| 0007 | [A](adr/0007-a.md) | Accepted |\n"
+        "| 0008 | [B](adr/0008-b.md) | Accepted |\n"
+        "\n## Contextual ADRs 🟢\n"
+    )
+
+    def _base_side_effect(self, project, path):
+        if path == "session.md":
+            return "Phase 8"
+        if path == "spec.md":
+            return "SPEC"
+        if path == "docs/manuals/guidelines/core.md":
+            return "CORE"
+        if path == "docs/manuals/guidelines/planning.md":
+            return "PLAN"
+        return None
+
+    @patch("tools.session_context.read_artifact_logic")
+    def test_all_adrs_present_returns_bundle_with_foundational_section(self, mock_read):
+        def side_effect(project, path):
+            base = self._base_side_effect(project, path)
+            if base is not None:
+                return base
+            if path == "docs/decisions/0000-index.md":
+                return self._MINIMAL_INDEX
+            if path == "docs/decisions/adr/0007-a.md":
+                return "ADR BODY A"
+            if path == "docs/decisions/adr/0008-b.md":
+                return "ADR BODY B"
+            return "ERROR"
+
+        mock_read.side_effect = side_effect
+        result = get_session_context_logic("TestProj")
+        self.assertIn("=== FOUNDATIONAL DECISIONS ===", result)
+        self.assertIn("ADR BODY A", result)
+        self.assertIn("ADR BODY B", result)
+
+    @patch("tools.session_context.read_artifact_logic")
+    def test_one_adr_missing_warns_and_continues(self, mock_read):
+        def side_effect(project, path):
+            base = self._base_side_effect(project, path)
+            if base is not None:
+                return base
+            if path == "docs/decisions/0000-index.md":
+                return self._MINIMAL_INDEX
+            if path == "docs/decisions/adr/0007-a.md":
+                return "ADR BODY A"
+            if path == "docs/decisions/adr/0008-b.md":
+                raise ArtifactNotFoundError("adr", path)
+            return "ERROR"
+
+        mock_read.side_effect = side_effect
+        with self.assertLogs("tools.session_context", level="WARNING") as log:
+            result = get_session_context_logic("TestProj")
+        self.assertIn("ADR BODY A", result)
+        self.assertTrue(any("0008-b.md" in m for m in log.output))
+
+    @patch("tools.session_context.read_artifact_logic")
+    def test_index_missing_warns_and_returns_empty_adr_section(self, mock_read):
+        def side_effect(project, path):
+            base = self._base_side_effect(project, path)
+            if base is not None:
+                return base
+            if path == "docs/decisions/0000-index.md":
+                raise ArtifactNotFoundError("index", path)
+            return "ERROR"
+
+        mock_read.side_effect = side_effect
+        with self.assertLogs("tools.session_context", level="WARNING") as log:
+            result = get_session_context_logic("TestProj")
+        self.assertIn("=== FOUNDATIONAL DECISIONS ===", result)
+        self.assertTrue(any("0000-index.md" in m for m in log.output))
+
+
+class TestExtractAdrSummary(unittest.TestCase):
+    def test_summary_present_prepends_title_and_source(self):
+        from tools.session_context import _extract_adr_summary
+
+        adr_text = (
+            "# ADR-07: Pipeline Standard\n"
+            "**Date:** 2026-03-21\n\n"
+            "## Summary\n"
+            "This is the summary content.\n\n"
+            "## Context\n"
+            "Context here."
+        )
+        result = _extract_adr_summary(adr_text, "docs/decisions/adr/0007-pipeline-standard.md")
+        expected = (
+            "# ADR-07: Pipeline Standard\n"
+            "**Source:** `docs/decisions/adr/0007-pipeline-standard.md`\n\n"
+            "This is the summary content."
+        )
+        self.assertEqual(result, expected)
+
+    def test_summary_missing_returns_full_text(self):
+        from tools.session_context import _extract_adr_summary
+
+        adr_text = "# ADR-08: No Summary\n**Date:** 2026-03-21\n\n## Context\nContext here."
+        result = _extract_adr_summary(adr_text, "docs/decisions/adr/0008-no-summary.md")
+        self.assertEqual(result, adr_text)
+
+
 if __name__ == "__main__":
     unittest.main()
