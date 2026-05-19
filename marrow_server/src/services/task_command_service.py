@@ -3,6 +3,7 @@ import os
 from typing import Any
 
 from config import PROJECTS_ROOT
+from domain.responses import TaskUpdateDetail, TaskUpdateResult
 from models import TaskInput
 from storage.blobs import write_blob
 from storage.entities import TaskRecord
@@ -11,7 +12,9 @@ from tools.utils.filesystem_utils import get_now_iso
 from utils.exceptions import ProjectNotFoundError, ValidationError
 
 
-async def update_task_logic(project: str, task_id: str, updates: dict[str, Any]) -> dict[str, Any]:
+async def update_task_logic(
+    project: str, task_id: str, updates: dict[str, Any]
+) -> TaskUpdateResult:
     """
     Experimental task update tool (Atomic 2PC).
     """
@@ -24,10 +27,10 @@ async def update_task_logic(project: str, task_id: str, updates: dict[str, Any])
         # Advanced agent: Use UoW with Rollback and Validation
         uow = UnitOfWork(project_root)
         record = await uow.update_task_atomically(task_id, updates)
-        return {
-            "status": "success",
-            "task": {"id": record.key, "status": record.status, "updated": record.updated},
-        }
+        return TaskUpdateResult(
+            status="success",
+            task=TaskUpdateDetail(id=record.key, status=record.status, updated=record.updated),
+        )
     except ValueError as ve:
         raise ValidationError(str(ve))
 
