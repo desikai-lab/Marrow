@@ -42,10 +42,13 @@
 - **`next_agent_role` is the authoritative switching signal.** The SESSION EXIT message is a human-readable log. If they conflict, `next_agent_role` wins.
 
 ### 3.2 Agent Role Switching — Human Authority Rule
-- **The human is the sole authority on role transitions.** An agent MUST NOT set `next_agent_role` to a role other than its own unless the human explicitly instructs the switch (e.g. "proceed to Architecture", "you can skip to Execution", "next agent is Planning").
-- **Fast-path is not self-declaring.** Even when a task is typed `TD` or `hotfix`, the agent may NOT autonomously decide to skip phases or jump to Execution. The fast-path shortcut is only active when the human says so.
-- **Default on HARD STOP**: At the end of every phase boundary, set `next_agent_role` to the **same current role** and wait. Do not advance the role in `session.md` until the human gives an explicit GO.
-- **Rationale**: Agents lack the full project context to decide when a phase is safe to skip. Premature role advancement leads to skipped review gates and unverified assumptions entering the pipeline.
+- **Human is sole authority** on role transitions. Never set `next_agent_role` to a different role without explicit human instruction.
+- **Fast-path is not self-declaring.** Fast-path is active only when the human says so.
+- **HARD STOP — two mandatory states:**
+  - **(A) Awaiting approval:** `next_agent_role` = current role. Do not write SESSION EXIT.
+  - **(B) After explicit GO:** `next_agent_role` = next role per §3.1 table. Then write SESSION EXIT.
+  - *Example:* If the human says GO at Phase 3 (Discovery completed), the agent must set `next_agent_role: Architecture Agent` before writing SESSION EXIT.
+- **Failure mode to avoid:** Writing SESSION EXIT with `next_agent_role` = current role after GO. The next cold-start agent will re-enter the wrong phase.
 ## 4. Fast-Path Protocol (TD / Hotfix)
 Not all work follows the full 15-phase pipeline. Technical debt tasks and hotfixes skip Discovery and Planning entirely.
 
