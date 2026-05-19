@@ -124,4 +124,3 @@ async def get_project_map_logic(
     paths = await repo.get_all_indexed_paths(project, include_tests=include_tests)
     res = _build_tree(paths, max_depth=depth)
     return ProjectMapResult(**res)
-

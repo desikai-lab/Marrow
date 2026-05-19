@@ -73,4 +73,3 @@ async def get_task_details_logic(project: str, task_id: str) -> TaskDetailResult
         return TaskDetailResult(**full_data)
     except Exception:
         raise
-

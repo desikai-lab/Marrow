@@ -13,4 +13,3 @@ async def save_project_artifacts_logic(
     """
     results = await execute_pipeline(project, updates)
     return [ArtifactWriteResult(**r) for r in results]
-

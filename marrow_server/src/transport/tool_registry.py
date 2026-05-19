@@ -173,7 +173,9 @@ def register_all_tools(mcp: FastMCP) -> None:
         [CODE TOOLS] Retrieves a token-optimized outline of a file's code units (classes, methods) with line numbers.
         Use depth=1 for orientation (names only), depth=2 for analysis (signatures), depth=0 for full detail.
         """
-        results = await get_file_skeleton_logic(project, path, depth=depth, summary_only=summary_only)
+        results = await get_file_skeleton_logic(
+            project, path, depth=depth, summary_only=summary_only
+        )
         return [r.model_dump() for r in results]
 
     @mcp.tool()

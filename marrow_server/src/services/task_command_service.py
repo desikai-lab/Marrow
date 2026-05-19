@@ -12,7 +12,9 @@ from tools.utils.filesystem_utils import get_now_iso
 from utils.exceptions import ProjectNotFoundError, ValidationError
 
 
-async def update_task_logic(project: str, task_id: str, updates: dict[str, Any]) -> TaskUpdateResult:
+async def update_task_logic(
+    project: str, task_id: str, updates: dict[str, Any]
+) -> TaskUpdateResult:
     """
     Experimental task update tool (Atomic 2PC).
     """

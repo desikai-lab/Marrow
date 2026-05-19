@@ -49,4 +49,3 @@ async def search_artifact_sections_logic(
     uow = UnitOfWork(project_root)
     results = await uow.chunks.semantic_search(query, limit)
     return [ArtifactSectionResult(**r) for r in results]
-
