@@ -3,6 +3,7 @@ import os
 from typing import Any
 
 from config import PROJECTS_ROOT
+from domain.responses import ProjectMapResult, SkeletonChunkResult
 from storage.embeddings import embeddings_manager
 from storage.repositories.skeleton_repository import SkeletonRepository
 
@@ -16,7 +17,7 @@ async def search_code_skeletons_logic(
     limit: int = 10,
     include_tests: bool = False,
     root_path: str | None = None,
-) -> list[dict[str, Any]]:
+) -> list[SkeletonChunkResult]:
     """
     Performs a semantic similarity search over the code_skeleton_index for the
     given project.
@@ -45,7 +46,7 @@ async def search_code_skeletons_logic(
         return []
 
     repo = SkeletonRepository(project_root)
-    return await repo.semantic_search(
+    results = await repo.semantic_search(
         query_vector=query_vector,
         project=project,
         chunk_type=chunk_type,
@@ -53,6 +54,7 @@ async def search_code_skeletons_logic(
         include_tests=include_tests,
         root_path=root_path,
     )
+    return [SkeletonChunkResult(**r) for r in results]
 
 
 async def get_exact_code_units_logic(
@@ -60,7 +62,7 @@ async def get_exact_code_units_logic(
     exact_name: str,
     chunk_type: str | None = None,
     include_tests: bool = False,
-) -> list[dict[str, Any]]:
+) -> list[SkeletonChunkResult]:
     """
     Retrieves code units matching an exact name (e.g. a specific class or method).
     """
@@ -70,9 +72,10 @@ async def get_exact_code_units_logic(
         return []
 
     repo = SkeletonRepository(project_root)
-    return await repo.get_exact_code_units(
+    results = await repo.get_exact_code_units(
         project, exact_name, chunk_type, include_tests=include_tests
     )
+    return [SkeletonChunkResult(**r) for r in results]
 
 
 async def get_file_skeleton_logic(
@@ -80,7 +83,7 @@ async def get_file_skeleton_logic(
     path: str,
     depth: int = 0,
     summary_only: bool = False,
-) -> list[dict[str, Any]]:
+) -> list[SkeletonChunkResult]:
     """
     Retrieves the chronological structural outline of a file.
     """
@@ -90,9 +93,10 @@ async def get_file_skeleton_logic(
         return []
 
     repo = SkeletonRepository(project_root)
-    return await repo.get_file_skeleton_chunks(
+    results = await repo.get_file_skeleton_chunks(
         path, project, depth=depth, summary_only=summary_only
     )
+    return [SkeletonChunkResult(**r) for r in results]
 
 
 def _build_tree(paths: list[str], max_depth: int) -> dict[str, Any]:
@@ -110,12 +114,14 @@ def _build_tree(paths: list[str], max_depth: int) -> dict[str, Any]:
 
 async def get_project_map_logic(
     project: str, depth: int = 2, include_tests: bool = False
-) -> dict[str, Any]:
+) -> ProjectMapResult:
     """Returns a live directory tree of indexed files for agent orientation."""
     project_root = os.path.join(PROJECTS_ROOT, project)
     if not os.path.exists(project_root):
         logger.warning("Project not found: %s", project)
-        return {}
+        return ProjectMapResult()
     repo = SkeletonRepository(project_root)
     paths = await repo.get_all_indexed_paths(project, include_tests=include_tests)
-    return _build_tree(paths, max_depth=depth)
+    res = _build_tree(paths, max_depth=depth)
+    return ProjectMapResult(**res)
+

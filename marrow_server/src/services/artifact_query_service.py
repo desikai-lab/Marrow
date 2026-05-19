@@ -1,13 +1,13 @@
 import os
-from typing import Any
 
 from config import PROJECTS_ROOT
+from domain.responses import ArtifactSectionResult, TaskSemanticResult
 from utils.exceptions import ProjectNotFoundError
 
 
 async def semantic_search_tasks_logic(
     project: str, query: str, limit: int = 5
-) -> list[dict[str, Any]]:
+) -> list[TaskSemanticResult]:
     """
     [EXPERIMENTAL] Semantic task search via vector embeddings.
     """
@@ -25,12 +25,12 @@ async def semantic_search_tasks_logic(
 
         # 3. Format result
         return [
-            {
-                "key": r["record"].key,
-                "title": r["record"].title,
-                "status": r["record"].status,
-                "score": r["distance"],
-            }
+            TaskSemanticResult(
+                key=r["record"].key,
+                title=r["record"].title,
+                status=r["record"].status,
+                score=r["distance"],
+            )
             for r in results
         ]
     except Exception:
@@ -39,7 +39,7 @@ async def semantic_search_tasks_logic(
 
 async def search_artifact_sections_logic(
     project: str, query: str, limit: int = 5
-) -> list[dict[str, Any]]:
+) -> list[ArtifactSectionResult]:
     """Semantic search by artifact sections (chunks) (ASV-7)."""
     from storage.uow import UnitOfWork
 
@@ -47,4 +47,6 @@ async def search_artifact_sections_logic(
     if not os.path.exists(project_root):
         raise ProjectNotFoundError(f"Project '{project}' not found")
     uow = UnitOfWork(project_root)
-    return await uow.chunks.semantic_search(query, limit)
+    results = await uow.chunks.semantic_search(query, limit)
+    return [ArtifactSectionResult(**r) for r in results]
+

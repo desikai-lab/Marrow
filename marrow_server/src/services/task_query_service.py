@@ -1,7 +1,7 @@
 import os
-from typing import Any
 
 from config import PROJECTS_ROOT
+from domain.responses import TaskDetailResult, TaskSummary
 from storage.blobs import read_blob
 from storage.repositories import TaskRepository
 from utils.exceptions import (
@@ -13,7 +13,7 @@ from utils.exceptions import (
 
 async def search_tasks_logic(
     project: str, status: str | None = None, priority: str | None = None, type: str | None = None
-) -> list[dict[str, Any]]:
+) -> list[TaskSummary]:
     """
     Experimental task search tool via LanceDB.
     """
@@ -29,18 +29,18 @@ async def search_tasks_logic(
 
     # Format for response (analogous to legacy search_tasks)
     return [
-        {
-            "id": r.key,
-            "title": r.title,
-            "status": r.status,
-            "priority": r.priority,
-            "project": r.project,
-        }
+        TaskSummary(
+            id=r.key,
+            title=r.title,
+            status=r.status,
+            priority=r.priority,
+            project=r.project,
+        )
         for r in results
     ]
 
 
-async def get_task_details_logic(project: str, task_id: str) -> dict[str, Any]:
+async def get_task_details_logic(project: str, task_id: str) -> TaskDetailResult:
     """
     Experimental tool for retrieving task details (LanceDB + Blobs).
     Returns full task data, including problem and solution.
@@ -70,6 +70,7 @@ async def get_task_details_logic(project: str, task_id: str) -> dict[str, Any]:
         full_data = await asyncio.to_thread(read_blob, blob_path)
         full_data["key"] = index_entry.key
         full_data["id"] = index_entry.id
-        return full_data
+        return TaskDetailResult(**full_data)
     except Exception:
         raise
+

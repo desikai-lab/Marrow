@@ -59,7 +59,8 @@ def register_all_tools(mcp: FastMCP) -> None:
         type: Annotated[str | None, Field(description="Type filter")] = None,
     ) -> list[Any]:
         """[TASK TOOLS] Search tasks through LanceDB."""
-        return await search_tasks_logic(project, status, priority, type)
+        results = await search_tasks_logic(project, status, priority, type)
+        return [r.model_dump() for r in results]
 
     @mcp.tool()
     @mcp_error_handler
@@ -68,7 +69,8 @@ def register_all_tools(mcp: FastMCP) -> None:
         task_id: Annotated[str, Field(description="Task ID")],
     ) -> Any:
         """[TASK TOOLS] Returns full task details."""
-        return await get_task_details_logic(project, task_id)
+        result = await get_task_details_logic(project, task_id)
+        return result.model_dump()
 
     @mcp.tool()
     @mcp_error_handler
@@ -78,7 +80,8 @@ def register_all_tools(mcp: FastMCP) -> None:
         updates: Annotated[dict[str, Any], Field(description="Updates dict")],
     ) -> Any:
         """[TASK TOOLS] Updates a task."""
-        return await update_task_logic(project, task_id, updates)
+        result = await update_task_logic(project, task_id, updates)
+        return result.model_dump()
 
     @mcp.tool()
     @mcp_error_handler
@@ -104,7 +107,8 @@ def register_all_tools(mcp: FastMCP) -> None:
         Calculates embeddings vector for the query and searches top results by distance.
         Returns the path, section name, line numbers, and distance.
         """
-        return await search_artifact_sections_logic(project, query, limit)
+        results = await search_artifact_sections_logic(project, query, limit)
+        return [r.model_dump() for r in results]
 
     @mcp.tool()
     @mcp_error_handler
@@ -138,7 +142,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         semantic similarity to the query, each with file path, line range, and skeleton text.
         Use root_path to scope to a module.
         """
-        return await search_code_skeletons_logic(
+        results = await search_code_skeletons_logic(
             project,
             query,
             chunk_type=chunk_type,
@@ -146,6 +150,7 @@ def register_all_tools(mcp: FastMCP) -> None:
             include_tests=include_tests,
             root_path=root_path,
         )
+        return [r.model_dump() for r in results]
 
     @mcp.tool()
     @mcp_error_handler
@@ -168,7 +173,8 @@ def register_all_tools(mcp: FastMCP) -> None:
         [CODE TOOLS] Retrieves a token-optimized outline of a file's code units (classes, methods) with line numbers.
         Use depth=1 for orientation (names only), depth=2 for analysis (signatures), depth=0 for full detail.
         """
-        return await get_file_skeleton_logic(project, path, depth=depth, summary_only=summary_only)
+        results = await get_file_skeleton_logic(project, path, depth=depth, summary_only=summary_only)
+        return [r.model_dump() for r in results]
 
     @mcp.tool()
     @mcp_error_handler
@@ -183,7 +189,8 @@ def register_all_tools(mcp: FastMCP) -> None:
         [CODE TOOLS] Returns a live directory tree of all files indexed in the code skeleton index.
         Use this to orient yourself and find relevant subdirectories before starting a scoped search.
         """
-        return await get_project_map_logic(project, depth=depth, include_tests=include_tests)
+        result = await get_project_map_logic(project, depth=depth, include_tests=include_tests)
+        return result.model_dump()
 
     @mcp.tool()
     @mcp_error_handler
@@ -246,7 +253,8 @@ def register_all_tools(mcp: FastMCP) -> None:
             extra = d.pop("extra_fields", {})
             d.update(extra) if extra else None
             updates_dict.append(d)
-        return await save_project_artifacts_logic(project, updates_dict)
+        results = await save_project_artifacts_logic(project, updates_dict)
+        return [r.model_dump() for r in results]
 
     @mcp.tool()
     @mcp_error_handler

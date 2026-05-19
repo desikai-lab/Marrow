@@ -161,8 +161,8 @@ class TestSkel11Improvements(unittest.TestCase):
 
         # Test logic
         m = asyncio.run(get_project_map_logic(self.project, depth=2))
-        self.assertIn("src/", m["structure"])
-        self.assertIn("main.py", m["structure"]["src/"])
+        self.assertIn("src/", m.structure)
+        self.assertIn("main.py", m.structure["src/"])
 
 
 if __name__ == "__main__":
