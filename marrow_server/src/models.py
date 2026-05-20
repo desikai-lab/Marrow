@@ -2,7 +2,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-VALID_TASK_TYPES: set[str] = {"F", "B", "TD"}
+from domain.enums import TaskPriority, TaskStatus, TaskType
 
 
 class TaskInput(BaseModel):
@@ -11,31 +11,25 @@ class TaskInput(BaseModel):
     project: Annotated[
         str | None, Field(default=None, description="Project name (e.g. 'YourProject', 'MCP')")
     ] = None
-    type: Annotated[str, Field(description="Task type: F (feature), B (bug), TD (tech debt)")]
+    type: Annotated[TaskType, Field(description="Task type: F (feature), B (bug), TD (tech debt)")]
     title: Annotated[str, Field(description="Short task title")]
     where: Annotated[Any, Field(default=[], description="List of affected files or modules")] = []
     problem: Annotated[str, Field(description="Detailed problem description")]
     solution: Annotated[str, Field(description="Proposed or implemented solution")]
     priority: Annotated[
-        str, Field(default="medium", description="Priority: critical, high, medium, low")
-    ] = "medium"
+        TaskPriority,
+        Field(default=TaskPriority.medium, description="Priority: critical, high, medium, low"),
+    ] = TaskPriority.medium
     blocked_by: Annotated[
         Any, Field(default=[], description="List of task IDs this task depends on")
     ] = []
     status: Annotated[
-        str,
+        TaskStatus,
         Field(
-            default="open", description="Current status (e.g. open, in_progress, paused, closed)"
+            default=TaskStatus.open,
+            description="Current status (e.g. open, in_progress, paused, closed)",
         ),
-    ] = "open"
-
-    @field_validator("type")
-    @classmethod
-    def validate_type(cls, v: str) -> str:
-        if v not in VALID_TASK_TYPES:
-            # Allow if it's already a migrated ID (contains digits) or just a string
-            return v
-        return v
+    ] = TaskStatus.open
 
     @field_validator("title", "problem", "solution")
     @classmethod
