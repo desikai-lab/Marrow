@@ -47,7 +47,7 @@ async def test_add_tasks_logic_valid_task_and_duplicate_title_raises_value_error
                 title="Experimental Task 1",
                 problem="Test problem 1",
                 solution="Test solution 1",
-                priority="HIGH",
+                priority="high",
             )
 
             result1 = await add_tasks_logic([task1], TEST_PROJECT)

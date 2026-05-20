@@ -5,6 +5,7 @@ from typing import Any
 import pyarrow.compute as pc
 
 from config import EMBEDDING_MODEL_TEXT
+from domain.enums import TaskPriority, TaskStatus, TaskType
 from storage.db import get_table
 from storage.embeddings import embeddings_manager
 from storage.entities import TaskRecord
@@ -97,9 +98,9 @@ class TaskRepository:
     @track_time(layer="repository")
     async def search(
         self,
-        status: str | None = None,
-        priority: str | None = None,
-        type: str | None = None,
+        status: TaskStatus | str | None = None,
+        priority: TaskPriority | str | None = None,
+        type: TaskType | str | None = None,
         project: str | None = None,
     ) -> list[TaskRecord]:
         """Searches tasks by filter criteria."""

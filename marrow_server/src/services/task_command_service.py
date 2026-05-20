@@ -3,6 +3,7 @@ import os
 from typing import Any
 
 from config import PROJECTS_ROOT
+from domain.enums import TaskStatus
 from domain.responses import TaskUpdateDetail, TaskUpdateResult
 from models import TaskInput
 from storage.blobs import write_blob
@@ -46,7 +47,7 @@ async def complete_tasks_logic(task_ids: list[str], project: str) -> str:
         raise ProjectNotFoundError(f"Project '{project}' not found")
     uow = UnitOfWork(project_root)
     result = await uow.move_tasks_batch_atomically(
-        task_ids, new_status="closed", resolution="Closed via complete_tasks batch tool."
+        task_ids, new_status=TaskStatus.closed, resolution="Closed via complete_tasks batch tool."
     )
     completed = result["completed"]
     unblocked = result["unblocked"]
