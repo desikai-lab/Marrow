@@ -5,6 +5,8 @@ from typing import Any
 from config import PROJECTS_ROOT
 from domain.enums import TaskStatus
 from domain.responses import TaskUpdateDetail, TaskUpdateResult
+from domain.validators.status_change import StatusChangeValidator
+from domain.validators.task_title_unique import TaskTitleUniqueValidator
 from models import TaskInput
 from storage.blobs import write_blob
 from storage.entities import TaskRecord
@@ -23,6 +25,11 @@ async def update_task_logic(
     project_root = os.path.join(PROJECTS_ROOT, project)
     if not os.path.exists(project_root):
         raise ProjectNotFoundError(f"Project '{project}' not found")
+
+    uow_pre = UnitOfWork(project_root)
+    current_record = await uow_pre.tasks.get_by_key(task_id)
+    if current_record:
+        StatusChangeValidator({"status": current_record.status}, updates).validate()
 
     try:
         # Advanced agent: Use UoW with Rollback and Validation
@@ -71,7 +78,6 @@ async def add_tasks_logic(tasks_input: list[TaskInput], project: str) -> str:
 
     async with get_table_lock("task_index"):
         # 0. Title uniqueness check (B19: Duplicates forbidden)
-        from tools.validators.backlog_validation import validate_task_title_unique
 
         uow = UnitOfWork(project_root)
         # Fetch data as list of dicts for legacy compatible validation
@@ -84,7 +90,7 @@ async def add_tasks_logic(tasks_input: list[TaskInput], project: str) -> str:
 
         for ti in tasks_input:
             # B19: Title uniqueness check
-            validate_task_title_unique(ti.title, existing_tasks, project)
+            TaskTitleUniqueValidator(ti.title, existing_tasks, project).validate()
 
             t_id = f"{ti.type}{next_id}"
             blocked_by = ti.blocked_by if ti.blocked_by else []
