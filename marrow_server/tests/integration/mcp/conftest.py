@@ -1,27 +1,27 @@
 import os
+import tempfile
 
 import pytest
 import yaml
 
+# Create a temporary directory at import time so it is set before any config imports
+INTEGRATION_TASKS_DIR = tempfile.mkdtemp(prefix="marrow_integration_")
+os.environ["TASKS_DIR"] = INTEGRATION_TASKS_DIR
+os.environ["SECRET_TOKEN"] = "test-token-integration"
+
 
 def pytest_configure(config):
     """Set integration env vars BEFORE any module (config.py) is imported."""
-    os.environ.setdefault("SECRET_TOKEN", "test-token-integration")
-    # TASKS_DIR set later per-session via tmp_path_factory; setdefault avoids
-    # overriding if already set by the user's env for the unit test run.
+    os.environ["TASKS_DIR"] = INTEGRATION_TASKS_DIR
+    os.environ["SECRET_TOKEN"] = "test-token-integration"
 
 
 @pytest.fixture(scope="session")
-def tmp_project(tmp_path_factory):
+def tmp_project():
     """
-    Bootstrap a complete isolated project in a temp directory.
+    Bootstrap a complete isolated project in the temp directory.
     Returns the project name string.
     """
-    base = tmp_path_factory.mktemp("marrow_integration")
-    # Must set BEFORE importing config (config reads os.environ at import time)
-    os.environ["TASKS_DIR"] = str(base)
-    os.environ["SECRET_TOKEN"] = "test-token-integration"
-
     project_name = "IntegrationTestProject"
 
     # Import after env is set
