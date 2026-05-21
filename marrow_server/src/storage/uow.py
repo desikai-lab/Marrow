@@ -68,8 +68,6 @@ class UnitOfWork:
                 "project": current_record.project,
             }
 
-
-
         # Create a Backup for Rollback
         history_dir = Path(self.project_root) / ".history" / task_key
         history_dir.mkdir(parents=True, exist_ok=True)
@@ -166,7 +164,9 @@ class UnitOfWork:
                     raise TaskNotFoundError(f"Task '{key}' not found")
                 abs_path = os.path.join(self.project_root, record.file_path)
                 full_data = await asyncio.to_thread(read_blob, abs_path)
-                StatusChangeValidator(full_data, {"status": new_status, "resolution": resolution}).validate()
+                StatusChangeValidator(
+                    full_data, {"status": new_status, "resolution": resolution}
+                ).validate()
                 validated.append((record, full_data, abs_path))
                 original_paths[key] = abs_path
 

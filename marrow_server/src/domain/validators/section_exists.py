@@ -19,4 +19,3 @@ class SectionNotExistsValidator(Validator):
                 f"Section '{self._section_name}' already exists in artifact {self._rel_path}.",
                 details={"section": self._section_name, "path": self._rel_path},
             )
-
