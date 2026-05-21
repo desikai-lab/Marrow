@@ -79,7 +79,7 @@ class TestCompleteSingleTaskHappyPath:
             patch("storage.uow.ArtifactChunkRepository"),
             patch("storage.uow.read_blob", return_value=blob_data),
             patch("storage.uow.write_blob") as mock_write,
-            patch("storage.uow.validate_status_change"),
+            patch("storage.uow.StatusChangeValidator"),
         ):
             # write_blob → returns path to a *new* blob
             new_blob = tmp_project / ".db" / "blobs" / "done" / f"{key}.md"
@@ -134,7 +134,7 @@ class TestCompleteMultipleTasksSingleLock:
             patch("storage.uow.ArtifactChunkRepository"),
             patch("storage.uow.read_blob", side_effect=lambda p: blobs[Path(p).stem]),
             patch("storage.uow.write_blob") as mock_write,
-            patch("storage.uow.validate_status_change"),
+            patch("storage.uow.StatusChangeValidator"),
             patch("storage.db.get_table_lock", side_effect=counting_lock),
         ):
 
@@ -187,7 +187,7 @@ class TestFailFastOnUnknownKey:
             patch("storage.uow.ArtifactChunkRepository"),
             patch("storage.uow.read_blob", return_value=blob),
             patch("storage.uow.write_blob") as mock_write,
-            patch("storage.uow.validate_status_change"),
+            patch("storage.uow.StatusChangeValidator"),
         ):
             repo_inst = MockTaskRepo.return_value
             # Return None for the bad key
@@ -229,7 +229,7 @@ class TestRollbackOnLanceDbFailure:
             patch("storage.uow.ArtifactChunkRepository"),
             patch("storage.uow.read_blob", return_value=blob_data),
             patch("storage.uow.write_blob") as mock_write,
-            patch("storage.uow.validate_status_change"),
+            patch("storage.uow.StatusChangeValidator"),
         ):
             new_blob = tmp_project / ".db" / "blobs" / "done" / f"{key}.md"
             new_blob.parent.mkdir(parents=True, exist_ok=True)
@@ -292,7 +292,7 @@ class TestAutoUnblockClearsBlockedBy:
             patch("storage.uow.ArtifactChunkRepository"),
             patch("storage.uow.read_blob", side_effect=_fake_read),
             patch("storage.uow.write_blob", side_effect=_fake_write),
-            patch("storage.uow.validate_status_change"),
+            patch("storage.uow.StatusChangeValidator"),
         ):
             repo_inst = MockTaskRepo.return_value
             repo_inst.get_by_key = AsyncMock(return_value=rec_a)

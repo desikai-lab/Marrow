@@ -61,10 +61,12 @@ async def test_add_tasks_logic_valid_task_and_duplicate_title_raises_value_error
                 problem="Dup problem",
                 solution="Dup solution",
             )
+            from utils.exceptions import ValidationError
+
             try:
                 await add_tasks_logic([task_dup], TEST_PROJECT)
-                assert False, "Should have raised ValueError for duplicate title"
-            except ValueError as e:
+                assert False, "Should have raised ValidationError for duplicate title"
+            except ValidationError as e:
                 print(f"Caught expected error: {e}")
                 assert "already exists" in str(e)
 
