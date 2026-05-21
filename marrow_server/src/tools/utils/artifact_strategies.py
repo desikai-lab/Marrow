@@ -2,13 +2,13 @@ import os
 from abc import ABC, abstractmethod
 from typing import Literal
 
+from domain.validators.section_exists import SectionNotExistsValidator
 from tools.utils.markdown_utils import (
     clean_section_name,
     extract_markdown_section,
     find_all_sections,
     strip_duplicated_header,
 )
-from tools.validators.artifact_validation import validate_section_not_exists
 
 
 # --- HELPER ---
@@ -228,7 +228,7 @@ class AppendSectionStrategy(SaveStrategy):
         header_level = kwargs.get("header_level", 2)
 
         clean_name = clean_section_name(section_name)
-        validate_section_not_exists(existing_content, clean_name, "in-memory-file")
+        SectionNotExistsValidator(existing_content, clean_name, "in-memory-file").validate()
 
         new_content = strip_duplicated_header(new_content, clean_name)
         header = f"\n\n{'#' * header_level} {clean_name}\n"

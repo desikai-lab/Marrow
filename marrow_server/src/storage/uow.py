@@ -5,10 +5,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from domain.validators.status_change import StatusChangeValidator
 from storage.blobs import read_blob, write_blob
 from storage.entities import TaskRecord
 from storage.repositories import ArtifactChunkRepository, ArtifactRepository, TaskRepository
-from storage.validation import validate_status_change
 from utils.exceptions import DomainProtectionError, TaskNotFoundError
 
 VALID_TRANSITIONS = {
@@ -67,8 +67,6 @@ class UnitOfWork:
                 "priority": current_record.priority,
                 "project": current_record.project,
             }
-
-        validate_status_change(current_full_data, new_data)
 
         # Create a Backup for Rollback
         history_dir = Path(self.project_root) / ".history" / task_key
@@ -166,7 +164,9 @@ class UnitOfWork:
                     raise TaskNotFoundError(f"Task '{key}' not found")
                 abs_path = os.path.join(self.project_root, record.file_path)
                 full_data = await asyncio.to_thread(read_blob, abs_path)
-                validate_status_change(full_data, {"status": new_status, "resolution": resolution})
+                StatusChangeValidator(
+                    full_data, {"status": new_status, "resolution": resolution}
+                ).validate()
                 validated.append((record, full_data, abs_path))
                 original_paths[key] = abs_path
 
