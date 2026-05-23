@@ -80,7 +80,8 @@ def _parse_foundational_adr_paths(index_text: str, agent_role: str = "") -> list
         cells = [c.strip() for c in line.split("|")]
         roles_cell = cells[4].lower() if len(cells) > 4 else ""
         if role_filter and roles_cell and roles_cell != "all":
-            if role_filter not in roles_cell:
+            roles_list = [r.strip() for r in roles_cell.split(",")]
+            if not any(r in role_filter for r in roles_list):
                 continue
         paths.append(f"docs/decisions/{href_match.group(0)[1:-1]}")
     return paths
@@ -221,8 +222,8 @@ def get_guideline_logic(project: str, role: str) -> str:
         all_paths = _parse_foundational_adr_paths(index_text)  # no role filter — full index
         path_lookup: dict[str, str] = {}
         for p in all_paths:
-            stem = p.split("/")[-1]   # e.g. "0007-pipeline-standard.md"
-            adr_id = stem[:4]          # first 4 chars = ID
+            stem = p.split("/")[-1]  # e.g. "0007-pipeline-standard.md"
+            adr_id = stem[:4]  # first 4 chars = ID
             path_lookup[adr_id] = p
 
         for adr_id in profile.adrs:
@@ -230,7 +231,8 @@ def get_guideline_logic(project: str, role: str) -> str:
             if not adr_path:
                 logger.warning(
                     "ADR id '%s' not found in index for project '%s' — skipping.",
-                    adr_id, project,
+                    adr_id,
+                    project,
                 )
                 continue
             try:
