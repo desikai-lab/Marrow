@@ -12,6 +12,7 @@ from tools.utils.filesystem_utils import (
     validate_artifact_path,
     validate_project_path,
 )
+from utils.exceptions import ArtifactNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ def read_artifact_logic(
     target_path = validate_artifact_path(project, rel_path)
 
     if not os.path.exists(target_path) or not os.path.isfile(target_path):
-        raise FileNotFoundError(f"Artifact {rel_path} not found.")
+        raise ArtifactNotFoundError(f"Artifact {rel_path} not found.")
 
     strategy = ArtifactStrategyFactory.get_read_strategy(mode)
     return strategy.read(target_path, direction=direction, **kwargs)
