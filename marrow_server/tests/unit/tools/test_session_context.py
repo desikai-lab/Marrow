@@ -229,5 +229,174 @@ class TestExtractAdrSummary(unittest.TestCase):
         self.assertEqual(result, adr_text)
 
 
+class TestParseFoundationalAdrPathsExtended(unittest.TestCase):
+    def test_parseFoundationalAdrPaths_noRoleFilter_returnsAllPaths(self):
+        index_text = (
+            "## Foundational ADRs 🔴\n"
+            "| ID | Title | Status | Roles |\n"
+            "|----|-------|--------|-------|\n"
+            "| 0007 | [Pipeline Standard](adr/0007-pipeline-standard.md) | Accepted | all |\n"
+            "| 0019 | [Streamable HTTP Transport](adr/0019-streamable-http.md) | Accepted | execution |\n"
+            "| 0034 | [Product Name](adr/0034-product-name-marrow.md) | Accepted | discovery |\n"
+        )
+        from tools.session_context import _parse_foundational_adr_paths
+        res = _parse_foundational_adr_paths(index_text)
+        self.assertEqual(len(res), 3)
+        self.assertIn("docs/decisions/adr/0007-pipeline-standard.md", res)
+        self.assertIn("docs/decisions/adr/0019-streamable-http.md", res)
+        self.assertIn("docs/decisions/adr/0034-product-name-marrow.md", res)
+
+    def test_parseFoundationalAdrPaths_roleExecution_returnsFilteredPaths(self):
+        index_text = (
+            "## Foundational ADRs 🔴\n"
+            "| ID | Title | Status | Roles |\n"
+            "|----|-------|--------|-------|\n"
+            "| 0007 | [Pipeline Standard](adr/0007-pipeline-standard.md) | Accepted | all |\n"
+            "| 0019 | [Streamable HTTP Transport](adr/0019-streamable-http.md) | Accepted | execution |\n"
+            "| 0034 | [Product Name](adr/0034-product-name-marrow.md) | Accepted | discovery |\n"
+        )
+        from tools.session_context import _parse_foundational_adr_paths
+        res = _parse_foundational_adr_paths(index_text, "execution")
+        self.assertEqual(len(res), 2)
+        self.assertIn("docs/decisions/adr/0007-pipeline-standard.md", res)
+        self.assertIn("docs/decisions/adr/0019-streamable-http.md", res)
+        self.assertNotIn("docs/decisions/adr/0034-product-name-marrow.md", res)
+
+    def test_parseFoundationalAdrPaths_roleDiscovery_returnsFilteredPaths(self):
+        index_text = (
+            "## Foundational ADRs 🔴\n"
+            "| ID | Title | Status | Roles |\n"
+            "|----|-------|--------|-------|\n"
+            "| 0007 | [Pipeline Standard](adr/0007-pipeline-standard.md) | Accepted | all |\n"
+            "| 0019 | [Streamable HTTP Transport](adr/0019-streamable-http.md) | Accepted | execution |\n"
+            "| 0034 | [Product Name](adr/0034-product-name-marrow.md) | Accepted | discovery |\n"
+        )
+        from tools.session_context import _parse_foundational_adr_paths
+        res = _parse_foundational_adr_paths(index_text, "discovery")
+        self.assertEqual(len(res), 2)
+        self.assertIn("docs/decisions/adr/0007-pipeline-standard.md", res)
+        self.assertNotIn("docs/decisions/adr/0019-streamable-http.md", res)
+        self.assertIn("docs/decisions/adr/0034-product-name-marrow.md", res)
+
+    def test_parseFoundationalAdrPaths_noRolesColumn_returnsAllPaths(self):
+        index_text = (
+            "## Foundational ADRs 🔴\n"
+            "| ID | Title | Status |\n"
+            "|----|-------|--------|\n"
+            "| 0007 | [Pipeline Standard](adr/0007-pipeline-standard.md) | Accepted |\n"
+            "| 0019 | [Streamable HTTP Transport](adr/0019-streamable-http.md) | Accepted |\n"
+        )
+        from tools.session_context import _parse_foundational_adr_paths
+        res = _parse_foundational_adr_paths(index_text, "execution")
+        self.assertEqual(len(res), 2)
+        self.assertIn("docs/decisions/adr/0007-pipeline-standard.md", res)
+        self.assertIn("docs/decisions/adr/0019-streamable-http.md", res)
+
+    def test_parseFoundationalAdrPaths_rowTaggedAll_alwaysIncluded(self):
+        index_text = (
+            "## Foundational ADRs 🔴\n"
+            "| ID | Title | Status | Roles |\n"
+            "|----|-------|--------|-------|\n"
+            "| 0007 | [Pipeline Standard](adr/0007-pipeline-standard.md) | Accepted | all |\n"
+        )
+        from tools.session_context import _parse_foundational_adr_paths
+        res = _parse_foundational_adr_paths(index_text, "ghost")
+        self.assertEqual(res, ["docs/decisions/adr/0007-pipeline-standard.md"])
+
+
+class TestGetGuidelineLogic(unittest.TestCase):
+    _MOCK_YAML = """
+roles:
+  discovery:
+    guideline: docs/manuals/guidelines/discovery.md
+    adrs: ["0007", "0034"]
+    playbooks: []
+  execution:
+    guideline: docs/manuals/guidelines/execution.md
+    adrs: ["0007", "0019"]
+    playbooks: []
+"""
+
+    _MOCK_INDEX = (
+        "## Foundational ADRs 🔴\n"
+        "| ID | Title | Status | Roles |\n"
+        "|----|-------|--------|-------|\n"
+        "| 0007 | [Pipeline Standard](adr/0007-pipeline-standard.md) | Accepted | all |\n"
+        "| 0019 | [Streamable HTTP](adr/0019-streamable-http.md) | Accepted | execution |\n"
+        "| 0034 | [Product Name](adr/0034-product-name-marrow.md) | Accepted | discovery |\n"
+    )
+
+    @patch("tools.session_context.read_artifact_logic")
+    def test_getGuidelineLogic_validRole_returnsFormattedBundle(self, mock_read):
+        def side_effect(project, path):
+            if path == "docs/manuals/role_profiles.yaml":
+                return self._MOCK_YAML
+            if path == "docs/manuals/guidelines/execution.md":
+                return "EXECUTION GUIDELINE TEXT"
+            if path == "docs/decisions/0000-index.md":
+                return self._MOCK_INDEX
+            if path == "docs/decisions/adr/0007-pipeline-standard.md":
+                return "# Pipeline Standard\n## Summary\nPipeline summary."
+            if path == "docs/decisions/adr/0019-streamable-http.md":
+                return "# Streamable HTTP\n## Summary\nStreamable summary."
+            raise ArtifactNotFoundError("file", path)
+
+        mock_read.side_effect = side_effect
+        from tools.session_context import get_guideline_logic
+        res = get_guideline_logic("TestProj", "execution")
+        self.assertTrue(res.startswith("=== ROLE GUIDELINES ==="))
+        self.assertIn("EXECUTION GUIDELINE TEXT", res)
+        self.assertIn("=== FOUNDATIONAL DECISIONS ===", res)
+        self.assertIn("Pipeline summary.", res)
+        self.assertIn("Streamable summary.", res)
+
+    @patch("tools.session_context.read_artifact_logic")
+    def test_getGuidelineLogic_unknownRole_returnsErrorString(self, mock_read):
+        mock_read.return_value = self._MOCK_YAML
+        from tools.session_context import get_guideline_logic
+        res = get_guideline_logic("TestProj", "ghost")
+        self.assertIn("Unknown role 'ghost'", res)
+
+    @patch("tools.session_context.read_artifact_logic")
+    def test_getGuidelineLogic_missingYaml_returnsErrorString(self, mock_read):
+        mock_read.side_effect = ArtifactNotFoundError("file", "docs/manuals/role_profiles.yaml")
+        from tools.session_context import get_guideline_logic
+        res = get_guideline_logic("TestProj", "execution")
+        self.assertIn("role_profiles.yaml not found", res)
+
+    @patch("tools.session_context.read_artifact_logic")
+    def test_getGuidelineLogic_missingGuidelineFile_returnsErrorString(self, mock_read):
+        def side_effect(project, path):
+            if path == "docs/manuals/role_profiles.yaml":
+                return self._MOCK_YAML
+            raise ArtifactNotFoundError("file", path)
+
+        mock_read.side_effect = side_effect
+        from tools.session_context import get_guideline_logic
+        res = get_guideline_logic("TestProj", "execution")
+        self.assertIn("guideline file not found", res)
+
+    @patch("tools.session_context.read_artifact_logic")
+    def test_getGuidelineLogic_missingAdrFile_skipsAndContinues(self, mock_read):
+        def side_effect(project, path):
+            if path == "docs/manuals/role_profiles.yaml":
+                return self._MOCK_YAML
+            if path == "docs/manuals/guidelines/execution.md":
+                return "EXECUTION GUIDELINE TEXT"
+            if path == "docs/decisions/0000-index.md":
+                return self._MOCK_INDEX
+            if path == "docs/decisions/adr/0007-pipeline-standard.md":
+                return "# Pipeline Standard\n## Summary\nPipeline summary."
+            raise ArtifactNotFoundError("file", path)
+
+        mock_read.side_effect = side_effect
+        from tools.session_context import get_guideline_logic
+        with self.assertLogs("tools.session_context", level="WARNING") as log:
+            res = get_guideline_logic("TestProj", "execution")
+        self.assertIn("EXECUTION GUIDELINE TEXT", res)
+        self.assertIn("Pipeline summary.", res)
+        self.assertTrue(any("0019-streamable-http.md" in m for m in log.output))
+
+
 if __name__ == "__main__":
     unittest.main()
