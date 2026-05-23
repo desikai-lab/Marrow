@@ -49,12 +49,16 @@ def _select_agent_role(phase: int) -> str:
         return "Execution Agent"
 
 
-def _parse_foundational_adr_paths(index_text: str) -> list[str]:
+def _parse_foundational_adr_paths(index_text: str, agent_role: str = "") -> list[str]:
     """Parse the 'Foundational ADRs' section of the ADR index and return
-    project-relative paths for each listed ADR.
+    project-relative paths for each listed ADR, optionally filtered by role.
 
-    Returns an empty list if the section is absent or contains no links.
-    Never raises.
+    Filtering rules:
+    - agent_role empty/blank: return all paths (backward compat).
+    - roles cell absent, blank, or 'all': always include.
+    - roles cell contains agent_role (case-insensitive): include.
+    - Otherwise: exclude.
+    Returns empty list if section absent. Never raises.
     """
     section_match = re.search(
         r"##\s+Foundational ADRs.*?(\n.*?)(?=\n##|\Z)",
@@ -65,8 +69,21 @@ def _parse_foundational_adr_paths(index_text: str) -> list[str]:
         return []
 
     section = section_match.group(1)
-    hrefs = re.findall(r"\(adr/[\w\-]+\.md\)", section)
-    return [f"docs/decisions/{href[1:-1]}" for href in hrefs]
+    role_filter = agent_role.strip().lower()
+
+    paths = []
+    for line in section.splitlines():
+        href_match = re.search(r"\(adr/[\w\-]+\.md\)", line)
+        if not href_match:
+            continue
+        # cells[0]=empty, [1]=ID, [2]=Title, [3]=Status, [4]=Roles (optional)
+        cells = [c.strip() for c in line.split("|")]
+        roles_cell = cells[4].lower() if len(cells) > 4 else ""
+        if role_filter and roles_cell and roles_cell != "all":
+            if role_filter not in roles_cell:
+                continue
+        paths.append(f"docs/decisions/{href_match.group(0)[1:-1]}")
+    return paths
 
 
 def _extract_adr_summary(adr_text: str, adr_path: str) -> str:
@@ -130,7 +147,7 @@ def get_session_context_logic(project: str) -> str:
     adr_parts: list[str] = []
     try:
         index_text = read_artifact_logic(project, ADR_INDEX_PATH)
-        foundational_paths = _parse_foundational_adr_paths(index_text)
+        foundational_paths = _parse_foundational_adr_paths(index_text, agent_role)
         for adr_path in foundational_paths:
             try:
                 adr_parts.append(
@@ -157,6 +174,76 @@ def get_session_context_logic(project: str) -> str:
         f"=== PHASE GUIDELINES ({agent_role}) ===\n{phase_text}\n\n"
         f"=== SESSION STATE ===\n{session_text}\n"
         f"=== SPEC:===\n{spec}\n"
+        f"=== FOUNDATIONAL DECISIONS ===\n{adr_section}\n"
+    )
+
+
+def get_guideline_logic(project: str, role: str) -> str:
+    """Assemble and return the full context bundle for a given agent role.
+
+    Output format:
+        === ROLE GUIDELINES ===
+        {guideline_text}
+
+        === FOUNDATIONAL DECISIONS ===
+        {adr_summaries_joined}
+
+    Returns an error string (never raises to MCP layer) on:
+    - Unknown role or malformed role_profiles.yaml
+    - Missing guideline or ADR file
+    """
+    from services.role_profile_service import RoleProfileLoader
+
+    # 1. Load role_profiles.yaml
+    try:
+        yaml_text = read_artifact_logic(project, "docs/manuals/role_profiles.yaml")
+    except ArtifactNotFoundError:
+        return (
+            f"Error: role_profiles.yaml not found for project '{project}'. "
+            "Expected at docs/manuals/role_profiles.yaml."
+        )
+
+    # 2. Resolve profile for requested role
+    profile = RoleProfileLoader().get_profile(yaml_text, role)
+    if isinstance(profile, str):
+        return profile  # error string from loader
+
+    # 3. Read guideline text
+    try:
+        guideline_text = read_artifact_logic(project, profile.guideline)
+    except ArtifactNotFoundError:
+        return f"Error: guideline file not found: {profile.guideline}"
+
+    # 4. Resolve ADR paths via index and collect summaries
+    adr_parts: list[str] = []
+    try:
+        index_text = read_artifact_logic(project, ADR_INDEX_PATH)
+        all_paths = _parse_foundational_adr_paths(index_text)  # no role filter — full index
+        path_lookup: dict[str, str] = {}
+        for p in all_paths:
+            stem = p.split("/")[-1]   # e.g. "0007-pipeline-standard.md"
+            adr_id = stem[:4]          # first 4 chars = ID
+            path_lookup[adr_id] = p
+
+        for adr_id in profile.adrs:
+            adr_path = path_lookup.get(adr_id)
+            if not adr_path:
+                logger.warning(
+                    "ADR id '%s' not found in index for project '%s' — skipping.",
+                    adr_id, project,
+                )
+                continue
+            try:
+                adr_text = read_artifact_logic(project, adr_path)
+                adr_parts.append(_extract_adr_summary(adr_text, adr_path))
+            except ArtifactNotFoundError:
+                logger.warning("ADR file not found: %s — skipping.", adr_path)
+    except ArtifactNotFoundError:
+        logger.warning("ADR index not found for project '%s' — skipping ADRs.", project)
+
+    adr_section = "\n\n---\n\n".join(adr_parts)
+    return (
+        f"=== ROLE GUIDELINES ===\n{guideline_text}\n\n"
         f"=== FOUNDATIONAL DECISIONS ===\n{adr_section}\n"
     )
 

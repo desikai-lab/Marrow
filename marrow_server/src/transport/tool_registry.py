@@ -21,6 +21,7 @@ from services.task_command_service import add_tasks_logic, complete_tasks_logic,
 from services.task_query_service import get_task_details_logic, search_tasks_logic
 from tools import (
     delete_project_artifact_logic,
+    get_guideline_logic,
     get_project_artifact_outline_logic,
     get_session_context_logic,
     list_artifact_history_logic,
@@ -216,6 +217,15 @@ def register_all_tools(mcp: FastMCP) -> None:
         """[SESSION TOOLS] Reads session_current.md, detects the active pipeline phase,
         and returns core guidelines + phase-appropriate guidelines as a single assembled string."""
         return await asyncio.to_thread(get_session_context_logic, project)
+
+    @mcp.tool()
+    @mcp_error_handler
+    async def get_guideline(
+        project: Annotated[str, Field(description="Project name")],
+        role: Annotated[str, Field(description="Agent role name (e.g. 'discovery', 'execution')")],
+    ) -> str:
+        """[SESSION TOOLS] Assemble and return the full context bundle (guidelines + ADRs) for a given agent role."""
+        return await asyncio.to_thread(get_guideline_logic, project, role)
 
     ## Project tools
 
