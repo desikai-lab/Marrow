@@ -3,7 +3,6 @@
 import re
 from pathlib import Path
 
-TAG_PATTERN = re.compile(r"!!python/object/apply:[\w.]+")
 PYTHON_OBJ_BLOCK = re.compile(
     r"^([\w_]+): !!python/object/apply:[^\n]+\n- (.+)$",
     re.MULTILINE,
@@ -16,6 +15,8 @@ def repair_blob(path: Path) -> bool:
     if "!!python/object/apply" not in content:
         return False
     fixed = PYTHON_OBJ_BLOCK.sub(r"\1: \2", content)
+    if fixed == content:
+        return False  # tag was outside frontmatter, nothing changed
     path.write_text(fixed, encoding="utf-8")
     return True
 

@@ -1,8 +1,11 @@
-"""Integration tests for blob storage — B4000170 YAML Enum serialization fix.
+"""Storage-layer integration tests for blob I/O — B4000170 YAML Enum serialization fix.
 
-These tests exercise the full add_tasks → get_task_details and
-add_tasks → update_task round-trips through the MCP service layer to
-confirm Enum values are written and read back without ConstructorError.
+These tests exercise write_blob → read_blob round-trips directly against
+the filesystem (real temp directory, no mocks) to confirm Enum values are
+written and read back without ConstructorError.
+
+Note: MCP service-layer round-trip tests (add_tasks → get_task_details via
+task_command_service) are tracked separately as TD4000172.
 """
 
 from storage.blobs import read_blob, write_blob

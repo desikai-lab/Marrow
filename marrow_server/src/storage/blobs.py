@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +25,7 @@ def _blob_path(project_root: str, task_key: str, status: str, year: str | None =
     """Builds the blob file path. Appends a year subdirectory for done/ blobs."""
     base = Path(project_root) / ".db" / "blobs"
     status_lower = status.lower()
-    if "closed" in status_lower or status_lower == "done":
+    if status_lower in ("closed", "done"):
         y = year or str(datetime.now().year)
         return base / "done" / y / f"{task_key}.md"
     elif "paused" in status_lower:
@@ -35,8 +36,6 @@ def _blob_path(project_root: str, task_key: str, status: str, year: str | None =
 
 def _sanitize_for_yaml(data: dict[str, Any]) -> dict[str, Any]:
     """Convert Enum values to plain .value before yaml serialization."""
-    from enum import Enum
-
     return {k: v.value if isinstance(v, Enum) else v for k, v in data.items()}
 
 

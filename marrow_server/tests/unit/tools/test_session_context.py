@@ -240,6 +240,7 @@ class TestParseFoundationalAdrPathsExtended(unittest.TestCase):
             "| 0034 | [Product Name](adr/0034-product-name-marrow.md) | Accepted | discovery |\n"
         )
         from tools.session_context import _parse_foundational_adr_paths
+
         res = _parse_foundational_adr_paths(index_text)
         self.assertEqual(len(res), 3)
         self.assertIn("docs/decisions/adr/0007-pipeline-standard.md", res)
@@ -256,6 +257,7 @@ class TestParseFoundationalAdrPathsExtended(unittest.TestCase):
             "| 0034 | [Product Name](adr/0034-product-name-marrow.md) | Accepted | discovery |\n"
         )
         from tools.session_context import _parse_foundational_adr_paths
+
         res = _parse_foundational_adr_paths(index_text, "execution")
         self.assertEqual(len(res), 2)
         self.assertIn("docs/decisions/adr/0007-pipeline-standard.md", res)
@@ -272,6 +274,7 @@ class TestParseFoundationalAdrPathsExtended(unittest.TestCase):
             "| 0034 | [Product Name](adr/0034-product-name-marrow.md) | Accepted | discovery |\n"
         )
         from tools.session_context import _parse_foundational_adr_paths
+
         res = _parse_foundational_adr_paths(index_text, "discovery")
         self.assertEqual(len(res), 2)
         self.assertIn("docs/decisions/adr/0007-pipeline-standard.md", res)
@@ -287,6 +290,7 @@ class TestParseFoundationalAdrPathsExtended(unittest.TestCase):
             "| 0019 | [Streamable HTTP Transport](adr/0019-streamable-http.md) | Accepted |\n"
         )
         from tools.session_context import _parse_foundational_adr_paths
+
         res = _parse_foundational_adr_paths(index_text, "execution")
         self.assertEqual(len(res), 2)
         self.assertIn("docs/decisions/adr/0007-pipeline-standard.md", res)
@@ -300,6 +304,7 @@ class TestParseFoundationalAdrPathsExtended(unittest.TestCase):
             "| 0007 | [Pipeline Standard](adr/0007-pipeline-standard.md) | Accepted | all |\n"
         )
         from tools.session_context import _parse_foundational_adr_paths
+
         res = _parse_foundational_adr_paths(index_text, "ghost")
         self.assertEqual(res, ["docs/decisions/adr/0007-pipeline-standard.md"])
 
@@ -343,6 +348,7 @@ roles:
 
         mock_read.side_effect = side_effect
         from tools.session_context import get_guideline_logic
+
         res = get_guideline_logic("TestProj", "execution")
         self.assertTrue(res.startswith("=== ROLE GUIDELINES ==="))
         self.assertIn("EXECUTION GUIDELINE TEXT", res)
@@ -354,6 +360,7 @@ roles:
     def test_getGuidelineLogic_unknownRole_returnsErrorString(self, mock_read):
         mock_read.return_value = self._MOCK_YAML
         from tools.session_context import get_guideline_logic
+
         res = get_guideline_logic("TestProj", "ghost")
         self.assertIn("Unknown role 'ghost'", res)
 
@@ -361,6 +368,7 @@ roles:
     def test_getGuidelineLogic_missingYaml_returnsErrorString(self, mock_read):
         mock_read.side_effect = ArtifactNotFoundError("file", "docs/manuals/role_profiles.yaml")
         from tools.session_context import get_guideline_logic
+
         res = get_guideline_logic("TestProj", "execution")
         self.assertIn("role_profiles.yaml not found", res)
 
@@ -373,6 +381,7 @@ roles:
 
         mock_read.side_effect = side_effect
         from tools.session_context import get_guideline_logic
+
         res = get_guideline_logic("TestProj", "execution")
         self.assertIn("guideline file not found", res)
 
@@ -391,6 +400,7 @@ roles:
 
         mock_read.side_effect = side_effect
         from tools.session_context import get_guideline_logic
+
         with self.assertLogs("tools.session_context", level="WARNING") as log:
             res = get_guideline_logic("TestProj", "execution")
         self.assertIn("EXECUTION GUIDELINE TEXT", res)
