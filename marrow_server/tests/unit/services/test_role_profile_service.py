@@ -1,6 +1,6 @@
 import unittest
 
-from services.role_profile_service import RoleProfileLoader, RoleProfile
+from services.role_profile_service import RoleProfile, RoleProfileLoader
 
 
 class TestRoleProfileLoader(unittest.TestCase):
@@ -87,7 +87,10 @@ roles:
         profile = self.loader.get_profile(self.valid_yaml, "execution")
         self.assertIsInstance(profile, RoleProfile)
         self.assertEqual(profile.guideline, "docs/manuals/guidelines/execution.md")
-        self.assertEqual(profile.adrs, ["0007", "0008", "0010", "0011", "0018", "0019", "0020", "0025", "0027", "0035"])
+        self.assertEqual(
+            profile.adrs,
+            ["0007", "0008", "0010", "0011", "0018", "0019", "0020", "0025", "0027", "0035"],
+        )
 
     def test_getProfile_unknownRole_returnsErrorString(self):
         error_msg = self.loader.get_profile(self.valid_yaml, "ghost")

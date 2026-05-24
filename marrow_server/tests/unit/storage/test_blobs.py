@@ -170,3 +170,10 @@ def test_readBlob_corruptedPythonTaggedYaml_raisesConstructorError(tmp_path):
     blob_path.write_text(corrupted, encoding="utf-8")
     with pytest.raises(yaml.constructor.ConstructorError):
         read_blob(blob_path)
+
+
+def test_blobPath_unclosedStatus_routesToActiveDirectory(tmp_project_root):
+    """'unclosed' contains 'closed' as a substring — must NOT route to done/."""
+    path = _blob_path(tmp_project_root, "F1", "unclosed")
+    assert "done" not in path.as_posix()
+    assert "active/F1.md" in path.as_posix()
