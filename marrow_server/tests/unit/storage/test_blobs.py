@@ -1,6 +1,26 @@
-import pytest
+from enum import StrEnum
 
-from storage.blobs import _blob_path, delete_blob, read_blob, write_blob
+import pytest
+import yaml
+
+from storage.blobs import _blob_path, _sanitize_for_yaml, delete_blob, read_blob, write_blob
+
+# ---------------------------------------------------------------------------
+# Local stub enums (mirror domain enums without importing domain layer)
+# ---------------------------------------------------------------------------
+
+
+class _Priority(StrEnum):
+    medium = "medium"
+    high = "high"
+
+
+class _Status(StrEnum):
+    open = "open"
+
+
+class _Type(StrEnum):
+    TD = "TD"
 
 
 def test_blob_path_active_status_contains_active_directory(tmp_project_root):
@@ -83,3 +103,70 @@ def test_read_blob_missing_frontmatter_closing_raises_value_error(tmp_path):
     bad_file.write_text("---\ntitle: test", encoding="utf-8")
     with pytest.raises(ValueError, match="missing frontmatter closing"):
         read_blob(bad_file)
+
+
+# ---------------------------------------------------------------------------
+# B4000170 — Enum serialization fix
+# ---------------------------------------------------------------------------
+
+
+def test_sanitize_for_yaml_converts_enum_to_plain_value():
+    """_sanitize_for_yaml must convert every Enum to its .value."""
+    data = {"priority": _Priority.medium, "status": _Status.open, "type": _Type.TD}
+    result = _sanitize_for_yaml(data)
+    assert result == {"priority": "medium", "status": "open", "type": "TD"}
+
+
+def test_writeBlob_enumFields_serializedAsPlainScalars(tmp_path):
+    """Written blob must contain no !!python/object/apply tags."""
+    task = {
+        "key": "TD4000170",
+        "id": "TD4000170",
+        "title": "YAML Enum fix",
+        "type": _Type.TD,
+        "status": _Status.open,
+        "priority": _Priority.medium,
+        "project": "BacklogMCP",
+    }
+    write_blob(str(tmp_path), task)
+    blob_file = tmp_path / ".db" / "blobs" / "active" / "TD4000170.md"
+    raw = blob_file.read_text(encoding="utf-8")
+    assert "!!python/object/apply" not in raw
+
+
+def test_writeBlob_thenReadBlob_roundTripPreservesAllFields(tmp_path):
+    """write_blob then read_blob must round-trip all fields without error."""
+    task = {
+        "key": "TD4000170",
+        "id": "TD4000170",
+        "title": "YAML Enum fix",
+        "type": _Type.TD,
+        "status": _Status.open,
+        "priority": _Priority.medium,
+        "project": "BacklogMCP",
+        "problem": "Enum serialization bug",
+        "solution": "Use safe_dump + sanitizer",
+    }
+    blob_path = write_blob(str(tmp_path), task)
+    result = read_blob(blob_path)
+    assert result["key"] == "TD4000170"
+    assert result["priority"] == "medium"
+    assert result["status"] == "open"
+    assert result["type"] == "TD"
+    assert result["problem"] == "Enum serialization bug"
+    assert result["solution"] == "Use safe_dump + sanitizer"
+
+
+def test_readBlob_corruptedPythonTaggedYaml_raisesConstructorError(tmp_path):
+    """A blob with Python tags must raise yaml.constructor.ConstructorError."""
+    corrupted = (
+        "---\n"
+        "key: TD4000170\n"
+        "priority: !!python/object/apply:domain.enums.TaskPriority\n"
+        "- medium\n"
+        "---\n\n"
+    )
+    blob_path = tmp_path / "TD4000170.md"
+    blob_path.write_text(corrupted, encoding="utf-8")
+    with pytest.raises(yaml.constructor.ConstructorError):
+        read_blob(blob_path)
