@@ -33,6 +33,13 @@ def _blob_path(project_root: str, task_key: str, status: str, year: str | None =
         return base / "active" / f"{task_key}.md"
 
 
+def _sanitize_for_yaml(data: dict[str, Any]) -> dict[str, Any]:
+    """Convert Enum values to plain .value before yaml serialization."""
+    from enum import Enum
+
+    return {k: v.value if isinstance(v, Enum) else v for k, v in data.items()}
+
+
 @track_time(layer="blob")
 def write_blob(project_root: str, task: dict[str, Any]) -> Path:
     """Writes a task to a .md file with Frontmatter. Returns the file path."""
@@ -51,7 +58,8 @@ def write_blob(project_root: str, task: dict[str, Any]) -> Path:
     if task.get("resolution"):
         body_lines += ["## Resolution", task["resolution"], ""]
 
-    content = "---\n" + yaml.dump(meta, allow_unicode=True, sort_keys=False) + "---\n\n"
+    safe_meta = _sanitize_for_yaml(meta)
+    content = "---\n" + yaml.safe_dump(safe_meta, allow_unicode=True, sort_keys=False) + "---\n\n"
     content += "\n".join(body_lines)
 
     path.write_text(content, encoding="utf-8")
