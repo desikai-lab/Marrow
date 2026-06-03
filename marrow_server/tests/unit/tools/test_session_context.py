@@ -408,5 +408,82 @@ roles:
         self.assertTrue(any("0019-streamable-http.md" in m for m in log.output))
 
 
+class TestAgentProfileEngineFlag(unittest.TestCase):
+    @patch("tools.session_context.read_artifact_logic")
+    def test_GetSessionContextLogic_FlagOff_ReturnsLegacyOutput(self, mock_read):
+        """Flag=False → existing code path; legacy headers present."""
+
+        def side_effect(project, path):
+            if path == "session.md":
+                return "Phase 4"
+            if path == "spec.md":
+                return "SPEC"
+            if path == "docs/manuals/guidelines/core.md":
+                return "CORE"
+            if path == "docs/manuals/guidelines/architecture.md":
+                return "ARCH"
+            raise ArtifactNotFoundError("x", path)
+
+        mock_read.side_effect = side_effect
+
+        import config
+
+        with patch.object(config, "AGENT_PROFILE_ENGINE_ENABLED", False):
+            result = get_session_context_logic("TestProj")
+
+        self.assertIn("=== YOUR ROLE: Architecture Agent ===", result)
+        self.assertIn("=== CORE GUIDELINES ===", result)
+        self.assertIn("=== PHASE GUIDELINES (Architecture Agent) ===", result)
+
+    @patch("tools.session_context.read_artifact_logic")
+    def test_GetSessionContextLogic_FlagOn_DelegatesToGetGuidelineLogic(self, mock_read):
+        """Flag=True → get_guideline_logic called; legacy assembly headers absent."""
+
+        def side_effect(project, path):
+            if path == "session.md":
+                return "Phase 4"
+            if path == "spec.md":
+                return "SPEC"
+            if path in (
+                "docs/manuals/guidelines/core.md",
+                "docs/manuals/guidelines/architecture.md",
+            ):
+                return "GUIDELINE"
+            raise ArtifactNotFoundError("x", path)
+
+        mock_read.side_effect = side_effect
+
+        import config
+
+        with (
+            patch(
+                "tools.session_context.get_guideline_logic",
+                return_value="=== ROLE GUIDELINES ===\nAPE content",
+            ) as mock_guideline,
+            patch.object(config, "AGENT_PROFILE_ENGINE_ENABLED", True),
+        ):
+            result = get_session_context_logic("TestProj")
+
+        mock_guideline.assert_called_once_with("TestProj", "Architecture Agent")
+        self.assertIn("=== ROLE GUIDELINES ===", result)
+        self.assertNotIn("=== CORE GUIDELINES ===", result)
+
+    def test_GetSessionContextLogic_DefaultFlag_IsFalse(self):
+        """AGENT_PROFILE_ENGINE_ENABLED default value is False."""
+        import importlib
+        import os
+
+        import config
+
+        env_backup = os.environ.pop("AGENT_PROFILE_ENGINE_ENABLED", None)
+        try:
+            importlib.reload(config)
+            self.assertFalse(config.AGENT_PROFILE_ENGINE_ENABLED)
+        finally:
+            if env_backup is not None:
+                os.environ["AGENT_PROFILE_ENGINE_ENABLED"] = env_backup
+            importlib.reload(config)
+
+
 if __name__ == "__main__":
     unittest.main()
