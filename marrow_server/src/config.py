@@ -24,6 +24,11 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_MODEL_TEXT)
 
 EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "384"))
 MAX_EMBED_CHARS = int(os.getenv("MAX_EMBED_CHARS", "2000"))
+
+# Agent Profile Engine
+AGENT_PROFILE_ENGINE_ENABLED: bool = (
+    os.getenv("AGENT_PROFILE_ENGINE_ENABLED", "false").lower() == "true"
+)
 VECT_DEBOUNCE_SECONDS = float(os.getenv("VECT_DEBOUNCE_SECONDS", "0.5"))
 
 # Priority: .env TASKS_DIR > local tests

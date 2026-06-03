@@ -1,6 +1,7 @@
 import logging
 import re
 
+import config
 from tools.artifacts import read_artifact_logic
 from utils.exceptions import ArtifactNotFoundError
 
@@ -169,6 +170,9 @@ def get_session_context_logic(project: str) -> str:
     adr_section = "\n\n---\n\n".join(adr_parts)
 
     # 6. Assemble and return
+    if config.AGENT_PROFILE_ENGINE_ENABLED:
+        return get_guideline_logic(project, agent_role)
+
     return (
         f"=== YOUR ROLE: {agent_role} ===\n\n"
         f"=== CORE GUIDELINES ===\n{core_text}\n\n"
