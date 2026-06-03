@@ -10,7 +10,7 @@ from src.transport.outbox import WorkerOutbox
 
 def run(coro):
     """Sync wrapper consistent with existing worker test style."""
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 def make_outbox() -> WorkerOutbox:
