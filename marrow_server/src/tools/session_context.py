@@ -114,9 +114,11 @@ def get_session_context_logic(project: str) -> str:
     context bundle: session state + core guidelines + phase-appropriate guidelines.
 
     Fallback behaviour:
-    - session_current.md missing → session section is empty; phase defaults to 1.
+    - session.md missing → session section is empty; phase defaults to 1.
     - Phase field absent/unparseable → phase defaults to 1.
     - Core or phase guideline file missing → ArtifactNotFoundError propagated (hard infra gap).
+    When AGENT_PROFILE_ENGINE_ENABLED=true, guideline and ADR resolution is delegated
+    to RoleProfileLoader; role_profiles.yaml is the sole authority for per-role ADRs.
     """
     # 1. Read session state — graceful degradation on missing file
     try:
@@ -124,28 +126,97 @@ def get_session_context_logic(project: str) -> str:
         spec = read_artifact_logic(project, "spec.md")
     except ArtifactNotFoundError:
         logger.warning(
-            "session_current.md not found for project '%s'; proceeding with empty session.", project
+            "session.md not found for project '%s'; proceeding with empty session.", project
         )
         session_text = ""
         spec = ""
 
-    # 2. Detect current phase
+    # 2. Detect current role
     agent_role = _parse_next_agent(session_text)
 
     if agent_role is None:
         phase = _parse_phase(session_text)
         agent_role = _select_agent_role(phase)
 
-    # 3. Select phase-specific guideline path
-    guideline_path = GuidelinesFactory.get_guideline(agent_role)
-
-    # 4. Read core guidelines — hard failure if missing
+    # 3. Read core guidelines — always, both paths
     core_text = read_artifact_logic(project, "docs/manuals/guidelines/core.md")
 
-    # 5. Read phase-specific guidelines — hard failure if missing
+    # 4. Flag-on path: delegate to Agent Profile Engine
+    if config.AGENT_PROFILE_ENGINE_ENABLED:
+        logger.info(
+            "APE: delegating context assembly to RoleProfileLoader for role '%s'.", agent_role
+        )
+        from services.role_profile_service import RoleProfileLoader
+
+        # 4a. Load role_profiles.yaml
+        try:
+            yaml_text = read_artifact_logic(project, "docs/manuals/role_profiles.yaml")
+        except ArtifactNotFoundError:
+            return (
+                f"Error: role_profiles.yaml not found for project '{project}'. "
+                "Expected at docs/manuals/role_profiles.yaml."
+            )
+
+        # 4b. Resolve profile for detected role (normalize to match YAML keys)
+        normalized_role = agent_role.lower().replace(" agent", "").strip()
+        profile = RoleProfileLoader().get_profile(yaml_text, normalized_role)
+        if isinstance(profile, str):
+            return profile  # error string from loader (unknown role etc.)
+
+        # 4c. Read phase guideline from profile
+        try:
+            phase_text = read_artifact_logic(project, profile.guideline)
+        except ArtifactNotFoundError:
+            return f"Error: guideline file not found: {profile.guideline}"
+
+        # 4d. Resolve ADR paths from index — flat lookup only, no role filter
+        adr_parts: list[str] = []
+        try:
+            index_text = read_artifact_logic(project, ADR_INDEX_PATH)
+            all_paths = _parse_foundational_adr_paths(index_text)  # no role arg → returns all
+            path_lookup: dict[str, str] = {}
+            for p in all_paths:
+                stem = p.split("/")[-1]
+                adr_id = stem[:4]
+                path_lookup[adr_id] = p
+
+            for adr_id in profile.adrs:
+                adr_path = path_lookup.get(adr_id)
+                if not adr_path:
+                    logger.warning(
+                        "APE: ADR id '%s' not found in index for project '%s' — skipping.",
+                        adr_id,
+                        project,
+                    )
+                    continue
+                try:
+                    adr_parts.append(
+                        _extract_adr_summary(read_artifact_logic(project, adr_path), adr_path)
+                    )
+                except ArtifactNotFoundError:
+                    logger.warning("APE: ADR file not found: %s — skipping.", adr_path)
+        except ArtifactNotFoundError:
+            logger.warning(
+                "ADR index not found for project '%s' at '%s' — skipping foundational ADRs.",
+                project,
+                ADR_INDEX_PATH,
+            )
+        adr_section = "\n\n---\n\n".join(adr_parts)
+
+        return (
+            f"=== YOUR ROLE: {agent_role} ===\n\n"
+            f"=== CORE GUIDELINES ===\n{core_text}\n\n"
+            f"=== PHASE GUIDELINES ({agent_role}) ===\n{phase_text}\n\n"
+            f"=== SESSION STATE ===\n{session_text}\n"
+            f"=== SPEC:===\n{spec}\n"
+            f"=== FOUNDATIONAL DECISIONS ===\n{adr_section}\n"
+        )
+
+    # 5. Flag-off path: legacy wiring via GuidelinesFactory
+    guideline_path = GuidelinesFactory.get_guideline(agent_role)
     phase_text = read_artifact_logic(project, guideline_path)
 
-    # 5.5. Dynamically load foundational ADRs from the project ADR index
+    # 6. Dynamically load foundational ADRs — role-filtered via index column
     adr_parts: list[str] = []
     try:
         index_text = read_artifact_logic(project, ADR_INDEX_PATH)
@@ -168,10 +239,6 @@ def get_session_context_logic(project: str) -> str:
             ADR_INDEX_PATH,
         )
     adr_section = "\n\n---\n\n".join(adr_parts)
-
-    # 6. Assemble and return
-    if config.AGENT_PROFILE_ENGINE_ENABLED:
-        return get_guideline_logic(project, agent_role)
 
     return (
         f"=== YOUR ROLE: {agent_role} ===\n\n"

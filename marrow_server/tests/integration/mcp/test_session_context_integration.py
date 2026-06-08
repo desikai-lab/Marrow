@@ -5,10 +5,7 @@ from services.artifact_command_service import save_project_artifacts_logic
 from tools.session_context import get_session_context_logic
 from utils.exceptions import ArtifactNotFoundError
 
-# Safety guard: this suite tests the legacy branch only
-assert AGENT_PROFILE_ENGINE_ENABLED is False, (
-    "APE-03 tests cover the legacy path. Set AGENT_PROFILE_ENGINE_ENABLED=False before running."
-)
+# APE-04: guard removed — output format is identical on both flag-on and flag-off paths.
 
 pytestmark = pytest.mark.integration
 
@@ -36,6 +33,34 @@ async def _write(project: str, path: str, content: str) -> None:
     )
 
 
+# Minimal role_profiles.yaml stub — only needed by the flag-on path.
+_ROLE_PROFILES_CONTENT = """\
+roles:
+  discovery:
+    guideline: docs/manuals/guidelines/discovery.md
+    adrs: []
+    playbooks: []
+  architecture:
+    guideline: docs/manuals/guidelines/architecture.md
+    adrs: []
+    playbooks: []
+  planning:
+    guideline: docs/manuals/guidelines/planning.md
+    adrs: []
+    playbooks: []
+  execution:
+    guideline: docs/manuals/guidelines/execution.md
+    adrs: []
+    playbooks: []
+"""
+
+
+async def _write_profiles_if_ape(project: str) -> None:
+    """Write role_profiles.yaml when the APE flag is on; no-op otherwise."""
+    if AGENT_PROFILE_ENGINE_ENABLED:
+        await _write(project, "docs/manuals/role_profiles.yaml", _ROLE_PROFILES_CONTENT)
+
+
 _STUB = "# stub\nminimal content for testing\n"
 _SESSION_DISCOVERY = "# Session\nPhase: 2\n"
 _SESSION_EXECUTION = "# Session\nPhase: 12\n"
@@ -51,6 +76,7 @@ _ADR_INDEX = "docs/decisions/0000-index.md"
 
 
 async def test_get_session_context_logic_discovery_phase_returns_discovery_role_header(proj):
+    await _write_profiles_if_ape(proj)
     await _write(proj, _SESSION, _SESSION_DISCOVERY)
     await _write(proj, _SPEC, _STUB)
     await _write(proj, _CORE, _STUB)
@@ -60,6 +86,7 @@ async def test_get_session_context_logic_discovery_phase_returns_discovery_role_
 
 
 async def test_get_session_context_logic_execution_phase_returns_execution_role_header(proj):
+    await _write_profiles_if_ape(proj)
     await _write(proj, _SESSION, _SESSION_EXECUTION)
     await _write(proj, _SPEC, _STUB)
     await _write(proj, _CORE, _STUB)
@@ -69,6 +96,7 @@ async def test_get_session_context_logic_execution_phase_returns_execution_role_
 
 
 async def test_get_session_context_logic_next_agent_role_overrides_phase(proj):
+    await _write_profiles_if_ape(proj)
     await _write(proj, _SESSION, _SESSION_OVERRIDE)
     await _write(proj, _SPEC, _STUB)
     await _write(proj, _CORE, _STUB)
@@ -81,6 +109,7 @@ async def test_get_session_context_logic_next_agent_role_overrides_phase(proj):
 
 async def test_get_session_context_logic_missing_session_file_defaults_to_discovery(proj):
     # session.md intentionally NOT written
+    await _write_profiles_if_ape(proj)
     await _write(proj, _CORE, _STUB)
     await _write(proj, _DISCOVERY, _STUB)
     result = get_session_context_logic(proj)
@@ -88,6 +117,7 @@ async def test_get_session_context_logic_missing_session_file_defaults_to_discov
 
 
 async def test_get_session_context_logic_malformed_phase_defaults_to_discovery(proj):
+    await _write_profiles_if_ape(proj)
     await _write(proj, _SESSION, _SESSION_BAD_PHASE)
     await _write(proj, _SPEC, _STUB)
     await _write(proj, _CORE, _STUB)
@@ -97,6 +127,7 @@ async def test_get_session_context_logic_malformed_phase_defaults_to_discovery(p
 
 
 async def test_get_session_context_logic_missing_adr_index_omits_decisions_section(proj):
+    await _write_profiles_if_ape(proj)
     await _write(proj, _SESSION, _SESSION_DISCOVERY)
     await _write(proj, _SPEC, _STUB)
     await _write(proj, _CORE, _STUB)
@@ -112,6 +143,13 @@ async def test_get_session_context_logic_missing_guideline_file_raises_artifact_
     await _write(proj, _SESSION, _SESSION_DISCOVERY)
     await _write(proj, _SPEC, _STUB)
     await _write(proj, _CORE, _STUB)
-    # discovery.md intentionally NOT written — GuidelinesFactory resolves to this path
-    with pytest.raises(ArtifactNotFoundError):
-        get_session_context_logic(proj)
+    # discovery.md intentionally NOT written
+    if AGENT_PROFILE_ENGINE_ENABLED:
+        # Flag-on: RoleProfileLoader catches missing file, returns error string (REQ-05)
+        await _write_profiles_if_ape(proj)
+        result = get_session_context_logic(proj)
+        assert "Error: guideline file not found" in result
+    else:
+        # Flag-off: GuidelinesFactory path propagates ArtifactNotFoundError (legacy contract)
+        with pytest.raises(ArtifactNotFoundError):
+            get_session_context_logic(proj)
