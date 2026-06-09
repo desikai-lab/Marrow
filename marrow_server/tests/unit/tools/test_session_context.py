@@ -41,6 +41,8 @@ class TestSessionContext(unittest.TestCase):
         def side_effect(project, path):
             if path == "session.md":
                 return "Phase 8"
+            if path == "docs/manuals/role_profiles.yaml":
+                return "roles:\n  planning:\n    guideline: docs/manuals/guidelines/planning.md\n    adrs: []\n    playbooks: []"
             if path == "docs/manuals/guidelines/core.md":
                 return "CORE CONTENT"
             if path == "docs/manuals/guidelines/planning.md":
@@ -62,6 +64,8 @@ class TestSessionContext(unittest.TestCase):
         def side_effect(project, path):
             if path == "session.md":
                 raise ArtifactNotFoundError("session", "session.md")
+            if path == "docs/manuals/role_profiles.yaml":
+                return "roles:\n  discovery:\n    guideline: docs/manuals/guidelines/discovery.md\n    adrs: []\n    playbooks: []"
             if path == "docs/manuals/guidelines/core.md":
                 return "CORE CONTENT"
             if path == "docs/manuals/guidelines/discovery.md":
@@ -84,6 +88,8 @@ class TestSessionContext(unittest.TestCase):
         def side_effect(project, path):
             if path == "session.md":
                 return "Phase 12"
+            if path == "docs/manuals/role_profiles.yaml":
+                return "roles:\n  execution:\n    guideline: docs/manuals/guidelines/execution.md\n    adrs: []\n    playbooks: []"
             if path == "docs/manuals/guidelines/core.md":
                 raise ArtifactNotFoundError("core", path)
             return "ERROR"
@@ -142,6 +148,22 @@ class TestGetSessionContextLogicAdrInjection(unittest.TestCase):
             return "CORE"
         if path == "docs/manuals/guidelines/planning.md":
             return "PLAN"
+        if path == "docs/manuals/role_profiles.yaml":
+            return """
+roles:
+  planning:
+    guideline: docs/manuals/guidelines/planning.md
+    adrs: ["0007", "0008"]
+    playbooks: []
+  discovery:
+    guideline: docs/manuals/guidelines/discovery.md
+    adrs: ["0007", "0008"]
+    playbooks: []
+  execution:
+    guideline: docs/manuals/guidelines/execution.md
+    adrs: ["0007", "0008"]
+    playbooks: []
+"""
         return None
 
     @patch("tools.session_context.read_artifact_logic")
@@ -410,32 +432,6 @@ roles:
 
 class TestAgentProfileEngineFlag(unittest.TestCase):
     @patch("tools.session_context.read_artifact_logic")
-    def test_GetSessionContextLogic_FlagOff_ReturnsLegacyOutput(self, mock_read):
-        """Flag=False → existing code path; legacy headers present."""
-
-        def side_effect(project, path):
-            if path == "session.md":
-                return "Phase 4"
-            if path == "spec.md":
-                return "SPEC"
-            if path == "docs/manuals/guidelines/core.md":
-                return "CORE"
-            if path == "docs/manuals/guidelines/architecture.md":
-                return "ARCH"
-            raise ArtifactNotFoundError("x", path)
-
-        mock_read.side_effect = side_effect
-
-        import config
-
-        with patch.object(config, "AGENT_PROFILE_ENGINE_ENABLED", False):
-            result = get_session_context_logic("TestProj")
-
-        self.assertIn("=== YOUR ROLE: Architecture Agent ===", result)
-        self.assertIn("=== CORE GUIDELINES ===", result)
-        self.assertIn("=== PHASE GUIDELINES (Architecture Agent) ===", result)
-
-    @patch("tools.session_context.read_artifact_logic")
     def test_GetSessionContextLogic_FlagOn_ReturnsProfileOutput(self, mock_read):
         """Flag=True → guideline and ADRs resolved via RoleProfileLoader."""
         _MOCK_YAML = """
@@ -481,8 +477,8 @@ roles:
         self.assertIn("=== PHASE GUIDELINES (Architecture Agent) ===\nARCH GUIDELINE", result)
         self.assertIn("=== FOUNDATIONAL DECISIONS ===\n# Pipeline Standard\n**Source:** `docs/decisions/adr/0007-pipeline-standard.md`\n\nPipeline summary.", result)
 
-    def test_GetSessionContextLogic_DefaultFlag_IsFalse(self):
-        """AGENT_PROFILE_ENGINE_ENABLED default value is False."""
+    def test_GetSessionContextLogic_DefaultFlag_IsTrue(self):
+        """AGENT_PROFILE_ENGINE_ENABLED default value is True."""
         import importlib
         import os
 
@@ -492,7 +488,7 @@ roles:
         try:
             with patch("dotenv.load_dotenv"):
                 importlib.reload(config)
-                self.assertFalse(config.AGENT_PROFILE_ENGINE_ENABLED)
+                self.assertTrue(config.AGENT_PROFILE_ENGINE_ENABLED)
         finally:
             if env_backup is not None:
                 os.environ["AGENT_PROFILE_ENGINE_ENABLED"] = env_backup

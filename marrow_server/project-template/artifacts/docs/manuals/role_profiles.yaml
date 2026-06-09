@@ -1,0 +1,17 @@
+roles:
+  discovery:
+    guideline: docs/manuals/guidelines/discovery.md
+    adrs: []
+    playbooks: []
+  architecture:
+    guideline: docs/manuals/guidelines/architecture.md
+    adrs: []
+    playbooks: []
+  planning:
+    guideline: docs/manuals/guidelines/planning.md
+    adrs: []
+    playbooks: []
+  execution:
+    guideline: docs/manuals/guidelines/execution.md
+    adrs: []
+    playbooks: []
