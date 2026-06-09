@@ -139,6 +139,20 @@ class TestGetSessionContextRoleFilteringIntegration(unittest.TestCase):
 
     def _build_fixture(self):
         a = self.artifacts
+        _write(
+            a / "docs/manuals/role_profiles.yaml",
+            """
+roles:
+  discovery:
+    guideline: docs/manuals/guidelines/discovery.md
+    adrs: ["0007", "0034"]
+    playbooks: []
+  execution:
+    guideline: docs/manuals/guidelines/execution.md
+    adrs: ["0007"]
+    playbooks: []
+""",
+        )
         _write(a / "docs/manuals/guidelines/core.md", "# Core Guidelines\nCore rules.")
         _write(a / "docs/manuals/guidelines/discovery.md", "# Discovery Guidelines\nDiscover.")
         _write(a / "docs/manuals/guidelines/execution.md", "# Execution Guidelines\nExecute.")
@@ -183,3 +197,117 @@ class TestGetSessionContextRoleFilteringIntegration(unittest.TestCase):
         _write(self.artifacts / "session.md", "**Phase:** 12\nnext_agent_role: Execution Agent")
         result = get_session_context_logic(PROJECT)
         self.assertIn("=== YOUR ROLE: Execution Agent ===", result)
+
+
+class TestGetSessionContextFlagParity(unittest.TestCase):
+    """APE-05: Assert full output parity between flag-off and flag-on paths
+    for all four agent roles. These tests are the validation gate before
+    GuidelinesFactory dead-code removal."""
+
+    import shutil
+    import tempfile
+
+    ROLES = [
+        ("Discovery Agent",    "**Phase:** 1\nnext_agent_role: Discovery Agent"),
+        ("Architecture Agent", "**Phase:** 4\nnext_agent_role: Architecture Agent"),
+        ("Planning Agent",     "**Phase:** 7\nnext_agent_role: Planning Agent"),
+        ("Execution Agent",    "**Phase:** 12\nnext_agent_role: Execution Agent"),
+    ]
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+        self.artifacts = Path(self.tmp) / PROJECT / "artifacts"
+        self._build_fixture()
+        self.patchers = [
+            patch("config.PROJECTS_ROOT", self.tmp),
+            patch("tools.utils.filesystem_utils.PROJECTS_ROOT", self.tmp),
+        ]
+        for p in self.patchers:
+            p.start()
+
+    def tearDown(self):
+        for p in self.patchers:
+            p.stop()
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _build_fixture(self):
+        a = self.artifacts
+        _write(
+            a / "docs/manuals/role_profiles.yaml",
+            """
+roles:
+  discovery:
+    guideline: docs/manuals/guidelines/discovery.md
+    adrs: ["0007", "0034"]
+    playbooks: []
+  architecture:
+    guideline: docs/manuals/guidelines/architecture.md
+    adrs: ["0007"]
+    playbooks: []
+  planning:
+    guideline: docs/manuals/guidelines/planning.md
+    adrs: ["0007"]
+    playbooks: []
+  execution:
+    guideline: docs/manuals/guidelines/execution.md
+    adrs: ["0007"]
+    playbooks: []
+""",
+        )
+        _write(a / "docs/manuals/guidelines/core.md", "# Core Guidelines\nCore rules.")
+        _write(a / "docs/manuals/guidelines/discovery.md", "# Discovery Guidelines\nDiscover.")
+        _write(a / "docs/manuals/guidelines/architecture.md", "# Architecture Guidelines\nArchitect.")
+        _write(a / "docs/manuals/guidelines/planning.md", "# Planning Guidelines\nPlan.")
+        _write(a / "docs/manuals/guidelines/execution.md", "# Execution Guidelines\nExecute.")
+        _write(
+            a / "docs/decisions/0000-index.md",
+            """
+## Foundational ADRs
+
+| ID | Title | Status | Roles |
+|----|-------|--------|-------|
+| [0007](adr/0007-pipeline-standard.md) | Pipeline Standard | Accepted | all |
+| [0034](adr/0034-product-name-marrow.md) | Product Name | Accepted | discovery |
+""",
+        )
+        _write(
+            a / "docs/decisions/adr/0007-pipeline-standard.md",
+            "# ADR-07: Pipeline Standard\n\n## Summary\nEvery task follows a mandatory pipeline.",
+        )
+        _write(
+            a / "docs/decisions/adr/0034-product-name-marrow.md",
+            "# ADR-0034: Product Name\n\n## Summary\nThe public product name is Marrow.",
+        )
+        _write(a / "spec.md", "# Spec\nTest spec.")
+
+    def _run_with_flag(self, session_content: str, flag: bool) -> str:
+        _write(self.artifacts / "session.md", session_content)
+        with patch("config.AGENT_PROFILE_ENGINE_ENABLED", flag):
+            return get_session_context_logic(PROJECT)
+
+    def test_flagParity_discoveryAgent_outputIdentical(self):
+        role, session = self.ROLES[0]
+        off = self._run_with_flag(session, False)
+        on  = self._run_with_flag(session, True)
+        self.assertEqual(off, on, f"Flag-off/on output diverged for {role}")
+
+    def test_flagParity_architectureAgent_outputIdentical(self):
+        role, session = self.ROLES[1]
+        off = self._run_with_flag(session, False)
+        on  = self._run_with_flag(session, True)
+        self.assertEqual(off, on, f"Flag-off/on output diverged for {role}")
+
+    def test_flagParity_planningAgent_outputIdentical(self):
+        role, session = self.ROLES[2]
+        off = self._run_with_flag(session, False)
+        on  = self._run_with_flag(session, True)
+        self.assertEqual(off, on, f"Flag-off/on output diverged for {role}")
+
+    def test_flagParity_executionAgent_outputIdentical(self):
+        role, session = self.ROLES[3]
+        off = self._run_with_flag(session, False)
+        on  = self._run_with_flag(session, True)
+        self.assertEqual(off, on, f"Flag-off/on output diverged for {role}")
+
