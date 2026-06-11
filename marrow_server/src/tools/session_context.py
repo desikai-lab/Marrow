@@ -37,14 +37,21 @@ def get_guideline_logic(project: str, role: str) -> str:
 
         === FOUNDATIONAL DECISIONS ===
         {adr_summaries_joined}
+
+        === PLAYBOOKS ===          <- only present when role has listed playbooks
+        {playbook_content}
     """
     guidelines = guideline_service.load(project, role)
     if isinstance(guidelines, str):
         return guidelines  # error string
 
     adr_section = adr_service.load(project, role)
+    playbook_section = playbook_service.load(project, role)
 
-    return (
-        f"=== ROLE GUIDELINES ===\n{guidelines.phase_text}\n\n"
-        f"=== FOUNDATIONAL DECISIONS ===\n{adr_section}\n"
-    )
+    parts = [
+        f"=== ROLE GUIDELINES ===\n{guidelines.phase_text}",
+        f"=== FOUNDATIONAL DECISIONS ===\n{adr_section}",
+    ]
+    if playbook_section:
+        parts.append(f"=== PLAYBOOKS ===\n{playbook_section}")
+    return "\n\n".join(parts) + "\n"

@@ -8,6 +8,8 @@
     - `/docs/features/active/`: Only place for ongoing work. Each feature must have its own folder `[ID]-[name]/`.
     - `/docs/decisions/adr/`: Only place for architectural decisions.
 - **Remote Source access**: The `/src/` directory is a **REMOTE** entity. It is NOT part of your local filesystem. Access it ONLY via specialized Code Tools (e.g., `view_file_source`, `get_file_skeleton`).
+- **Playbook Discovery**: Role-addressable procedure playbooks live at `/docs/playbooks/` and are searchable via `get_applicable_playbooks`.
+
 
 ## 1. Repository Hygiene
 - **Artifacts Only**: You only have write access to your virtual root. Save all plans and docs in `/docs/`.
