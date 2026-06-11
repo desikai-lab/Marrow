@@ -208,14 +208,15 @@ class TestGetSessionContextFlagParity(unittest.TestCase):
     import tempfile
 
     ROLES = [
-        ("Discovery Agent",    "**Phase:** 1\nnext_agent_role: Discovery Agent"),
+        ("Discovery Agent", "**Phase:** 1\nnext_agent_role: Discovery Agent"),
         ("Architecture Agent", "**Phase:** 4\nnext_agent_role: Architecture Agent"),
-        ("Planning Agent",     "**Phase:** 7\nnext_agent_role: Planning Agent"),
-        ("Execution Agent",    "**Phase:** 12\nnext_agent_role: Execution Agent"),
+        ("Planning Agent", "**Phase:** 7\nnext_agent_role: Planning Agent"),
+        ("Execution Agent", "**Phase:** 12\nnext_agent_role: Execution Agent"),
     ]
 
     def setUp(self):
         import tempfile
+
         self.tmp = tempfile.mkdtemp()
         self.artifacts = Path(self.tmp) / PROJECT / "artifacts"
         self._build_fixture()
@@ -230,6 +231,7 @@ class TestGetSessionContextFlagParity(unittest.TestCase):
         for p in self.patchers:
             p.stop()
         import shutil
+
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def _build_fixture(self):
@@ -258,7 +260,9 @@ roles:
         )
         _write(a / "docs/manuals/guidelines/core.md", "# Core Guidelines\nCore rules.")
         _write(a / "docs/manuals/guidelines/discovery.md", "# Discovery Guidelines\nDiscover.")
-        _write(a / "docs/manuals/guidelines/architecture.md", "# Architecture Guidelines\nArchitect.")
+        _write(
+            a / "docs/manuals/guidelines/architecture.md", "# Architecture Guidelines\nArchitect."
+        )
         _write(a / "docs/manuals/guidelines/planning.md", "# Planning Guidelines\nPlan.")
         _write(a / "docs/manuals/guidelines/execution.md", "# Execution Guidelines\nExecute.")
         _write(
@@ -290,24 +294,23 @@ roles:
     def test_flagParity_discoveryAgent_outputIdentical(self):
         role, session = self.ROLES[0]
         off = self._run_with_flag(session, False)
-        on  = self._run_with_flag(session, True)
+        on = self._run_with_flag(session, True)
         self.assertEqual(off, on, f"Flag-off/on output diverged for {role}")
 
     def test_flagParity_architectureAgent_outputIdentical(self):
         role, session = self.ROLES[1]
         off = self._run_with_flag(session, False)
-        on  = self._run_with_flag(session, True)
+        on = self._run_with_flag(session, True)
         self.assertEqual(off, on, f"Flag-off/on output diverged for {role}")
 
     def test_flagParity_planningAgent_outputIdentical(self):
         role, session = self.ROLES[2]
         off = self._run_with_flag(session, False)
-        on  = self._run_with_flag(session, True)
+        on = self._run_with_flag(session, True)
         self.assertEqual(off, on, f"Flag-off/on output diverged for {role}")
 
     def test_flagParity_executionAgent_outputIdentical(self):
         role, session = self.ROLES[3]
         off = self._run_with_flag(session, False)
-        on  = self._run_with_flag(session, True)
+        on = self._run_with_flag(session, True)
         self.assertEqual(off, on, f"Flag-off/on output diverged for {role}")
-
