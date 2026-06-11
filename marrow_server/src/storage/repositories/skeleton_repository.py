@@ -272,7 +272,9 @@ class SkeletonRepository:
         results = await asyncio.to_thread(
             lambda: (
                 self.table.search()
-                .where(f"path LIKE '%{posix_path}' AND project = '{project}'")
+                .where(
+                    f"(path = '{posix_path}' OR path LIKE '%/{posix_path}') AND project = '{project}'"
+                )
                 .to_list()
             )
         )
