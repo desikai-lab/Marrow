@@ -1,10 +1,6 @@
-import pytest
-from unittest.mock import patch, AsyncMock
-import yaml
+from unittest.mock import patch
 
 from services import playbook_service
-from services.role_profile_service import RoleProfile, RoleProfileLoader
-from domain.responses import ArtifactSectionResult
 
 
 def test_load_yaml_missing_returns_empty():
@@ -34,14 +30,18 @@ def test_load_reads_playbooks_successfully():
         if rel_path == "docs/manuals/role_profiles.yaml":
             return yaml_content
         elif rel_path == "docs/playbooks/pb1.md":
-            return "pb1 content"
+            return '---\ntitle: "Playbook 1"\ndescription: "First description"\n---\nbody'
         elif rel_path == "docs/playbooks/pb2.md":
-            return "pb2 content"
+            return '---\ntitle: "Playbook 2"\ndescription: "Second description"\n---\nbody'
         raise Exception("unexpected path")
 
     with patch("services.playbook_service.read_artifact_logic", side_effect=mock_read):
         res = playbook_service.load("test_proj", "execution")
-        assert res == "pb1 content\n\npb2 content"
+        assert "Use `read_project_artifacts` to load a skill by path" in res
+        assert "- Playbook 1 [docs/playbooks/pb1.md]" in res
+        assert "  First description" in res
+        assert "- Playbook 2 [docs/playbooks/pb2.md]" in res
+        assert "  Second description" in res
 
 
 def test_load_skips_failed_playbook_reads():
@@ -51,25 +51,86 @@ def test_load_skips_failed_playbook_reads():
         if rel_path == "docs/manuals/role_profiles.yaml":
             return yaml_content
         elif rel_path == "docs/playbooks/pb1.md":
-            return "pb1 content"
+            return '---\ntitle: "Playbook 1"\ndescription: "First description"\n---\nbody'
         else:
             raise Exception("simulate file read error")
 
     with patch("services.playbook_service.read_artifact_logic", side_effect=mock_read):
         res = playbook_service.load("test_proj", "execution")
-        assert res == "pb1 content"
+        assert "- Playbook 1 [docs/playbooks/pb1.md]" in res
+        assert "docs/playbooks/pb2.md" not in res
 
 
+def test_load_returns_rich_stub_with_description():
+    yaml_content = (
+        "roles:\n  execution:\n    guideline: g.md\n    playbooks:\n      - docs/playbooks/pb1.md\n"
+    )
+    pb1_content = '---\ntitle: "Playbook 1"\ndescription: "Detailed description"\ntriggers:\n  - "test"\nscope: "exec"\n---\nbody'
 
-@pytest.mark.asyncio
-async def test_search_returns_filtered_results():
-    mock_results = [
-        ArtifactSectionResult(path="docs/playbooks/pb1.md", section="Section 1", start_line=1, end_line=10, distance=0.1),
-        ArtifactSectionResult(path="docs/not-playbooks/other.md", section="Section 2", start_line=1, end_line=10, distance=0.2),
-        ArtifactSectionResult(path="docs/playbooks/pb2.md", section="Section 3", start_line=1, end_line=10, distance=0.3),
-    ]
-    with patch("services.playbook_service.search_artifact_sections_logic", new_callable=AsyncMock, return_value=mock_results):
-        res = await playbook_service.search("test_proj", "query", limit=2)
-        assert len(res) == 2
-        assert res[0].path == "docs/playbooks/pb1.md"
-        assert res[1].path == "docs/playbooks/pb2.md"
+    def mock_read(project, rel_path, mode="full"):
+        if rel_path == "docs/manuals/role_profiles.yaml":
+            return yaml_content
+        elif rel_path == "docs/playbooks/pb1.md":
+            return pb1_content
+        raise Exception("unexpected path")
+
+    with patch("services.playbook_service.read_artifact_logic", side_effect=mock_read):
+        res = playbook_service.load("test_proj", "execution")
+        assert (
+            "- Playbook 1 [docs/playbooks/pb1.md]\n  Detailed description\n  Triggers: test\n  Scope: exec"
+            in res
+        )
+
+
+def test_load_returns_stub_without_description_when_field_absent():
+    yaml_content = (
+        "roles:\n  execution:\n    guideline: g.md\n    playbooks:\n      - docs/playbooks/pb1.md\n"
+    )
+    pb1_content = '---\ntitle: "Playbook 1"\ntriggers:\n  - "test"\nscope: "exec"\n---\nbody'
+
+    def mock_read(project, rel_path, mode="full"):
+        if rel_path == "docs/manuals/role_profiles.yaml":
+            return yaml_content
+        elif rel_path == "docs/playbooks/pb1.md":
+            return pb1_content
+        raise Exception("unexpected path")
+
+    with patch("services.playbook_service.read_artifact_logic", side_effect=mock_read):
+        res = playbook_service.load("test_proj", "execution")
+        assert "- Playbook 1 [docs/playbooks/pb1.md]\n  Triggers: test\n  Scope: exec" in res
+        assert "description" not in res
+
+
+def test_load_returns_path_only_stub_when_frontmatter_missing():
+    yaml_content = (
+        "roles:\n  execution:\n    guideline: g.md\n    playbooks:\n      - docs/playbooks/pb1.md\n"
+    )
+
+    def mock_read(project, rel_path, mode="full"):
+        if rel_path == "docs/manuals/role_profiles.yaml":
+            return yaml_content
+        elif rel_path == "docs/playbooks/pb1.md":
+            return "body without frontmatter"
+        raise Exception("unexpected path")
+
+    with patch("services.playbook_service.read_artifact_logic", side_effect=mock_read):
+        res = playbook_service.load("test_proj", "execution")
+        assert "- [docs/playbooks/pb1.md]" in res
+
+
+def test_load_returns_path_only_stub_when_frontmatter_malformed():
+    yaml_content = (
+        "roles:\n  execution:\n    guideline: g.md\n    playbooks:\n      - docs/playbooks/pb1.md\n"
+    )
+    pb1_content = "---\nmalformed yaml : [ : : }\n---\nbody"
+
+    def mock_read(project, rel_path, mode="full"):
+        if rel_path == "docs/manuals/role_profiles.yaml":
+            return yaml_content
+        elif rel_path == "docs/playbooks/pb1.md":
+            return pb1_content
+        raise Exception("unexpected path")
+
+    with patch("services.playbook_service.read_artifact_logic", side_effect=mock_read):
+        res = playbook_service.load("test_proj", "execution")
+        assert "- [docs/playbooks/pb1.md]" in res
