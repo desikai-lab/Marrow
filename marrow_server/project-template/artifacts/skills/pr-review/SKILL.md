@@ -1,12 +1,18 @@
 ---
+name: "pr-review"
 title: "PR Review Checklist"
+description: |
+  Use when opening, reviewing, or merging a pull request.
+  Covers pre-PR checks (linting, tests, branch naming), PR description
+  requirements, and post-merge cleanup. Not for code review commentary
+  or architecture decisions — use the relevant role guidelines for those.
 triggers:
   - "pull request"
   - "code review"
   - "open PR"
   - "ready to merge"
 scope: "execution"
-last_updated: "2026-06-12"
+last_updated: "2026-06-14"
 ---
 
 # PR Review Checklist
