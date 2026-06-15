@@ -10,7 +10,6 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import Field
 
 from models import ReadRequest, TaskInput, WriteRequest
-from services import playbook_service
 from services.artifact_command_service import save_project_artifacts_logic
 from services.artifact_query_service import search_artifact_sections_logic
 from services.skeleton_query_service import (
@@ -227,17 +226,6 @@ def register_all_tools(mcp: FastMCP) -> None:
     ) -> str:
         """[SESSION TOOLS] Assemble and return the full context bundle (guidelines + ADRs) for a given agent role."""
         return await asyncio.to_thread(get_guideline_logic, project, role)
-
-    @mcp.tool()
-    @mcp_error_handler
-    async def get_applicable_playbooks(
-        project: Annotated[str, Field(description="Project name")],
-        query: Annotated[str, Field(description="Search text or task description")],
-        limit: Annotated[int, Field(description="Max playbooks to return")] = 3,
-    ) -> list[dict[str, Any]]:
-        """[SESSION TOOLS] Search playbooks by query/topic."""
-        results = await playbook_service.search(project, query, limit)
-        return [r.model_dump() for r in results]
 
     ## Project tools
 

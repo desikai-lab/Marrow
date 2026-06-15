@@ -8,7 +8,7 @@
     - `/docs/features/active/`: Only place for ongoing work. Each feature must have its own folder `[ID]-[name]/`.
     - `/docs/decisions/adr/`: Only place for architectural decisions.
 - **Remote Source access**: The `/src/` directory is a **REMOTE** entity. It is NOT part of your local filesystem. Access it ONLY via specialized Code Tools (e.g., `view_file_source`, `get_file_skeleton`).
-- **Playbook Discovery**: Role-addressable procedure playbooks live at `/docs/playbooks/` and are searchable via `get_applicable_playbooks`.
+- **Skill Discovery**: Role-addressable skill directories live at `/skills/` (e.g. `/skills/<name>/SKILL.md`) and are registered in `role_profiles.yaml` for automatic injection in `get_guideline` stubs.
 
 
 ## 1. Repository Hygiene

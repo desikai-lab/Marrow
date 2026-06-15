@@ -1,25 +1,41 @@
 import logging
+import re
 
-from domain.responses import ArtifactSectionResult
-from services.artifact_query_service import search_artifact_sections_logic
+import yaml
+
 from services.role_profile_service import RoleProfileLoader
 from tools.artifacts import read_artifact_logic
 
 logger = logging.getLogger(__name__)
 
-_PLAYBOOKS_PREFIX = "docs/playbooks/"
 _loader = RoleProfileLoader()
 
+_FRONTMATTER_RE = re.compile(r"^---\n(.+?)\n---", re.DOTALL)
 
-async def search(project: str, query: str, limit: int = 3) -> list[ArtifactSectionResult]:
-    """Semantic search scoped to docs/playbooks/.
 
-    Returns up to `limit` ArtifactSectionResult entries whose path starts with
-    'docs/playbooks/'. Returns an empty list if the folder is absent or has no
-    indexed content. Tolerates malformed frontmatter — search is chunk-based.
-    """
-    results = await search_artifact_sections_logic(project, query, limit * 3)
-    return [r for r in results if r.path.startswith(_PLAYBOOKS_PREFIX)][:limit]
+def _parse_stub(pb_path: str, text: str) -> str:
+    text = text.replace("\r\n", "\n")
+    m = _FRONTMATTER_RE.match(text)
+    if not m:
+        return f"- [{pb_path}]"
+    try:
+        fm = yaml.safe_load(m.group(1))
+    except yaml.YAMLError:
+        return f"- [{pb_path}]"
+    if not isinstance(fm, dict):
+        return f"- [{pb_path}]"
+    title = fm.get("title", pb_path)
+    description = fm.get("description", "").strip()
+    triggers = fm.get("triggers", [])
+    scope = fm.get("scope", "")
+    lines = [f"- {title} [{pb_path}]"]
+    if description:
+        lines.append(f"  {description}")
+    if triggers:
+        lines.append(f"  Triggers: {', '.join(triggers)}")
+    if scope:
+        lines.append(f"  Scope: {scope}")
+    return "\n".join(lines)
 
 
 def load(project: str, agent_role: str) -> str:
@@ -55,12 +71,16 @@ def load(project: str, agent_role: str) -> str:
     if not profile.playbooks:
         return ""
 
+    _HEADER = (
+        "Use `read_project_artifacts` to load a skill by path when the task matches its triggers."
+    )
     parts: list[str] = []
     for pb_path in profile.playbooks:
         try:
             text = read_artifact_logic(project, pb_path, mode="full")
-            parts.append(text)
+            parts.append(_parse_stub(pb_path, text))
         except Exception:
             logger.warning("playbook_service.load: could not read playbook '%s', skipping", pb_path)
-
-    return "\n\n".join(parts)
+    if not parts:
+        return ""
+    return _HEADER + "\n\n" + "\n\n".join(parts)
