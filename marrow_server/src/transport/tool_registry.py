@@ -215,7 +215,9 @@ def register_all_tools(mcp: FastMCP) -> None:
         project: Annotated[str, Field(description="Project name to read session state from")],
     ) -> str:
         """[SESSION TOOLS] Reads session.md, detects the active pipeline phase,
-        and returns core guidelines + phase-appropriate role guidelines + filtered foundational ADRs as a single assembled string."""
+        and returns core guidelines + phase-appropriate role guidelines + filtered foundational ADRs
+        + role-linked skill stubs (=== PLAYBOOKS === section, when the role has skills registered)
+        as a single assembled string."""
         return await asyncio.to_thread(get_session_context_logic, project)
 
     @mcp.tool()
