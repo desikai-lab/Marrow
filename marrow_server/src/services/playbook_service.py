@@ -62,7 +62,8 @@ def load(project: str, agent_role: str) -> str:
         return ""
 
     loader = RoleProfileLoader()
-    profile = loader.get_profile(yaml_text, agent_role)
+    normalized_role = agent_role.lower().replace(" agent", "").strip()
+    profile = loader.get_profile(yaml_text, normalized_role)
     if isinstance(profile, str):
         # get_profile returns an error string when role is unknown
         logger.warning("playbook_service.load: %s", profile)

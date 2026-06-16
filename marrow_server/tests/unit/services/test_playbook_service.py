@@ -134,3 +134,26 @@ def test_load_returns_path_only_stub_when_frontmatter_malformed():
     with patch("services.playbook_service.read_artifact_logic", side_effect=mock_read):
         res = playbook_service.load("test_proj", "execution")
         assert "- [docs/playbooks/pb1.md]" in res
+
+
+def test_load_normalizes_display_role_name():
+    """load() must accept 'Execution Agent' (raw next_agent_role value) and
+    normalise it to 'execution' before the YAML key lookup.  Without
+    normalisation this would raise 'Unknown role Execution Agent'."""
+    yaml_content = (
+        "roles:\n  execution:\n    guideline: g.md\n    playbooks:\n      - skills/pr-review/SKILL.md\n"
+    )
+    skill_content = '---\ntitle: "PR Review"\ndescription: "Use when opening a PR."\n---\nbody'
+
+    def mock_read(project, rel_path, mode="full"):
+        if rel_path == "docs/manuals/role_profiles.yaml":
+            return yaml_content
+        elif rel_path == "skills/pr-review/SKILL.md":
+            return skill_content
+        raise Exception("unexpected path")
+
+    with patch("services.playbook_service.read_artifact_logic", side_effect=mock_read):
+        res = playbook_service.load("test_proj", "Execution Agent")
+        assert "- PR Review [skills/pr-review/SKILL.md]" in res
+        assert "Use when opening a PR." in res
+
