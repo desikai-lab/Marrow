@@ -2,8 +2,9 @@ import logging
 from dataclasses import dataclass
 
 import tools.artifacts
-from services.role_profile_service import RoleProfileLoader
 from utils.exceptions import ArtifactNotFoundError
+
+from services.role_profile_service import RoleProfileLoader
 
 logger = logging.getLogger(__name__)
 

@@ -33,8 +33,8 @@ jobs:
 
       - name: Lint with ruff
         run: |
-          ruff check marrow_server/src marrow_worker/src marrow_common/
-          ruff format --check marrow_server/src marrow_worker/src marrow_common/
+          ruff check marrow_server/src marrow_worker/src marrow_common/ --config marrow_server/pyproject.toml
+          ruff format --check marrow_server/src marrow_worker/src marrow_common/ --config marrow_server/pyproject.toml
 
       - name: Run unit tests — marrow_server
         working-directory: marrow_server

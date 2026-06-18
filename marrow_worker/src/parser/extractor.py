@@ -1,9 +1,8 @@
 from dataclasses import dataclass
 
-from tree_sitter import Node
-
 from src.parser.dispatcher import get_parser_for_extension
 from src.parser.lang_config import CONFIG_BY_EXT, LangSyntaxConfig
+from tree_sitter import Node
 
 
 @dataclass

@@ -15,6 +15,7 @@ from collections.abc import Callable
 from typing import Any
 
 from tools.utils.security import sanitize_error_message
+
 from utils.exceptions import BaseBacklogError
 
 logger = logging.getLogger(__name__)
