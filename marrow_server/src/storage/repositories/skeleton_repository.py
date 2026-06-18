@@ -3,10 +3,10 @@ import logging
 from typing import Any
 
 import pyarrow as pa
+from utils.metrics import track_time
 
 from storage.db import get_skeleton_table, get_table_lock, list_table_names, schedule_index_rebuild
 from storage.entities import SkeletonChunkRecord
-from utils.metrics import track_time
 
 logger = logging.getLogger("marrow.skeleton_repository")
 

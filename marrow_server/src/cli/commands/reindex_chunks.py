@@ -3,9 +3,8 @@ import logging
 import os
 from datetime import datetime
 
-from tqdm import tqdm
-
 from cli.commands.base import BaseCommand
+from tqdm import tqdm
 
 logger = logging.getLogger("admin_cli")
 

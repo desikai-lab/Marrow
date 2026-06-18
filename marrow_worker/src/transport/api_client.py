@@ -13,8 +13,9 @@ _MONOREPO_ROOT = str(Path(__file__).parents[3])
 if _MONOREPO_ROOT not in sys.path:
     sys.path.insert(0, _MONOREPO_ROOT)
 
-from marrow_common.skeleton_schema import SCHEMA_VERSION, SkeletonChunk  # noqa: E402
 from pydantic import ValidationError  # noqa: E402
+
+from marrow_common.skeleton_schema import SCHEMA_VERSION, SkeletonChunk  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
