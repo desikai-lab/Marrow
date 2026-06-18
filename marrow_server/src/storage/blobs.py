@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-
 from utils.metrics import track_time
 
 FRONTMATTER_META_KEYS = {

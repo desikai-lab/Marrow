@@ -3,6 +3,8 @@ import os
 from typing import Any, Literal
 
 from storage.uow import UnitOfWork
+from utils.exceptions import ArtifactNotFoundError
+
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
 from tools.utils.filesystem_utils import (
     create_artifact_backup,
@@ -12,7 +14,6 @@ from tools.utils.filesystem_utils import (
     validate_artifact_path,
     validate_project_path,
 )
-from utils.exceptions import ArtifactNotFoundError
 
 logger = logging.getLogger(__name__)
 

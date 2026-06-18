@@ -62,4 +62,3 @@ def get_guideline_logic(project: str, role: str) -> str:
     if playbook_section:
         parts.append(f"=== PLAYBOOKS ===\n{playbook_section}")
     return "\n\n".join(parts) + "\n"
-

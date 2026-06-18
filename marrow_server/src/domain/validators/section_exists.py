@@ -1,5 +1,6 @@
-from domain.validation import Validator
 from utils.exceptions import ValidationError
+
+from domain.validation import Validator
 
 
 class SectionNotExistsValidator(Validator):
