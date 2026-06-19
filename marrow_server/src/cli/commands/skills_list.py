@@ -8,7 +8,7 @@ from config import PROJECTS_ROOT
 class SkillsListCommand(BaseCommand):
     @property
     def name(self) -> str:
-        return "list"
+        return "skills-list"
 
     @property
     def help(self) -> str:

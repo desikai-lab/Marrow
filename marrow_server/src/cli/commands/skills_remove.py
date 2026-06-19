@@ -10,7 +10,7 @@ from config import PROJECTS_ROOT
 class SkillsRemoveCommand(BaseCommand):
     @property
     def name(self) -> str:
-        return "remove"
+        return "skills-remove"
 
     @property
     def help(self) -> str:

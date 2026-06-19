@@ -20,6 +20,10 @@ COMMANDS = [
     MaintenanceCommand(),
     InitCommand(),
     DiagIndexCommand(),
+    SkillsAddCommand(),
+    SkillsListCommand(),
+    SkillsUpdateCommand(),
+    SkillsRemoveCommand(),
 ]
 
 SKILLS_COMMANDS = [

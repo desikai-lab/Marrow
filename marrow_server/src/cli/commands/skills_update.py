@@ -11,7 +11,7 @@ from config import PROJECTS_ROOT
 class SkillsUpdateCommand(BaseCommand):
     @property
     def name(self) -> str:
-        return "update"
+        return "skills-update"
 
     @property
     def help(self) -> str:

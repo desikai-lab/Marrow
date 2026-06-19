@@ -11,7 +11,7 @@ from config import PROJECTS_ROOT
 class SkillsAddCommand(BaseCommand):
     @property
     def name(self) -> str:
-        return "add"
+        return "skills-add"
 
     @property
     def help(self) -> str:
