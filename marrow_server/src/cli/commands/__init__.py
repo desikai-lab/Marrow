@@ -6,6 +6,10 @@ from .migrate import MigrateCommand
 from .project_init import InitCommand
 from .reindex import ReindexCommand
 from .reindex_chunks import ReindexChunksCommand
+from .skills_add import SkillsAddCommand
+from .skills_list import SkillsListCommand
+from .skills_remove import SkillsRemoveCommand
+from .skills_update import SkillsUpdateCommand
 
 COMMANDS = [
     MigrateCommand(),
@@ -16,4 +20,11 @@ COMMANDS = [
     MaintenanceCommand(),
     InitCommand(),
     DiagIndexCommand(),
+]
+
+SKILLS_COMMANDS = [
+    SkillsAddCommand(),
+    SkillsListCommand(),
+    SkillsUpdateCommand(),
+    SkillsRemoveCommand(),
 ]
