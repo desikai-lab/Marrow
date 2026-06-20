@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from services.session_service import _parse_phase, _select_agent_role
+from services.session_service import _parse_phase
 from tools.session_context import get_session_context_logic
 from utils.exceptions import ArtifactNotFoundError
 
@@ -23,25 +23,12 @@ class TestSessionContext(unittest.TestCase):
         self.assertEqual(_parse_phase("Phase: unknown"), 1)
         self.assertEqual(_parse_phase("Phase -5"), 1)  # regex \d only matches positive
 
-    def test_select_agent_role_phase_1_returns_discovery_agent(self):
-        self.assertEqual(_select_agent_role(1), "Discovery Agent")
-
-    def test_select_agent_role_phase_6_returns_architecture_agent(self):
-        self.assertEqual(_select_agent_role(6), "Architecture Agent")
-
-    def test_select_agent_role_phase_7_returns_planning_agent(self):
-        self.assertEqual(_select_agent_role(7), "Planning Agent")
-        self.assertEqual(_select_agent_role(11), "Planning Agent")
-
-    def test_select_agent_role_phase_12_returns_execution_agent(self):
-        self.assertEqual(_select_agent_role(12), "Execution Agent")
-        self.assertEqual(_select_agent_role(99), "Execution Agent")
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_get_session_context_logic_valid_project_returns_context_string(self, mock_read):
         def side_effect(project, path):
             if path == "session.md":
-                return "Phase 8"
+                return "Phase 8\nnext_agent_role: Planning Agent"
             if path == "docs/manuals/role_profiles.yaml":
                 return "roles:\n  planning:\n    guideline: docs/manuals/guidelines/planning.md\n    adrs: []\n    playbooks: []"
             if path == "docs/manuals/guidelines/core.md":
@@ -61,26 +48,16 @@ class TestSessionContext(unittest.TestCase):
         self.assertIn("=== PHASE GUIDELINES (Planning Agent) ===", result)
 
     @patch("tools.artifacts.read_artifact_logic")
-    def test_get_session_context_logic_missing_session_returns_discovery_context(self, mock_read):
+    def test_get_session_context_logic_missing_session_raises_value_error(self, mock_read):
         def side_effect(project, path):
             if path == "session.md":
                 raise ArtifactNotFoundError("session", "session.md")
-            if path == "docs/manuals/role_profiles.yaml":
-                return "roles:\n  discovery:\n    guideline: docs/manuals/guidelines/discovery.md\n    adrs: []\n    playbooks: []"
-            if path == "docs/manuals/guidelines/core.md":
-                return "CORE CONTENT"
-            if path == "docs/manuals/guidelines/discovery.md":
-                return "DISCOVERY CONTENT"
-            return "ERROR"
+            raise ArtifactNotFoundError("file", path)
 
         mock_read.side_effect = side_effect
 
-        # Should default to phase 1 -> Discovery Agent
-        result = get_session_context_logic("TestProj")
-
-        self.assertIn("=== SESSION STATE ===\n\n", result)
-        self.assertIn("DISCOVERY CONTENT", result)
-        self.assertIn("=== PHASE GUIDELINES (Discovery Agent) ===", result)
+        with self.assertRaises(ValueError):
+            get_session_context_logic("TestProj")
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_get_session_context_logic_missing_guidelines_raises_artifact_not_found_error(
@@ -88,7 +65,7 @@ class TestSessionContext(unittest.TestCase):
     ):
         def side_effect(project, path):
             if path == "session.md":
-                return "Phase 12"
+                return "Phase 12\nnext_agent_role: Execution Agent"
             if path == "docs/manuals/role_profiles.yaml":
                 return "roles:\n  execution:\n    guideline: docs/manuals/guidelines/execution.md\n    adrs: []\n    playbooks: []"
             if path == "docs/manuals/guidelines/core.md":
@@ -142,7 +119,7 @@ class TestGetSessionContextLogicAdrInjection(unittest.TestCase):
 
     def _base_side_effect(self, project, path):
         if path == "session.md":
-            return "Phase 8"
+            return "Phase 8\nnext_agent_role: planning"
         if path == "spec.md":
             return "SPEC"
         if path == "docs/manuals/guidelines/core.md":
@@ -471,7 +448,7 @@ roles:
 
         def side_effect(project, path):
             if path == "session.md":
-                return "Phase 4"
+                return "Phase 4\nnext_agent_role: Architecture Agent"
             if path == "spec.md":
                 return "SPEC"
             if path == "docs/manuals/guidelines/core.md":

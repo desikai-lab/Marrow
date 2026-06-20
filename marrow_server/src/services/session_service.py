@@ -32,35 +32,19 @@ def _parse_phase(session_text: str, *, warn: bool = True) -> int:
     return 1
 
 
-def _parse_next_agent(session_text: str) -> str:
+def _parse_next_agent(session_text: str) -> str | None:
     match = re.search(r"next_agent_role[:\s\*]+(.+)", session_text, re.IGNORECASE)
     if match:
-        return match.group(1)
-    logger.warning("No next agent found in session text; defaulting to phase 1 (discovery).")
+        return match.group(1).strip()
+    logger.warning("No next_agent_role found in session text.")
     return None
-
-
-def _select_agent_role(phase: int) -> str:
-    """Map a pipeline phase number to the appropriate agent role display name.
-
-    Phase 1–3   → Discovery Agent
-    Phase 4–6   → Architecture Agent
-    Phase 7–11  → Planning Agent
-    Phase 12+   → Execution Agent
-    """
-    if phase >= 1 and phase <= 3:
-        return "Discovery Agent"
-    elif phase >= 4 and phase <= 6:
-        return "Architecture Agent"
-    elif phase >= 7 and phase <= 11:
-        return "Planning Agent"
-    else:
-        return "Execution Agent"
 
 
 def load(project: str) -> SessionContext:
     """Read session.md and spec.md; parse phase and agent_role.
-    Gracefully degrades on missing session.md (empty strings, phase=1, role='Discovery Agent').
+    Gracefully degrades on missing session.md (empty strings), but a missing or
+    unparseable next_agent_role is always a hard error — there is no phase-based
+    role guess anymore (see ADR-0036/ROLE-01).
     """
     try:
         session_text = tools.artifacts.read_artifact_logic(project, "session.md")
@@ -73,14 +57,13 @@ def load(project: str) -> SessionContext:
         spec = ""
 
     agent_role = _parse_next_agent(session_text)
-
     if agent_role is None:
-        # Role is derived from phase — warn if phase is missing.
-        phase = _parse_phase(session_text, warn=True)
-        agent_role = _select_agent_role(phase)
-    else:
-        # Role already resolved via next_agent_role; phase is informational only.
-        phase = _parse_phase(session_text, warn=False)
+        raise ValueError(
+            "session.md is missing next_agent_role — cannot resolve agent role. "
+            "Add 'next_agent_role: <RoleName>' to session.md."
+        )
+
+    phase = _parse_phase(session_text, warn=False)
 
     return SessionContext(
         session_text=session_text,
