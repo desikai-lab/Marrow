@@ -13,6 +13,8 @@ class RoleProfile:
     guideline: str
     adrs: list[str]
     playbooks: list[str] = field(default_factory=list)
+    next: str | None = None
+    requires_approval: bool = True
 
 
 class RoleProfileLoader:
@@ -40,6 +42,8 @@ class RoleProfileLoader:
                 guideline=cfg["guideline"],
                 adrs=cfg.get("adrs", []),
                 playbooks=cfg.get("playbooks", []),
+                next=cfg.get("next"),
+                requires_approval=cfg.get("requires_approval", True),
             )
         return profiles
 

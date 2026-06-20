@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import tools.artifacts
 from utils.exceptions import ArtifactNotFoundError
 
-from services.role_profile_service import RoleProfileLoader
+from services.role_profile_service import RoleProfile, RoleProfileLoader
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 class GuidelineBundle:
     core_text: str
     phase_text: str
+    profile: RoleProfile
 
 
 def load(project: str, agent_role: str) -> GuidelineBundle | str:
@@ -42,4 +43,4 @@ def load(project: str, agent_role: str) -> GuidelineBundle | str:
     except ArtifactNotFoundError:
         return f"Error: guideline file not found: {profile.guideline}"
 
-    return GuidelineBundle(core_text=core_text, phase_text=phase_text)
+    return GuidelineBundle(core_text=core_text, phase_text=phase_text, profile=profile)

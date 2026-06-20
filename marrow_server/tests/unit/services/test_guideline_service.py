@@ -90,3 +90,30 @@ roles:
         res = load("Proj", "Planning Agent")
         self.assertIsInstance(res, GuidelineBundle)
         self.assertEqual(res.phase_text, "PLANNING TEXT")
+
+    @patch("tools.artifacts.read_artifact_logic")
+    def test_load_validRole_bundleCarriesResolvedProfile(self, mock_read):
+        yaml_with_next = """
+roles:
+  planning:
+    guideline: docs/manuals/guidelines/planning.md
+    adrs: []
+    playbooks: []
+    next: execution
+    requires_approval: true
+"""
+
+        def side_effect(project, path):
+            if path == "docs/manuals/guidelines/core.md":
+                return "CORE TEXT"
+            if path == "docs/manuals/role_profiles.yaml":
+                return yaml_with_next
+            if path == "docs/manuals/guidelines/planning.md":
+                return "PLANNING TEXT"
+            raise ArtifactNotFoundError("file", path)
+
+        mock_read.side_effect = side_effect
+        res = load("Proj", "planning")
+        self.assertEqual(res.profile.next, "execution")
+        self.assertTrue(res.profile.requires_approval)
+
