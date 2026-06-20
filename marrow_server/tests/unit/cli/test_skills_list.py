@@ -69,7 +69,7 @@ def test_execute_output_is_sorted_alphabetically(tmp_path, capsys):
         args = make_args()
         cmd.execute(args)
         captured = capsys.readouterr()
-        
+
         apple_idx = captured.out.index("apple")
         zebra_idx = captured.out.index("zebra")
         assert apple_idx < zebra_idx

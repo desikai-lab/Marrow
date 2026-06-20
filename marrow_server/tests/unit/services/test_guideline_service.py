@@ -116,4 +116,3 @@ roles:
         res = load("Proj", "planning")
         self.assertEqual(res.profile.next, "execution")
         self.assertTrue(res.profile.requires_approval)
-

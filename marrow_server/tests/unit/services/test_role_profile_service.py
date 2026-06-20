@@ -121,7 +121,6 @@ roles:
         roles = self.loader.list_roles(malformed_yaml)
         self.assertEqual(roles, [])
 
-
     def test_load_nextFieldPresent_parsesNextRole(self):
         yaml_text = """
 roles:

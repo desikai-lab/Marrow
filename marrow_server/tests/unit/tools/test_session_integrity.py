@@ -7,9 +7,7 @@ from unittest.mock import patch
 from tools.utils.session_integrity import SessionMdIntegrityHook
 
 GOOD_HEADER = (
-    "# Session State — Proj\n"
-    "**Current Task:** F1 — desc\n"
-    "**next_agent_role:** Planning Agent\n\n"
+    "# Session State — Proj\n**Current Task:** F1 — desc\n**next_agent_role:** Planning Agent\n\n"
 )
 PROJECT = "TestProject"
 
@@ -37,7 +35,9 @@ class TestSessionMdIntegrityHook(unittest.TestCase):
     def test_validateAndRepair_nonReplaceFileMode_contentUnchanged(self):
         """Non replace_file modes must never trigger the repair logic."""
         broken = "no header at all\n"
-        result = self.hook.validate_and_repair(PROJECT, "session.md", broken, mode="replace_section")
+        result = self.hook.validate_and_repair(
+            PROJECT, "session.md", broken, mode="replace_section"
+        )
         self.assertEqual(result, broken)
 
     def test_validateAndRepair_patchMode_contentUnchanged(self):
@@ -58,7 +58,9 @@ class TestSessionMdIntegrityHook(unittest.TestCase):
         from tools.artifacts import save_artifact_logic
 
         # Seed a well-formed version so there's a backup
-        save_artifact_logic(PROJECT, "session.md", GOOD_HEADER + "first write\n", mode="replace_file")
+        save_artifact_logic(
+            PROJECT, "session.md", GOOD_HEADER + "first write\n", mode="replace_file"
+        )
 
         broken = "focus content only, no header\n"
         result = self.hook.validate_and_repair(PROJECT, "session.md", broken, mode="replace_file")
@@ -81,19 +83,25 @@ class TestSessionMdIntegrityHook(unittest.TestCase):
         """An OSError on a backup file must be logged and not escape validate_and_repair."""
         # Inject a fake history entry that points to a non-existent file
         fake_history = [{"backup_name": "nonexistent_backup_file.md"}]
-        with patch(
-            "tools.utils.session_integrity.get_artifact_history", return_value=fake_history
-        ), patch(
-            "tools.utils.session_integrity.validate_artifact_path", side_effect=ValueError("no live file")
-        ), self.assertLogs("tools.utils.session_integrity", level="WARNING") as log_ctx:
+        with (
+            patch("tools.utils.session_integrity.get_artifact_history", return_value=fake_history),
+            patch(
+                "tools.utils.session_integrity.validate_artifact_path",
+                side_effect=ValueError("no live file"),
+            ),
+            self.assertLogs("tools.utils.session_integrity", level="WARNING") as log_ctx,
+        ):
             broken = "missing header\n"
-            result = self.hook.validate_and_repair(PROJECT, "session.md", broken, mode="replace_file")
+            result = self.hook.validate_and_repair(
+                PROJECT, "session.md", broken, mode="replace_file"
+            )
 
         # No exception escapes
         self.assertEqual(result, broken)
         # Warning was logged (either from repair trigger or backup read failure)
-        self.assertTrue(any("nonexistent_backup_file.md" in m or "session.md" in m for m in log_ctx.output))
-
+        self.assertTrue(
+            any("nonexistent_backup_file.md" in m or "session.md" in m for m in log_ctx.output)
+        )
 
 
 if __name__ == "__main__":
