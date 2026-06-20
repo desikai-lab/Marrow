@@ -497,5 +497,94 @@ roles:
                 importlib.reload(config)
 
 
+class TestNextStepInjection(unittest.TestCase):
+    @patch("tools.artifacts.read_artifact_logic")
+    def test_getSessionContextLogic_nextRoleDefinedWithApproval_injectsNextStepWithApproval(self, mock_read):
+        _MOCK_YAML = """
+roles:
+  planning:
+    guideline: docs/manuals/guidelines/planning.md
+    adrs: []
+    playbooks: []
+    next: execution
+    requires_approval: true
+"""
+        def side_effect(project, path):
+            if path == "session.md":
+                return "Phase 8\nnext_agent_role: Planning Agent"
+            if path == "spec.md":
+                return "SPEC"
+            if path == "docs/manuals/guidelines/core.md":
+                return "CORE"
+            if path == "docs/manuals/role_profiles.yaml":
+                return _MOCK_YAML
+            if path == "docs/manuals/guidelines/planning.md":
+                return "PLANNING GUIDELINE"
+            raise ArtifactNotFoundError("x", path)
+
+        mock_read.side_effect = side_effect
+        result = get_session_context_logic("TestProj")
+        self.assertIn("=== NEXT STEP ===", result)
+        self.assertIn("Next Agent Role: execution", result)
+        self.assertIn("Requires Approval: True", result)
+
+    @patch("tools.artifacts.read_artifact_logic")
+    def test_getSessionContextLogic_nextRoleDefinedNoApproval_injectsNextStepNoApproval(self, mock_read):
+        _MOCK_YAML = """
+roles:
+  execution:
+    guideline: docs/manuals/guidelines/execution.md
+    adrs: []
+    playbooks: []
+    next: discovery
+    requires_approval: false
+"""
+        def side_effect(project, path):
+            if path == "session.md":
+                return "Phase 12\nnext_agent_role: Execution Agent"
+            if path == "spec.md":
+                return "SPEC"
+            if path == "docs/manuals/guidelines/core.md":
+                return "CORE"
+            if path == "docs/manuals/role_profiles.yaml":
+                return _MOCK_YAML
+            if path == "docs/manuals/guidelines/execution.md":
+                return "EXECUTION GUIDELINE"
+            raise ArtifactNotFoundError("x", path)
+
+        mock_read.side_effect = side_effect
+        result = get_session_context_logic("TestProj")
+        self.assertIn("=== NEXT STEP ===", result)
+        self.assertIn("Next Agent Role: discovery", result)
+        self.assertIn("Requires Approval: False", result)
+
+    @patch("tools.artifacts.read_artifact_logic")
+    def test_getSessionContextLogic_noNextRoleDefined_omitsNextStepSection(self, mock_read):
+        _MOCK_YAML = """
+roles:
+  reviewer:
+    guideline: docs/manuals/guidelines/reviewer.md
+    adrs: []
+    playbooks: []
+    next: null
+"""
+        def side_effect(project, path):
+            if path == "session.md":
+                return "Phase 1\nnext_agent_role: reviewer"
+            if path == "spec.md":
+                return "SPEC"
+            if path == "docs/manuals/guidelines/core.md":
+                return "CORE"
+            if path == "docs/manuals/role_profiles.yaml":
+                return _MOCK_YAML
+            if path == "docs/manuals/guidelines/reviewer.md":
+                return "REVIEWER GUIDELINE"
+            raise ArtifactNotFoundError("x", path)
+
+        mock_read.side_effect = side_effect
+        result = get_session_context_logic("TestProj")
+        self.assertNotIn("=== NEXT STEP ===", result)
+
+
 if __name__ == "__main__":
     unittest.main()

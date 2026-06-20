@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import pyarrow as pa
+
 from config import EMBEDDING_DIMENSIONS
 
 # PyArrow schema for LanceDB

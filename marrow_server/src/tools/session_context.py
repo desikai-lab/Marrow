@@ -20,9 +20,16 @@ def get_session_context_logic(project: str) -> str:
     playbook_section = playbook_service.load(project, session_ctx.agent_role)
 
     playbook_section_text = ""
-
     if playbook_section:
-        playbook_section_text = f"=== PLAYBOOKS ===\n{playbook_section}"
+        playbook_section_text = f"\n=== PLAYBOOKS ===\n{playbook_section}"
+
+    next_step_section = ""
+    if guidelines.profile and guidelines.profile.next:
+        next_step_section = (
+            f"\n=== NEXT STEP ===\n"
+            f"Next Agent Role: {guidelines.profile.next}\n"
+            f"Requires Approval: {guidelines.profile.requires_approval}\n"
+        )
 
     return (
         f"=== YOUR ROLE: {session_ctx.agent_role} ===\n\n"
@@ -30,8 +37,9 @@ def get_session_context_logic(project: str) -> str:
         f"=== PHASE GUIDELINES ({session_ctx.agent_role}) ===\n{guidelines.phase_text}\n\n"
         f"=== SESSION STATE ===\n{session_ctx.session_text}\n"
         f"=== SPEC:===\n{session_ctx.spec}\n"
-        f"=== FOUNDATIONAL DECISIONS ===\n{adr_section}\n"
+        f"=== FOUNDATIONAL DECISIONS ===\n{adr_section}"
         f"{playbook_section_text}"
+        f"{next_step_section}"
     )
 
 

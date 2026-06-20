@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from cli.commands.skills_add import SkillsAddCommand
-from cli.services.github_fetcher import SkillNotFoundError, GitHubFetchError
+from cli.services.github_fetcher import GitHubFetchError, SkillNotFoundError
 
 
 def make_args(project="proj", skill="my-skill", repo_url="https://github.com/owner/repo"):

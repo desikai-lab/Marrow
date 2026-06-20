@@ -3,8 +3,6 @@ import os
 from typing import Any, Literal
 
 from storage.uow import UnitOfWork
-from utils.exceptions import ArtifactNotFoundError
-
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
 from tools.utils.filesystem_utils import (
     create_artifact_backup,
@@ -14,6 +12,7 @@ from tools.utils.filesystem_utils import (
     validate_artifact_path,
     validate_project_path,
 )
+from utils.exceptions import ArtifactNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +37,50 @@ def save_artifact_logic(
 
     target_path = validate_artifact_path(project, rel_path)
     os.makedirs(os.path.dirname(target_path), exist_ok=True)
+
+    # Validate and self-heal session.md if malformed
+    if rel_path.lower() == "session.md" and mode == "replace_file":
+        has_header = "# Session State" in content and "next_agent_role:" in content
+        if not has_header:
+            # Try to restore from the current live file first (before we overwrite it)
+            header_block = None
+            if os.path.exists(target_path):
+                try:
+                    with open(target_path, encoding="utf-8-sig", errors="replace") as f:
+                        live_content = f.read()
+                    if "# Session State" in live_content and "next_agent_role:" in live_content:
+                        header_lines = []
+                        for line in live_content.splitlines():
+                            if line.startswith("# Session State") or line.startswith("**Current Task:**") or line.startswith("**next_agent_role:**") or line.startswith("next_agent_role:"):
+                                header_lines.append(line)
+                        if header_lines:
+                            header_block = "\n".join(header_lines) + "\n\n"
+                except Exception:
+                    pass
+
+            # If live file didn't have it, search history
+            if not header_block:
+                history = get_artifact_history(project, rel_path)
+                for h in history:
+                    try:
+                        prj_path = validate_project_path(project)
+                        rel_dir = os.path.dirname(rel_path)
+                        backup_path = os.path.join(prj_path, ".history", "artifacts", rel_dir, h["backup_name"])
+                        with open(backup_path, encoding="utf-8-sig", errors="replace") as f:
+                            backup_content = f.read()
+                        if "# Session State" in backup_content and "next_agent_role:" in backup_content:
+                            header_lines = []
+                            for line in backup_content.splitlines():
+                                if line.startswith("# Session State") or line.startswith("**Current Task:**") or line.startswith("**next_agent_role:**") or line.startswith("next_agent_role:"):
+                                    header_lines.append(line)
+                            if header_lines:
+                                header_block = "\n".join(header_lines) + "\n\n"
+                                break
+                    except Exception:
+                        continue
+
+            if header_block:
+                content = header_block + content
 
     # Automatic backup before modification (ADR-05)
     create_artifact_backup(project, rel_path)

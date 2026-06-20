@@ -2,11 +2,10 @@ import argparse
 import os
 import shutil
 
-from config import PROJECTS_ROOT
-
 from cli.commands.base import BaseCommand
 from cli.services.github_fetcher import GitHubFetcher, GitHubFetchError, SkillNotFoundError
 from cli.services.skills_registry import SkillsRegistry
+from config import PROJECTS_ROOT
 
 
 class SkillsUpdateCommand(BaseCommand):
