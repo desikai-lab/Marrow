@@ -33,7 +33,7 @@ def test_execute_removes_skill_directory(tmp_path):
         cmd = SkillsRemoveCommand()
         args = make_args()
 
-        with patch("cli.commands.skills_remove.SkillsRegistry") as mock_registry_class:
+        with patch("cli.commands.skills_remove.SkillsRegistry"):
             cmd.execute(args)
             assert not os.path.exists(skill_dir)
 

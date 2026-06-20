@@ -121,6 +121,70 @@ roles:
         roles = self.loader.list_roles(malformed_yaml)
         self.assertEqual(roles, [])
 
+    def test_load_nextFieldPresent_parsesNextRole(self):
+        yaml_text = """
+roles:
+  discovery:
+    guideline: docs/manuals/guidelines/discovery.md
+    next: architecture
+    requires_approval: true
+"""
+        profiles = self.loader.load(yaml_text)
+        self.assertEqual(profiles["discovery"].next, "architecture")
+        self.assertTrue(profiles["discovery"].requires_approval)
+
+    def test_load_nextFieldAbsent_defaultsToNone(self):
+        yaml_text = """
+roles:
+  reviewer:
+    guideline: docs/manuals/guidelines/reviewer.md
+"""
+        profiles = self.loader.load(yaml_text)
+        self.assertIsNone(profiles["reviewer"].next)
+
+    def test_load_nextFieldExplicitNull_parsesAsNone(self):
+        yaml_text = """
+roles:
+  reviewer:
+    guideline: docs/manuals/guidelines/reviewer.md
+    next: null
+"""
+        profiles = self.loader.load(yaml_text)
+        self.assertIsNone(profiles["reviewer"].next)
+
+    def test_load_requiresApprovalAbsent_defaultsToTrue(self):
+        yaml_text = """
+roles:
+  discovery:
+    guideline: docs/manuals/guidelines/discovery.md
+    next: architecture
+"""
+        profiles = self.loader.load(yaml_text)
+        self.assertTrue(profiles["discovery"].requires_approval)
+
+    def test_load_requiresApprovalExplicitFalse_parsesAsFalse(self):
+        yaml_text = """
+roles:
+  execution:
+    guideline: docs/manuals/guidelines/execution.md
+    next: discovery
+    requires_approval: false
+"""
+        profiles = self.loader.load(yaml_text)
+        self.assertFalse(profiles["execution"].requires_approval)
+
+    def test_getProfile_knownRole_returnsProfileWithNextAndApproval(self):
+        yaml_text = """
+roles:
+  planning:
+    guideline: docs/manuals/guidelines/planning.md
+    next: execution
+    requires_approval: true
+"""
+        profile = self.loader.get_profile(yaml_text, "planning")
+        self.assertEqual(profile.next, "execution")
+        self.assertTrue(profile.requires_approval)
+
 
 if __name__ == "__main__":
     unittest.main()

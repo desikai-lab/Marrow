@@ -62,10 +62,10 @@ async def _write_profiles_if_ape(project: str) -> None:
 
 
 _STUB = "# stub\nminimal content for testing\n"
-_SESSION_DISCOVERY = "# Session\nPhase: 2\n"
-_SESSION_EXECUTION = "# Session\nPhase: 12\n"
-_SESSION_OVERRIDE = "# Session\nPhase: 2\nnext_agent_role: Execution Agent\n"
-_SESSION_BAD_PHASE = "# Session\nPhase: not-a-number\n"
+_SESSION_DISCOVERY = "# Session\nPhase: 2\nnext_agent_role: Discovery Agent"
+_SESSION_EXECUTION = "# Session\nPhase: 12\nnext_agent_role: Execution Agent"
+_SESSION_OVERRIDE = "# Session\nPhase: 2\nnext_agent_role: Execution Agent"
+_SESSION_BAD_PHASE = "# Session\nPhase: not-a-number\nnext_agent_role: Discovery Agent"
 
 _CORE = "docs/manuals/guidelines/core.md"
 _DISCOVERY = "docs/manuals/guidelines/discovery.md"
@@ -112,8 +112,9 @@ async def test_get_session_context_logic_missing_session_file_defaults_to_discov
     await _write_profiles_if_ape(proj)
     await _write(proj, _CORE, _STUB)
     await _write(proj, _DISCOVERY, _STUB)
-    result = get_session_context_logic(proj)
-    assert "=== YOUR ROLE: Discovery Agent ===" in result
+    with pytest.raises(ValueError) as exc:
+        get_session_context_logic(proj)
+    assert "session.md is missing next_agent_role" in str(exc.value)
 
 
 async def test_get_session_context_logic_malformed_phase_defaults_to_discovery(proj):

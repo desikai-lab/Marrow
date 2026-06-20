@@ -140,9 +140,7 @@ def test_load_normalizes_display_role_name():
     """load() must accept 'Execution Agent' (raw next_agent_role value) and
     normalise it to 'execution' before the YAML key lookup.  Without
     normalisation this would raise 'Unknown role Execution Agent'."""
-    yaml_content = (
-        "roles:\n  execution:\n    guideline: g.md\n    playbooks:\n      - skills/pr-review/SKILL.md\n"
-    )
+    yaml_content = "roles:\n  execution:\n    guideline: g.md\n    playbooks:\n      - skills/pr-review/SKILL.md\n"
     skill_content = '---\ntitle: "PR Review"\ndescription: "Use when opening a PR."\n---\nbody'
 
     def mock_read(project, rel_path, mode="full"):
@@ -156,4 +154,3 @@ def test_load_normalizes_display_role_name():
         res = playbook_service.load("test_proj", "Execution Agent")
         assert "- PR Review [skills/pr-review/SKILL.md]" in res
         assert "Use when opening a PR." in res
-

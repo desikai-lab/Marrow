@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from services.session_service import _parse_phase, _select_agent_role
+from services.session_service import _parse_phase
 from tools.session_context import get_session_context_logic
 from utils.exceptions import ArtifactNotFoundError
 
@@ -23,25 +23,11 @@ class TestSessionContext(unittest.TestCase):
         self.assertEqual(_parse_phase("Phase: unknown"), 1)
         self.assertEqual(_parse_phase("Phase -5"), 1)  # regex \d only matches positive
 
-    def test_select_agent_role_phase_1_returns_discovery_agent(self):
-        self.assertEqual(_select_agent_role(1), "Discovery Agent")
-
-    def test_select_agent_role_phase_6_returns_architecture_agent(self):
-        self.assertEqual(_select_agent_role(6), "Architecture Agent")
-
-    def test_select_agent_role_phase_7_returns_planning_agent(self):
-        self.assertEqual(_select_agent_role(7), "Planning Agent")
-        self.assertEqual(_select_agent_role(11), "Planning Agent")
-
-    def test_select_agent_role_phase_12_returns_execution_agent(self):
-        self.assertEqual(_select_agent_role(12), "Execution Agent")
-        self.assertEqual(_select_agent_role(99), "Execution Agent")
-
     @patch("tools.artifacts.read_artifact_logic")
     def test_get_session_context_logic_valid_project_returns_context_string(self, mock_read):
         def side_effect(project, path):
             if path == "session.md":
-                return "Phase 8"
+                return "Phase 8\nnext_agent_role: Planning Agent"
             if path == "docs/manuals/role_profiles.yaml":
                 return "roles:\n  planning:\n    guideline: docs/manuals/guidelines/planning.md\n    adrs: []\n    playbooks: []"
             if path == "docs/manuals/guidelines/core.md":
@@ -61,26 +47,16 @@ class TestSessionContext(unittest.TestCase):
         self.assertIn("=== PHASE GUIDELINES (Planning Agent) ===", result)
 
     @patch("tools.artifacts.read_artifact_logic")
-    def test_get_session_context_logic_missing_session_returns_discovery_context(self, mock_read):
+    def test_get_session_context_logic_missing_session_raises_value_error(self, mock_read):
         def side_effect(project, path):
             if path == "session.md":
                 raise ArtifactNotFoundError("session", "session.md")
-            if path == "docs/manuals/role_profiles.yaml":
-                return "roles:\n  discovery:\n    guideline: docs/manuals/guidelines/discovery.md\n    adrs: []\n    playbooks: []"
-            if path == "docs/manuals/guidelines/core.md":
-                return "CORE CONTENT"
-            if path == "docs/manuals/guidelines/discovery.md":
-                return "DISCOVERY CONTENT"
-            return "ERROR"
+            raise ArtifactNotFoundError("file", path)
 
         mock_read.side_effect = side_effect
 
-        # Should default to phase 1 -> Discovery Agent
-        result = get_session_context_logic("TestProj")
-
-        self.assertIn("=== SESSION STATE ===\n\n", result)
-        self.assertIn("DISCOVERY CONTENT", result)
-        self.assertIn("=== PHASE GUIDELINES (Discovery Agent) ===", result)
+        with self.assertRaises(ValueError):
+            get_session_context_logic("TestProj")
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_get_session_context_logic_missing_guidelines_raises_artifact_not_found_error(
@@ -88,7 +64,7 @@ class TestSessionContext(unittest.TestCase):
     ):
         def side_effect(project, path):
             if path == "session.md":
-                return "Phase 12"
+                return "Phase 12\nnext_agent_role: Execution Agent"
             if path == "docs/manuals/role_profiles.yaml":
                 return "roles:\n  execution:\n    guideline: docs/manuals/guidelines/execution.md\n    adrs: []\n    playbooks: []"
             if path == "docs/manuals/guidelines/core.md":
@@ -142,7 +118,7 @@ class TestGetSessionContextLogicAdrInjection(unittest.TestCase):
 
     def _base_side_effect(self, project, path):
         if path == "session.md":
-            return "Phase 8"
+            return "Phase 8\nnext_agent_role: planning"
         if path == "spec.md":
             return "SPEC"
         if path == "docs/manuals/guidelines/core.md":
@@ -471,7 +447,7 @@ roles:
 
         def side_effect(project, path):
             if path == "session.md":
-                return "Phase 4"
+                return "Phase 4\nnext_agent_role: Architecture Agent"
             if path == "spec.md":
                 return "SPEC"
             if path == "docs/manuals/guidelines/core.md":
@@ -518,6 +494,308 @@ roles:
                 os.environ["AGENT_PROFILE_ENGINE_ENABLED"] = env_backup
             with patch("dotenv.load_dotenv"):
                 importlib.reload(config)
+
+
+class TestNextStepInjection(unittest.TestCase):
+    @patch("tools.artifacts.read_artifact_logic")
+    def test_getSessionContextLogic_nextRoleDefinedWithApproval_injectsHardStopTemplate(
+        self, mock_read
+    ):
+        _MOCK_YAML = """
+roles:
+  planning:
+    guideline: docs/manuals/guidelines/planning.md
+    adrs: []
+    playbooks: []
+    next: execution
+    requires_approval: true
+"""
+
+        def side_effect(project, path):
+            if path == "session.md":
+                return "Phase 8\nnext_agent_role: Planning Agent"
+            if path == "spec.md":
+                return "SPEC"
+            if path == "docs/manuals/guidelines/core.md":
+                return "CORE"
+            if path == "docs/manuals/role_profiles.yaml":
+                return _MOCK_YAML
+            if path == "docs/manuals/guidelines/planning.md":
+                return "PLANNING GUIDELINE"
+            if path == "docs/manuals/guidelines/hard_stop.md":
+                return "HARD STOP — await explicit human GO before proceeding.\nNext role on approval: {next_role}\n"
+            raise ArtifactNotFoundError("x", path)
+
+        mock_read.side_effect = side_effect
+        result = get_session_context_logic("TestProj")
+        self.assertIn("=== NEXT STEP ===", result)
+        self.assertIn("HARD STOP", result)
+        self.assertIn("execution", result)
+
+    @patch("tools.artifacts.read_artifact_logic")
+    def test_getSessionContextLogic_nextRoleDefinedNoApproval_injectsAutoAdvanceTemplate(
+        self, mock_read
+    ):
+        _MOCK_YAML = """
+roles:
+  execution:
+    guideline: docs/manuals/guidelines/execution.md
+    adrs: []
+    playbooks: []
+    next: discovery
+    requires_approval: false
+"""
+
+        def side_effect(project, path):
+            if path == "session.md":
+                return "Phase 12\nnext_agent_role: Execution Agent"
+            if path == "spec.md":
+                return "SPEC"
+            if path == "docs/manuals/guidelines/core.md":
+                return "CORE"
+            if path == "docs/manuals/role_profiles.yaml":
+                return _MOCK_YAML
+            if path == "docs/manuals/guidelines/execution.md":
+                return "EXECUTION GUIDELINE"
+            if path == "docs/manuals/guidelines/auto_advance.md":
+                return "Auto-advance — no approval gate. On completion, set next_agent_role to: {next_role}\n"
+            raise ArtifactNotFoundError("x", path)
+
+        mock_read.side_effect = side_effect
+        result = get_session_context_logic("TestProj")
+        self.assertIn("=== NEXT STEP ===", result)
+        self.assertIn("Auto-advance", result)
+        self.assertIn("discovery", result)
+
+    @patch("tools.artifacts.read_artifact_logic")
+    def test_getSessionContextLogic_noNextRoleDefined_omitsNextStepSection(self, mock_read):
+        _MOCK_YAML = """
+roles:
+  reviewer:
+    guideline: docs/manuals/guidelines/reviewer.md
+    adrs: []
+    playbooks: []
+    next: null
+"""
+
+        def side_effect(project, path):
+            if path == "session.md":
+                return "Phase 1\nnext_agent_role: reviewer"
+            if path == "spec.md":
+                return "SPEC"
+            if path == "docs/manuals/guidelines/core.md":
+                return "CORE"
+            if path == "docs/manuals/role_profiles.yaml":
+                return _MOCK_YAML
+            if path == "docs/manuals/guidelines/reviewer.md":
+                return "REVIEWER GUIDELINE"
+            raise ArtifactNotFoundError("x", path)
+
+        mock_read.side_effect = side_effect
+        result = get_session_context_logic("TestProj")
+        self.assertNotIn("=== NEXT STEP ===", result)
+
+    @patch("tools.artifacts.read_artifact_logic")
+    def test_getSessionContextLogic_templateMissing_fallsBackToBuiltInDefault(self, mock_read):
+        """When hard_stop.md template is missing, falls back gracefully to built-in default."""
+        _MOCK_YAML = """
+roles:
+  planning:
+    guideline: docs/manuals/guidelines/planning.md
+    adrs: []
+    playbooks: []
+    next: execution
+    requires_approval: true
+"""
+
+        def side_effect(project, path):
+            if path == "session.md":
+                return "Phase 8\nnext_agent_role: Planning Agent"
+            if path == "spec.md":
+                return "SPEC"
+            if path == "docs/manuals/guidelines/core.md":
+                return "CORE"
+            if path == "docs/manuals/role_profiles.yaml":
+                return _MOCK_YAML
+            if path == "docs/manuals/guidelines/planning.md":
+                return "PLANNING GUIDELINE"
+            raise ArtifactNotFoundError("x", path)  # including hard_stop.md
+
+        mock_read.side_effect = side_effect
+        result = get_session_context_logic("TestProj")
+        self.assertIn("=== NEXT STEP ===", result)
+        self.assertIn("HARD STOP", result)  # built-in default
+        self.assertIn("execution", result)
+
+
+class TestBuildNextStepSection(unittest.TestCase):
+    """Covers _build_next_step_section's REQ-03 decision tree:
+    next=None -> empty section; requires_approval=True -> hard_stop.md template;
+    requires_approval=False -> auto_advance.md template; missing template artifact
+    -> built-in default text. All paths substitute {next_role} correctly.
+    """
+
+    def test_buildNextStepSection_profileNextIsNone_returnsEmptyString(self):
+        from services.role_profile_service import RoleProfile
+        from tools.session_context import _build_next_step_section
+
+        profile = RoleProfile(
+            guideline="x.md", adrs=[], playbooks=[], next=None, requires_approval=True
+        )
+        result = _build_next_step_section("TestProj", profile)
+        self.assertEqual(result, "")
+
+    def test_buildNextStepSection_profileIsNone_returnsEmptyString(self):
+        from tools.session_context import _build_next_step_section
+
+        result = _build_next_step_section("TestProj", None)
+        self.assertEqual(result, "")
+
+    @patch("tools.artifacts.read_artifact_logic")
+    def test_buildNextStepSection_requiresApprovalTrue_loadsHardStopTemplate(self, mock_read):
+        from services.role_profile_service import RoleProfile
+        from tools.session_context import _build_next_step_section
+
+        def side_effect(project, path):
+            if path == "docs/manuals/guidelines/hard_stop.md":
+                return "HARD STOP TEMPLATE. Next: {next_role}"
+            raise ArtifactNotFoundError("file", path)
+
+        mock_read.side_effect = side_effect
+        profile = RoleProfile(
+            guideline="x.md", adrs=[], playbooks=[], next="architecture", requires_approval=True
+        )
+
+        result = _build_next_step_section("TestProj", profile)
+
+        self.assertIn("=== NEXT STEP ===", result)
+        self.assertIn("HARD STOP TEMPLATE. Next: architecture", result)
+
+    @patch("tools.artifacts.read_artifact_logic")
+    def test_buildNextStepSection_requiresApprovalFalse_loadsAutoAdvanceTemplate(self, mock_read):
+        from services.role_profile_service import RoleProfile
+        from tools.session_context import _build_next_step_section
+
+        def side_effect(project, path):
+            if path == "docs/manuals/guidelines/auto_advance.md":
+                return "AUTO ADVANCE TEMPLATE. Next: {next_role}"
+            raise ArtifactNotFoundError("file", path)
+
+        mock_read.side_effect = side_effect
+        profile = RoleProfile(
+            guideline="x.md", adrs=[], playbooks=[], next="discovery", requires_approval=False
+        )
+
+        result = _build_next_step_section("TestProj", profile)
+
+        self.assertIn("=== NEXT STEP ===", result)
+        self.assertIn("AUTO ADVANCE TEMPLATE. Next: discovery", result)
+
+    @patch("tools.artifacts.read_artifact_logic")
+    def test_buildNextStepSection_hardStopTemplateMissing_fallsBackToDefaultText(self, mock_read):
+        from services.role_profile_service import RoleProfile
+        from tools.session_context import _build_next_step_section
+
+        mock_read.side_effect = ArtifactNotFoundError(
+            "file", "docs/manuals/guidelines/hard_stop.md"
+        )
+        profile = RoleProfile(
+            guideline="x.md", adrs=[], playbooks=[], next="planning", requires_approval=True
+        )
+
+        result = _build_next_step_section("TestProj", profile)
+
+        self.assertIn("=== NEXT STEP ===", result)
+        self.assertIn("HARD STOP", result)
+        self.assertIn("planning", result)
+
+    @patch("tools.artifacts.read_artifact_logic")
+    def test_buildNextStepSection_autoAdvanceTemplateMissing_fallsBackToDefaultText(
+        self, mock_read
+    ):
+        from services.role_profile_service import RoleProfile
+        from tools.session_context import _build_next_step_section
+
+        mock_read.side_effect = ArtifactNotFoundError(
+            "file", "docs/manuals/guidelines/auto_advance.md"
+        )
+        profile = RoleProfile(
+            guideline="x.md", adrs=[], playbooks=[], next="discovery", requires_approval=False
+        )
+
+        result = _build_next_step_section("TestProj", profile)
+
+        self.assertIn("=== NEXT STEP ===", result)
+        self.assertIn("Auto-advance", result)
+        self.assertIn("discovery", result)
+
+    @patch("tools.artifacts.read_artifact_logic")
+    def test_getSessionContextLogic_standaloneRole_omitsNextStepSection(self, mock_read):
+        """Integration-style: full get_session_context_logic call for a role with next=None
+        (e.g. a standalone reviewer-type role) must NOT contain a NEXT STEP section at all."""
+        from tools.session_context import get_session_context_logic
+
+        def side_effect(project, path):
+            if path == "session.md":
+                return "Phase 1\nnext_agent_role: reviewer"
+            if path == "spec.md":
+                return "SPEC"
+            if path == "docs/manuals/guidelines/core.md":
+                return "CORE"
+            if path == "docs/manuals/role_profiles.yaml":
+                return (
+                    "roles:\n"
+                    "  reviewer:\n"
+                    "    guideline: docs/manuals/guidelines/reviewer.md\n"
+                    "    adrs: []\n"
+                    "    playbooks: []\n"
+                    "    next: null\n"
+                    "    requires_approval: false\n"
+                )
+            if path == "docs/manuals/guidelines/reviewer.md":
+                return "REVIEWER GUIDELINE"
+            raise ArtifactNotFoundError("file", path)
+
+        mock_read.side_effect = side_effect
+        result = get_session_context_logic("TestProj")
+
+        self.assertNotIn("=== NEXT STEP ===", result)
+
+    @patch("tools.artifacts.read_artifact_logic")
+    def test_getSessionContextLogic_pipelineRole_includesNextStepSection(self, mock_read):
+        """Integration-style regression check: existing pipeline role (e.g. execution,
+        requires_approval=False, next=discovery) still gets a NEXT STEP section —
+        confirms the auto-advance loop-back path used by the live 4-role pipeline works."""
+        from tools.session_context import get_session_context_logic
+
+        def side_effect(project, path):
+            if path == "session.md":
+                return "Phase 15\nnext_agent_role: execution"
+            if path == "spec.md":
+                return "SPEC"
+            if path == "docs/manuals/guidelines/core.md":
+                return "CORE"
+            if path == "docs/manuals/role_profiles.yaml":
+                return (
+                    "roles:\n"
+                    "  execution:\n"
+                    "    guideline: docs/manuals/guidelines/execution.md\n"
+                    "    adrs: []\n"
+                    "    playbooks: []\n"
+                    "    next: discovery\n"
+                    "    requires_approval: false\n"
+                )
+            if path == "docs/manuals/guidelines/execution.md":
+                return "EXECUTION GUIDELINE"
+            if path == "docs/manuals/guidelines/auto_advance.md":
+                return "Auto-advance. Next: {next_role}"
+            raise ArtifactNotFoundError("file", path)
+
+        mock_read.side_effect = side_effect
+        result = get_session_context_logic("TestProj")
+
+        self.assertIn("=== NEXT STEP ===", result)
+        self.assertIn("discovery", result)
 
 
 if __name__ == "__main__":

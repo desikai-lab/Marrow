@@ -5,6 +5,8 @@ from typing import Any, Literal
 from storage.uow import UnitOfWork
 from utils.exceptions import ArtifactNotFoundError
 
+import tools.utils.session_integrity  # noqa: F401 -- import for registration side-effect
+from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
 from tools.utils.filesystem_utils import (
     create_artifact_backup,
@@ -38,6 +40,10 @@ def save_artifact_logic(
 
     target_path = validate_artifact_path(project, rel_path)
     os.makedirs(os.path.dirname(target_path), exist_ok=True)
+
+    hook = ArtifactIntegrityRegistry.get_hook(rel_path)
+    if hook:
+        content = hook.validate_and_repair(project, rel_path, content, mode)
 
     # Automatic backup before modification (ADR-05)
     create_artifact_backup(project, rel_path)

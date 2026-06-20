@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from cli.commands.skills_add import SkillsAddCommand
-from cli.services.github_fetcher import SkillNotFoundError, GitHubFetchError
+from cli.services.github_fetcher import GitHubFetchError, SkillNotFoundError
 
 
 def make_args(project="proj", skill="my-skill", repo_url="https://github.com/owner/repo"):
@@ -75,7 +75,9 @@ def test_execute_invalid_repo_url_exits_with_error(mock_fetcher_class, tmp_path)
 
 @patch("cli.commands.skills_add.SkillsRegistry")
 @patch("cli.commands.skills_add.GitHubFetcher")
-def test_execute_success_writes_registry_and_prints_reminder(mock_fetcher_class, mock_registry_class, tmp_path, capsys):
+def test_execute_success_writes_registry_and_prints_reminder(
+    mock_fetcher_class, mock_registry_class, tmp_path, capsys
+):
     with patch("cli.commands.skills_add.PROJECTS_ROOT", str(tmp_path)):
         mock_registry = mock_registry_class.return_value
 

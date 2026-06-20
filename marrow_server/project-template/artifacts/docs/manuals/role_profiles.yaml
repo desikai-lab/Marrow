@@ -3,15 +3,23 @@ roles:
     guideline: docs/manuals/guidelines/discovery.md
     adrs: []
     playbooks: []
+    next: architecture
+    requires_approval: true
   architecture:
     guideline: docs/manuals/guidelines/architecture.md
     adrs: []
     playbooks: []
+    next: planning
+    requires_approval: true
   planning:
     guideline: docs/manuals/guidelines/planning.md
     adrs: []
     playbooks: []
+    next: execution
+    requires_approval: true
   execution:
     guideline: docs/manuals/guidelines/execution.md
     adrs: []
     playbooks: []
+    next: discovery
+    requires_approval: false
