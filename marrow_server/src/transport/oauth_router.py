@@ -4,11 +4,11 @@ import os
 import secrets
 from urllib.parse import urlencode
 
+from config import SECRET_TOKEN
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.responses import JSONResponse
 
-from config import SECRET_TOKEN
 from transport.middleware import debug_log
 
 router = APIRouter()
