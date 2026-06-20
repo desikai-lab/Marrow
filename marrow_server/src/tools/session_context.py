@@ -1,8 +1,44 @@
 import logging
 
+import tools.artifacts
 from services import adr_service, guideline_service, playbook_service, session_service
+from utils.exceptions import ArtifactNotFoundError
 
 logger = logging.getLogger(__name__)
+
+HARD_STOP_TEMPLATE_PATH = "docs/manuals/guidelines/hard_stop.md"
+AUTO_ADVANCE_TEMPLATE_PATH = "docs/manuals/guidelines/auto_advance.md"
+
+DEFAULT_HARD_STOP_TEXT = (
+    "HARD STOP — await explicit human GO before proceeding.\nNext role on approval: {next_role}\n"
+)
+DEFAULT_AUTO_ADVANCE_TEXT = (
+    "Auto-advance — no approval gate. On completion, set next_agent_role to: {next_role}\n"
+)
+
+
+def _build_next_step_section(project: str, profile) -> str:
+    """Build the NEXT STEP section per REQ-03's decision tree.
+    Returns '' for standalone roles (profile.next is None).
+    Template text loads from project artifacts so each project can customize
+    its own gate wording without a code deploy; falls back to a built-in
+    default if the template artifact is missing.
+    """
+    if not profile or not profile.next:
+        return ""
+
+    template_path = (
+        HARD_STOP_TEMPLATE_PATH if profile.requires_approval else AUTO_ADVANCE_TEMPLATE_PATH
+    )
+    default_text = (
+        DEFAULT_HARD_STOP_TEXT if profile.requires_approval else DEFAULT_AUTO_ADVANCE_TEXT
+    )
+    try:
+        template_text = tools.artifacts.read_artifact_logic(project, template_path)
+    except ArtifactNotFoundError:
+        template_text = default_text
+
+    return f"\n=== NEXT STEP ===\n{template_text.format(next_role=profile.next)}"
 
 
 def get_session_context_logic(project: str) -> str:
@@ -23,13 +59,7 @@ def get_session_context_logic(project: str) -> str:
     if playbook_section:
         playbook_section_text = f"\n=== PLAYBOOKS ===\n{playbook_section}"
 
-    next_step_section = ""
-    if guidelines.profile and guidelines.profile.next:
-        next_step_section = (
-            f"\n=== NEXT STEP ===\n"
-            f"Next Agent Role: {guidelines.profile.next}\n"
-            f"Requires Approval: {guidelines.profile.requires_approval}\n"
-        )
+    next_step_section = _build_next_step_section(project, guidelines.profile)
 
     return (
         f"=== YOUR ROLE: {session_ctx.agent_role} ===\n\n"
