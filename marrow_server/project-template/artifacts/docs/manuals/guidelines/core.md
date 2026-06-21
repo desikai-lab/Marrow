@@ -28,16 +28,8 @@
 
 ### 3.1 Strict Handoff Protocol (The Relayer)
 - **Zero-State Prohibited**: Every update to `session.md` MUST include the `next_agent_role` field.
-- **Phase-to-Role Mapping** (single source of truth):
-
-| Phase | Role | Approval gate |
-|---|---|---|
-| TD / Hotfix | Execution Agent | No gate — fast path (see §4) |
-| 1–3 | Discovery Agent | HARD STOP at Phase 3 |
-| 4–6 | Architecture Agent | HARD STOP at Phase 6 |
-| 7–11 | Planning Agent | HARD STOP at Phase 11 |
-| 12–15 | Execution Agent | HARD STOP at Phase 15 |
-| After Phase 15 | Discovery Agent | Cycle restarts |
+- **Role Sequencing**: Each role's position in the pipeline — and what comes next — is defined per-project in `role_profiles.yaml` (the `next` and `requires_approval` fields), not in this document. The default project ships with a `discovery → architecture → planning → execution → discovery` cycle as one example configuration; a project may define different roles or a different ordering entirely. Individual phase-guideline files (e.g. `architecture.md`'s \"Phases 4–6\") use phase numbers purely as a human-readable label for that role's slice of the *default* pipeline — they are descriptive only and carry no structural meaning; only `role_profiles.yaml` and the directive below define actual sequencing.
+- **Your Actual Directive**: If you arrived via `get_session_context` (the normal session-start path), trust the `=== NEXT STEP ===` block injected at the bottom of its output — it already resolves your role's `next` and `requires_approval` settings into a concrete HARD STOP or auto-advance instruction. If you instead arrived via `get_guideline(role)` (a deliberate mid-session role switch to a specific role), no such block is injected — your next role there is whatever you or the human explicitly switched to; consult `role_profiles.yaml` directly if you need that role's own `next` value.
 
 - **Handover Trigger**: Your final message in any session MUST start with:
   `SESSION EXIT: Phase [X] completed. Next Agent: [Role]. Task: [Description].`
@@ -51,10 +43,9 @@
   - **(B) After explicit GO:** `next_agent_role` = next role per §3.1 table. Then write SESSION EXIT.
   - *Example:* If the human says GO at Phase 3 (Discovery completed), the agent must set `next_agent_role: Architecture Agent` before writing SESSION EXIT.
 - **Failure mode to avoid:** Writing SESSION EXIT with `next_agent_role` = current role after GO. The next cold-start agent will re-enter the wrong phase.
-## 4. Fast-Path Protocol (TD / Hotfix)
-Not all work follows the full 15-phase pipeline. Technical debt tasks and hotfixes skip Discovery and Planning entirely.
+## 4. Flexible Entry Points
+Not every task needs the full pipeline starting from Discovery. A human may set `next_agent_role` in `session.md` to any registered role to begin a session there directly — for example, setting it to `execution` lets a small, well-understood change (a technical-debt cleanup, a hotfix) skip straight to implementation without an existing feature bundle. This already works today via standard `session.md` resolution; it is not a separate mechanism.
 
-- **When to use**: Task type is `TD` or `hotfix`, or the human explicitly says "just fix this".
-- **Entry point**: Execution Agent starts directly at Phase 12. No feature bundle required.
-- **Minimum artefacts**: Update `session.md` with the task ID and a one-line description of the change. No requirements.md or architecture.md needed.
-- **Exit**: Same as standard Execution — tests pass, PR opened, `next_agent_role: Discovery Agent`.
+- **When to use**: The human explicitly sets `next_agent_role` to a non-Discovery role, or says something equivalent to "just fix this."
+- **Minimum artefacts**: Update `session.md` with the task ID and a one-line description of the change. No `requirements.md` or `architecture.md` is required if the entry role doesn't need one.
+- **Exit**: Standard exit rules for whichever role you entered as apply — e.g. tests pass and a PR is opened if you entered as Execution — and `next_agent_role` is set per that role's `next` field in `role_profiles.yaml`.
