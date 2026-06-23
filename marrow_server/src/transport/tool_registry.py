@@ -212,12 +212,28 @@ def register_all_tools(mcp: FastMCP) -> None:
     @mcp_error_handler
     async def get_session_context(
         project: Annotated[str, Field(description="Project name to read session state from")],
+        start_role: Annotated[
+            str | None,
+            Field(
+                default=None,
+                description=(
+                    "Optional. If provided, resolve this role directly without reading "
+                    "session.md. Useful for invoking standalone or on-demand roles without "
+                    "disturbing pipeline state. Returns an error string listing valid roles "
+                    "if the value is unrecognised."
+                ),
+            ),
+        ] = None,
     ) -> str:
         """[SESSION TOOLS] Reads session.md, detects the active pipeline phase,
         and returns core guidelines + phase-appropriate role guidelines + filtered foundational ADRs
         + role-linked skill stubs (=== PLAYBOOKS === section, when the role has skills registered)
-        as a single assembled string."""
-        return await asyncio.to_thread(get_session_context_logic, project)
+        as a single assembled string.
+
+        If start_role is provided, session.md is bypassed entirely: the named role
+        is resolved directly and SESSION STATE is omitted from the response.
+        """
+        return await asyncio.to_thread(get_session_context_logic, project, start_role)
 
     @mcp.tool()
     @mcp_error_handler
