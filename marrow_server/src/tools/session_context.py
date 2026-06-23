@@ -42,36 +42,110 @@ def _build_next_step_section(project: str, profile) -> str:
     return f"\n=== NEXT STEP ===\n{template_text.format(next_role=profile.next)}"
 
 
-def get_session_context_logic(project: str) -> str:
-    """Read session state, detect the active pipeline phase, and return an assembled
-    context bundle: session state + core guidelines + phase-appropriate guidelines +
-    filtered foundational ADRs + role-linked skill stubs (=== PLAYBOOKS === section,
-    only present when the detected role has skills registered in role_profiles.yaml).
+def _resolve_from_session(project: str) -> tuple[str, str | None, str | None]:
+    """Resolution strategy: read role + context from session.md.
+
+    Returns (role, session_text, spec_text).
+    Reads session.md via session_service.load — the only place in this
+    module that touches session.md.
     """
-    session_ctx = session_service.load(project)
-    guidelines = guideline_service.load(project, session_ctx.agent_role)
+    ctx = session_service.load(project)
+    return ctx.agent_role, ctx.session_text, ctx.spec
+
+
+def _resolve_from_role_param(project: str, role: str) -> tuple[str, str | None, str | None]:
+    """Resolution strategy: use caller-supplied role name; never read session.md.
+
+    Returns (role, None, spec_text).
+    spec.md is read directly via read_artifact_logic; ArtifactNotFoundError
+    propagates to @mcp_error_handler (consistent with session_service failures
+    on the default path).
+    """
+    spec = tools.artifacts.read_artifact_logic(project, "spec.md")
+    return role, None, spec
+
+
+class ContextBundleBuilder:
+    """Assembles the get_session_context response string.
+
+    Fluent setters control which optional sections are included.
+    Required sections (role header, core/phase guidelines, ADRs) are
+    always present and passed at construction time.
+    """
+
+    def __init__(
+        self,
+        role: str,
+        guidelines,
+        adr_section: str,
+        playbook_section: str,
+    ) -> None:
+        self._role = role
+        self._guidelines = guidelines
+        self._adr_section = adr_section
+        self._playbook_section = playbook_section
+        self._session_state: str | None = None
+        self._spec: str | None = None
+
+    def with_session_state(self, text: str) -> "ContextBundleBuilder":
+        self._session_state = text
+        return self
+
+    def with_spec(self, text: str) -> "ContextBundleBuilder":
+        self._spec = text
+        return self
+
+    def build(self, project: str) -> str:
+        parts: list[str] = [
+            f"=== YOUR ROLE: {self._role} ===\n\n",
+            f"=== CORE GUIDELINES ===\n{self._guidelines.core_text}\n\n",
+            f"=== PHASE GUIDELINES ({self._role}) ===\n{self._guidelines.phase_text}\n\n",
+        ]
+        if self._session_state is not None:
+            parts.append(f"=== SESSION STATE ===\n{self._session_state}\n")
+        if self._spec is not None:
+            parts.append(f"=== SPEC:===\n{self._spec}\n")
+        parts.append(f"=== FOUNDATIONAL DECISIONS ===\n{self._adr_section}")
+        if self._playbook_section:
+            parts.append(f"\n=== PLAYBOOKS ===\n{self._playbook_section}")
+        next_step = _build_next_step_section(project, self._guidelines.profile)
+        if next_step:
+            parts.append(next_step)
+        return "".join(parts)
+
+
+def get_session_context_logic(project: str, start_role: str | None = None) -> str:
+    """Read session state (or resolve a named role directly), detect the active
+    pipeline phase, and return an assembled context bundle.
+
+    When start_role is None (default): role and context are resolved from
+    session.md; SESSION STATE and SPEC sections are included.
+
+    When start_role is provided: the named role is resolved directly without
+    reading session.md; SESSION STATE is omitted; SPEC is read independently.
+    An unrecognised start_role returns an error string listing valid roles.
+    """
+    # --- 1. Resolve role + raw context via the appropriate strategy ---
+    if start_role is None:
+        role, session_text, spec_text = _resolve_from_session(project)
+    else:
+        role, session_text, spec_text = _resolve_from_role_param(project, start_role)
+
+    # --- 2. Load shared services (identical for both strategies) ---
+    guidelines = guideline_service.load(project, role)
     if isinstance(guidelines, str):
-        return guidelines  # error string from guideline_service
+        return guidelines  # error string: unknown role, lists valid names (REQ-04)
 
-    adr_section = adr_service.load(project, session_ctx.agent_role)
-    playbook_section = playbook_service.load(project, session_ctx.agent_role)
+    adr_section = adr_service.load(project, role)
+    playbook_section = playbook_service.load(project, role)
 
-    playbook_section_text = ""
-    if playbook_section:
-        playbook_section_text = f"\n=== PLAYBOOKS ===\n{playbook_section}"
-
-    next_step_section = _build_next_step_section(project, guidelines.profile)
-
-    return (
-        f"=== YOUR ROLE: {session_ctx.agent_role} ===\n\n"
-        f"=== CORE GUIDELINES ===\n{guidelines.core_text}\n\n"
-        f"=== PHASE GUIDELINES ({session_ctx.agent_role}) ===\n{guidelines.phase_text}\n\n"
-        f"=== SESSION STATE ===\n{session_ctx.session_text}\n"
-        f"=== SPEC:===\n{session_ctx.spec}\n"
-        f"=== FOUNDATIONAL DECISIONS ===\n{adr_section}"
-        f"{playbook_section_text}"
-        f"{next_step_section}"
-    )
+    # --- 3. Assemble response via Builder ---
+    builder = ContextBundleBuilder(role, guidelines, adr_section, playbook_section)
+    if session_text is not None:
+        builder.with_session_state(session_text)  # omitted on start_role path (REQ-07)
+    if spec_text is not None:
+        builder.with_spec(spec_text)  # always present on both paths (REQ-06)
+    return builder.build(project)
 
 
 def get_guideline_logic(project: str, role: str) -> str:
