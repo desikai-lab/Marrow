@@ -22,6 +22,12 @@ AI coding agents are stateless by nature. Every new session starts cold — no m
 
 ---
 
+## Use Case: Multi-Agent Handoff
+Marrow acts as the single source of truth for heterogeneous agent workflows. 
+You can use Claude for heavy architectural lifting, let it save state into Marrow, and then spin up a cheaper local model to write unit tests. The second agent immediately aligns itself using `get_session_context` and semantic task backlogs.
+
+---
+
 ## Architecture
 
 Marrow is composed of three packages:
