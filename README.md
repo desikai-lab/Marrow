@@ -1,3 +1,4 @@
+[![Marrow MCP server](https://glama.ai/mcp/servers/desikai-lab/Marrow/badges/score.svg)](https://glama.ai/mcp/servers/desikai-lab/Marrow)
 # Marrow
 
 > **A persistent, multi-project intelligence backend for AI coding agents.**
