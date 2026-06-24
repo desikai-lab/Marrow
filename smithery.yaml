@@ -6,31 +6,31 @@ startCommand:
   configSchema:
     type: object
     required:
-      - secretToken
-      - tasksDir
+      - SECRET_TOKEN
+      - TASKS_DIR
     properties:
-      secretToken:
+      SECRET_TOKEN:
         type: string
-        description: "Authentication token for MCP and REST API requests (set SECRET_TOKEN env var)"
-      tasksDir:
+        description: "Bearer token for MCP and REST API authentication (must match server SECRET_TOKEN)"
+      TASKS_DIR:
         type: string
-        description: "Absolute path to the directory where Marrow project workspaces are stored (set TASKS_DIR env var)"
-      embeddingModelCode:
+        description: "Absolute path where Marrow project workspaces are stored"
+      EMBEDDING_MODEL_CODE:
         type: string
         default: "BAAI/bge-small-en-v1.5"
-        description: "Sentence-transformer model for code skeleton embeddings (EMBEDDING_MODEL_CODE)"
-      embeddingModelText:
+        description: "Sentence-transformer model for code skeleton embeddings"
+      EMBEDDING_MODEL_TEXT:
         type: string
         default: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-        description: "Sentence-transformer model for text/artifact embeddings (EMBEDDING_MODEL_TEXT)"
-      embeddingDimensions:
-        type: integer
-        default: 384
-        description: "Embedding vector dimensions — must match the chosen model (EMBEDDING_DIMENSIONS)"
-      port:
-        type: integer
-        default: 8000
+        description: "Sentence-transformer model for text/artifact embeddings"
+      EMBEDDING_DIMENSIONS:
+        type: string
+        default: "384"
+        description: "Embedding vector dimensions — must match the chosen model"
+      PORT:
+        type: string
+        default: "8000"
         description: "HTTP port for the MCP server"
   exampleConfig:
-    secretToken: "your-strong-random-secret"
-    tasksDir: "/home/user/marrow-projects"
+    SECRET_TOKEN: "your-strong-random-secret"
+    TASKS_DIR: "/home/user/marrow-projects"

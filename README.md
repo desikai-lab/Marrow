@@ -260,26 +260,32 @@ Both services are configured via environment variables (`.env` files).
 
 | Variable | Description | Default |
 |---|---|---|
-| `PROJECTS_ROOT` | Path where project artifact directories are stored | Required |
-| `LANCEDB_PATH` | Path to the LanceDB data directory | `./data/lancedb` |
-| `EMBEDDING_MODEL` | Sentence-transformer model name | `all-MiniLM-L6-v2` |
-| `EMBEDDING_DIMENSIONS` | Embedding vector dimensions | `384` |
+| `SECRET_TOKEN` | Bearer token for MCP and REST API authentication | Required |
+| `TASKS_DIR` | Absolute path where project workspaces are stored | Required |
+| `EMBEDDING_MODEL_CODE` | Sentence-transformer model for code skeleton embeddings | `BAAI/bge-small-en-v1.5` |
+| `EMBEDDING_MODEL_TEXT` | Sentence-transformer model for text/artifact embeddings | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` |
+| `EMBEDDING_DIMENSIONS` | Embedding vector dimensions — must match the chosen model | `384` |
+| `MAX_EMBED_CHARS` | Maximum characters to embed per chunk | `2000` |
+| `VECT_DEBOUNCE_SECONDS` | Debounce delay before vectorizing a changed file | `0.5` |
 | `PORT` | HTTP server port | `8000` |
 
 ### marrow_worker
 
 | Variable | Description | Default |
 |---|---|---|
-| `WATCH_PATHS` | Comma-separated list of directories to watch | Required |
+| `WATCH_ROOT` | Root path to watch (all subdirectories are scanned) | Required |
+| `SECRET_TOKEN` | Must match the token set in marrow_server | Required |
 | `SERVER_URL` | URL of the running marrow_server | `http://localhost:8000` |
-| `DEBOUNCE_SECONDS` | File change debounce interval | `1.0` |
+| `DEBOUNCE_SECONDS` | File change debounce interval in seconds | `1.0` |
 | `BATCH_SIZE` | Max skeleton chunks per delivery batch | `50` |
+| `EMBEDDING_MODEL_CODE` | Must match marrow_server embedding model | `BAAI/bge-small-en-v1.5` |
+| `EMBEDDING_DIMENSIONS` | Must match marrow_server embedding dimensions | `384` |
 
 ---
 
 ## Project Structure (Agent Workspace)
 
-Each project managed by Marrow has a structured workspace in `PROJECTS_ROOT`:
+Each project managed by Marrow has a structured workspace in `TASKS_DIR`:
 
 ```
 {project_name}/
