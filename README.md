@@ -116,7 +116,7 @@ All tools are available to any MCP-compatible client (Claude, Cursor, custom age
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-org/marrow.git
+git clone https://github.com/desikai-lab/Marrow.git
 cd marrow
 ```
 
