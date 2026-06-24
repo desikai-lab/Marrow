@@ -2,5 +2,9 @@
   "$schema": "https://glama.ai/mcp/schemas/server.json",
   "maintainers": [
     "desikai"
-  ]
+  ],
+  "placeholderArguments": {
+    "SECRET_TOKEN": "dummy-token-for-checks",
+    "TASKS_DIR": "/tmp/marrow-data"
+  }
 }
