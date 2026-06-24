@@ -40,7 +40,7 @@ marrow_common/     — Shared schema (skeleton_schema.py)
 ```
 
 ### marrow_server
-A FastAPI + FastMCP application that exposes 21 structured MCP tools and a REST API for the worker. Storage uses **LanceDB** for vector embeddings and metadata, and **Markdown blobs** for task and artifact content. Transport is Streamable HTTP MCP (protocol version 2025-03-26).
+A FastAPI + FastMCP application that exposes 22 structured MCP tools and a REST API for the worker. Storage uses **LanceDB** for vector embeddings and metadata, and **Markdown blobs** for task and artifact content. Transport is Streamable HTTP MCP (protocol version 2025-03-26).
 
 ### marrow_worker
 A standalone background daemon that:
@@ -94,7 +94,8 @@ All tools are available to any MCP-compatible client (Claude, Cursor, custom age
 | Tool | Description |
 |---|---|
 | `list_projects` | Returns a list of all available projects |
-| `get_session_context` | Reads session state and returns phase-appropriate guidelines |
+| `get_session_context` | Reads session state and returns phase-appropriate guidelines for the active agent role |
+| `get_guideline` | Assembles and returns the full context bundle (guidelines + ADRs) for any named agent role — use for mid-session role switches without disturbing pipeline state |
 
 ### 🛠️ Build Tools
 | Tool | Description |
@@ -114,14 +115,77 @@ All tools are available to any MCP-compatible client (Claude, Cursor, custom age
 
 ## Quickstart
 
-### 1. Clone the repository
+### Option A — Docker (recommended)
+
+**Prerequisites:** [Docker](https://docs.docker.com/get-docker/) and Docker Compose
+
+**1. Clone and configure**
 
 ```bash
 git clone https://github.com/desikai-lab/Marrow.git
-cd marrow
+cd Marrow
+cp marrow_server/.env.example marrow_server/.env
 ```
 
-### 2. Set up marrow_server
+Open `marrow_server/.env` and set the two required values:
+
+```env
+SECRET_TOKEN=your-strong-random-secret
+TASKS_DIR=/data                          # leave as-is for Docker; data persists in a named volume
+```
+
+**2. Start both services**
+
+```bash
+docker compose up
+```
+
+Marrow server starts on port `8000`. The worker starts automatically once the server is healthy (allow ~20 seconds on first run for the embedding model to download).
+
+MCP endpoint: `http://localhost:8000/mcp`
+
+**3. Initialize your first project**
+
+```bash
+docker exec marrow-server python src/cli/admin_cli.py project-init --project MyProject
+```
+
+This creates a structured workspace at `/data/MyProject/`. Open `MyProject/spec.md` and fill in your tech stack before your first agent session.
+
+**4. Connect your agent**
+
+Add Marrow to your MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "marrow": {
+      "url": "http://localhost:8000/mcp",
+      "headers": {
+        "Authorization": "Bearer your-strong-random-secret"
+      }
+    }
+  }
+}
+```
+
+For Cursor: add the same block under `mcp` in your `~/.cursor/mcp.json`.
+
+---
+
+### Option B — Manual / Development Setup
+
+<details>
+<summary>Expand for manual setup instructions</summary>
+
+#### 1. Clone the repository
+
+```bash
+git clone https://github.com/desikai-lab/Marrow.git
+cd Marrow
+```
+
+#### 2. Set up marrow_server
 
 ```bash
 cd marrow_server
@@ -134,7 +198,7 @@ Copy and configure the environment file:
 
 ```bash
 cp .env.example .env
-# Edit .env to set PROJECTS_ROOT and other required vars
+# Edit .env — set SECRET_TOKEN and TASKS_DIR (required)
 ```
 
 Start the server:
@@ -145,7 +209,7 @@ python src/marrow_server.py
 
 The MCP server will be available at `http://localhost:8000/mcp` by default.
 
-### 2b. Initialize your first project
+#### 2b. Initialize your first project
 
 ```bash
 python src/cli/admin_cli.py project-init --project MyProject
@@ -153,7 +217,7 @@ python src/cli/admin_cli.py project-init --project MyProject
 
 This copies the built-in project template into your `TASKS_DIR/MyProject/` workspace. Open `MyProject/spec.md` and fill in your tech stack before your first agent session.
 
-### 3. Set up marrow_worker
+#### 3. Set up marrow_worker
 
 In a separate terminal:
 
@@ -161,23 +225,30 @@ In a separate terminal:
 cd marrow_worker
 pip install -e .
 cp .env.example .env
-# Edit .env to point WATCH_PATHS to your source directories
+# Edit .env — set SECRET_TOKEN (must match server) and WATCH_ROOT
 python main.py
 ```
 
-### 4. Connect your agent
+#### 4. Connect your agent
 
-Add Marrow to your MCP client configuration. Example for Claude Desktop:
+Add Marrow to your MCP client configuration:
 
 ```json
 {
   "mcpServers": {
     "marrow": {
-      "url": "http://localhost:8000/mcp"
+      "url": "http://localhost:8000/mcp",
+      "headers": {
+        "Authorization": "Bearer your-strong-random-secret"
+      }
     }
   }
 }
 ```
+
+For Cursor: add the same block under `mcp` in your `~/.cursor/mcp.json`.
+
+</details>
 
 ---
 
