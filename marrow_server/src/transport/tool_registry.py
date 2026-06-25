@@ -79,7 +79,26 @@ def register_all_tools(mcp: FastMCP) -> None:
         task_id: Annotated[str, Field(description="Task ID")],
         updates: Annotated[dict[str, Any], Field(description="Updates dict")],
     ) -> Any:
-        """[TASK TOOLS] Updates a task."""
+        """[TASK TOOLS] Partially updates mutable fields on an existing task (status, priority,
+        title, solution, etc.) using a merge strategy — only keys present in `updates` are
+        changed; all other fields remain intact. Use this for in-progress changes (e.g.
+        updating priority or editing the solution).
+
+        Do NOT use to close a task — call complete_tasks instead, which atomically closes
+        and auto-unblocks dependents.
+        Do NOT use to create tasks — call add_tasks instead.
+
+        Allowed `updates` keys:
+          status        : open | in_progress | blocked | done
+          priority      : low | medium | high | critical
+          title         : str
+          problem       : str
+          solution      : str
+          blocked_by    : list[task_id]
+
+        Returns: updated task object with all current field values.
+        Raises:  404 if task_id not found in project.
+        """
         result = await update_task_logic(project, task_id, updates)
         return result.model_dump()
 
