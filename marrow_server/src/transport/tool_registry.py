@@ -58,7 +58,23 @@ def register_all_tools(mcp: FastMCP) -> None:
         priority: Annotated[str | None, Field(description="Priority filter")] = None,
         type: Annotated[str | None, Field(description="Type filter")] = None,
     ) -> list[Any]:
-        """[TASK TOOLS] Search tasks through LanceDB."""
+        """[TASK TOOLS] Queries the task backlog in LanceDB with optional filters and returns
+        matching task summaries ranked by creation order.
+
+        All parameters are optional filters — omit to retrieve all tasks with default status.
+        Default status filter is 'open'; pass status=None to retrieve tasks of all statuses.
+        Do NOT call get_task_details on every result — use this tool for status checks and
+        task selection, then call get_task_details on the single selected task for full content.
+
+        Allowed `status` values:    open | in_progress | blocked | done | None (no filter)
+        Allowed `priority` values:  low | medium | high | critical | None (no filter)
+        Allowed `type` values:      feature | bug | task | td | None (no filter)
+
+        Returns: list of task summary objects — each with task_id, title, status, priority,
+                 type, and blocked_by. Full problem/solution content is excluded; call
+                 get_task_details for that.
+        Raises:  404 if project is not found.
+        """
         results = await search_tasks_logic(project, status, priority, type)
         return [r.model_dump() for r in results]
 
@@ -260,7 +276,22 @@ def register_all_tools(mcp: FastMCP) -> None:
         project: Annotated[str, Field(description="Project name")],
         role: Annotated[str, Field(description="Agent role name (e.g. 'discovery', 'execution')")],
     ) -> str:
-        """[SESSION TOOLS] Assemble and return the full context bundle (guidelines + ADRs) for a given agent role."""
+        """[SESSION TOOLS] Assembles and returns the full context bundle (core guidelines +
+        role-specific phase guidelines + filtered foundational ADRs) for a named agent role,
+        without reading or modifying session.md.
+
+        Use this for deliberate mid-session role switches when you already know the target
+        role and do not want to disturb pipeline state.
+        Do NOT use at session start — call get_session_context instead, which also injects
+        the SESSION STATE block and the correct NEXT STEP directive.
+
+        Allowed `role` values: any role registered in the project's role_profiles.yaml
+        (e.g. 'discovery', 'architecture', 'planning', 'execution'). Returns an error
+        string listing valid roles if the value is unrecognised.
+
+        Returns: assembled markdown string (core guidelines + role guidelines + ADRs).
+        Raises:  error string if role is not registered in role_profiles.yaml.
+        """
         return await asyncio.to_thread(get_guideline_logic, project, role)
 
     ## Project tools
@@ -310,7 +341,26 @@ def register_all_tools(mcp: FastMCP) -> None:
         project: Annotated[str, Field(description="Project name")],
         reads: Annotated[list[ReadRequest], Field(description="List of read requests")],
     ) -> list[dict[str, Any]]:
-        """[ARTIFACT TOOLS] Allows reading one or more artifacts."""
+        """[ARTIFACT TOOLS] Reads one or more artifact files in a single batch call.
+        Each item in `reads` targets one file and specifies an independent read mode.
+
+        Read modes per item:
+          full    — returns the entire file content (default).
+          section — returns only the content under a named ## header (requires section_name).
+          lines   — returns a specific line range (requires start_line and end_line).
+
+        Optional per-item fields:
+          max_chars     : int  — truncate response at N characters (default 10000).
+          skip_chars    : int  — skip N characters from the start of the selection.
+          direction     : 'begin' | 'end' — read from start or end of file (default 'begin').
+          line_numbers  : bool — prefix each line with its 1-based line number.
+
+        Do NOT loop this tool per file — batch all reads into a single call to minimise
+        round-trips. For source code files in src/, use view_file_source instead.
+
+        Returns: list of result objects — each with path and content (or error if not found).
+        Raises:  per-item error entry if a path does not exist; does not abort the batch.
+        """
         reads_dict = []
         for r in reads:
             d = r.model_dump()
@@ -325,7 +375,29 @@ def register_all_tools(mcp: FastMCP) -> None:
         project: Annotated[str, Field(description="Project name")],
         updates: Annotated[list[WriteRequest], Field(description="List of write requests")],
     ) -> list[dict[str, Any]]:
-        """[ARTIFACT TOOLS] Allows creating/updating one or more artifacts."""
+        """[ARTIFACT TOOLS] Creates or updates one or more artifact files in a single
+        atomic batch. Each item in `updates` targets one file and specifies an independent
+        write mode — modes in the same batch do not interact.
+
+        Write modes per update item:
+          replace_file    — overwrites the entire file (creates it if absent).
+          replace_section — replaces the content under a named ## header; raises if the
+                            header appears more than once (ADR-0011).
+          append_section  — appends a new ## section at the end of the file.
+          replace_chunk   — replaces lines start_line..end_line with new content.
+          patch           — finds old_str (must be unique in the file) and replaces it
+                            with new content. Preferred for surgical single-line edits.
+          delete_section  — removes a named ## section and its content.
+
+        Do NOT use replace_file when only a section needs updating — use patch or
+        replace_section to avoid clobbering concurrent edits.
+        Do NOT use this tool for source code in src/ — the source directory is read-only
+        from the agent's perspective.
+
+        Returns: list of result objects, one per update — each with path and status.
+        Raises:  duplicate-header error (with line numbers) if replace_section finds
+                 multiple matching headers in the same file.
+        """
         updates_dict = []
         for u in updates:
             d = u.model_dump()
@@ -342,7 +414,19 @@ def register_all_tools(mcp: FastMCP) -> None:
         path: Annotated[str, Field(description="Relative folder path")] = "",
         recursive: Annotated[bool, Field(description="Recursive list")] = False,
     ) -> list[dict[str, str]]:
-        """[ARTIFACT TOOLS] Returns files in artifact storage."""
+        """[ARTIFACT TOOLS] Lists artifact files in a project's artifact storage, optionally
+        scoped to a subfolder and optionally traversing subdirectories.
+
+        `path` narrows the listing to a specific folder (e.g. 'docs/features/active');
+        omit or pass '' to list from the project root.
+        `recursive=True` traverses all subdirectories; default is False (top-level only).
+
+        Do NOT use to read file content — call read_project_artifacts instead.
+        Do NOT use to browse source code — call get_project_map for the src/ tree.
+
+        Returns: list of objects — each with path (relative to project root) and size in bytes.
+        Raises:  404 if the project or path does not exist.
+        """
         return await asyncio.to_thread(list_artifacts_logic, project, path, recursive=recursive)
 
     @mcp.tool()
@@ -361,7 +445,17 @@ def register_all_tools(mcp: FastMCP) -> None:
         project: Annotated[str, Field(description="Project name")],
         path: Annotated[str, Field(description="Path to delete")],
     ) -> str | dict[str, Any]:
-        """[ARTIFACT TOOLS] Safely deletes an artifact."""
+        """[ARTIFACT TOOLS] Permanently deletes a single artifact file from the project's
+        artifact storage. The deletion is immediate and not automatically reversible.
+
+        Before deleting, consider calling list_artifact_history to check whether a
+        recoverable backup version exists — restore_project_artifact can recover a prior
+        version if the file was previously saved with history enabled.
+        Do NOT use to move or rename a file — call move_project_artifact instead.
+
+        Returns: confirmation string with the deleted file path.
+        Raises:  404 error if the path does not exist in artifact storage.
+        """
         return await delete_project_artifact_logic(project, path)
 
     @mcp.tool()
@@ -370,7 +464,19 @@ def register_all_tools(mcp: FastMCP) -> None:
         project: Annotated[str, Field(description="Project name")],
         query: Annotated[str, Field(description="Search text")],
     ) -> list[dict[str, Any]]:
-        """[ARTIFACT TOOLS] Global search across artifacts."""
+        """[ARTIFACT TOOLS] Full-text search across all artifact files in a project,
+        matching against file content and returning files and sections that contain
+        the query string.
+
+        Query is plain text — no special syntax required. Case-insensitive. For
+        semantic / meaning-based search, use semantic_search instead.
+        Do NOT use this to list files — call list_project_artifacts instead.
+        Do NOT use this for source code — call search_code_skeletons instead.
+
+        Returns: list of match objects — each with path, matched section name, and a
+                 short excerpt of the matched content with surrounding context.
+        Raises:  404 if the project does not exist.
+        """
         return await search_project_artifacts_logic(project, query)
 
     @mcp.tool()
@@ -390,7 +496,18 @@ def register_all_tools(mcp: FastMCP) -> None:
         project: Annotated[str, Field(description="Project name")],
         path: Annotated[str, Field(description="Path to artifact")],
     ) -> list[dict[str, Any]]:
-        """[HISTORY TOOLS] List of history versions."""
+        """[HISTORY TOOLS] Returns the version history for a single artifact file — a list
+        of backup snapshots automatically created by save_project_artifacts on each write.
+        Each entry represents a point-in-time copy that can be restored.
+
+        Use this to inspect available versions before calling restore_project_artifact.
+        The most recent backup is listed first.
+        Do NOT use this to read current file content — call read_project_artifacts instead.
+
+        Returns: list of version objects — each with backup_name, created_at timestamp,
+                 and size in bytes. Empty list if no history exists for the path.
+        Raises:  404 if the artifact path does not exist in the project.
+        """
         return await asyncio.to_thread(list_artifact_history_logic, project, path)
 
     @mcp.tool()
@@ -400,7 +517,17 @@ def register_all_tools(mcp: FastMCP) -> None:
         path: Annotated[str, Field(description="Path to artifact")],
         backup_name: Annotated[str, Field(description="Backup name")],
     ) -> str | dict[str, Any]:
-        """[HISTORY TOOLS] Restores an artifact version."""
+        """[HISTORY TOOLS] Restores a named backup snapshot of an artifact, replacing the
+        current live file with the backup content. The current live version is NOT
+        automatically backed up before the restore — it will be overwritten.
+
+        Use list_artifact_history first to retrieve valid backup_name values for the
+        target path. The backup_name is the exact string returned in the history list.
+        Do NOT guess or construct backup names — always read them from list_artifact_history.
+
+        Returns: confirmation string with the restored path and backup_name applied.
+        Raises:  404 if the path or backup_name does not exist.
+        """
         return await asyncio.to_thread(restore_project_artifact_logic, project, path, backup_name)
 
     ## Build tools
@@ -415,7 +542,22 @@ def register_all_tools(mcp: FastMCP) -> None:
             Field(default=None, description='Runtime template variables e.g. {"FEATURE": "Auth"}'),
         ] = None,
     ) -> str | dict[str, Any]:
-        """[BUILD TOOLS] Executes build pipeline."""
+        """[BUILD TOOLS] Executes a named build pipeline defined in the project's build
+        manifest (a YAML file registered under docs/builds/ in the artifact store).
+        The manifest defines the sequence of steps (shell commands, artifact writes,
+        tool calls) that run in order.
+
+        Optional `variables` dict injects runtime values into manifest template
+        placeholders, e.g. {"FEATURE": "Auth"} replaces {{FEATURE}} in step definitions.
+
+        Do NOT use this to read or write individual artifacts — call save_project_artifacts
+        or read_project_artifacts instead.
+
+        Returns: build result object with status (success | failure), step outputs, and
+                 elapsed time.
+        Raises:  404 if build_name does not match any manifest in the project.
+                 RuntimeError if any step in the pipeline fails (includes step output).
+        """
         result = await asyncio.to_thread(
             run_project_build_logic, project, build_name, variables=variables
         )
