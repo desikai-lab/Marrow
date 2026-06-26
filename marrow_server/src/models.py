@@ -1,8 +1,7 @@
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-
 from domain.enums import TaskPriority, TaskStatus, TaskType
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class TaskInput(BaseModel):

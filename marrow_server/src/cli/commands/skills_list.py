@@ -1,8 +1,9 @@
 import argparse
 import os
 
-from cli.commands.base import BaseCommand
 from config import PROJECTS_ROOT
+
+from cli.commands.base import BaseCommand
 
 
 class SkillsListCommand(BaseCommand):
