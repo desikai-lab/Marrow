@@ -112,3 +112,13 @@ class ProjectMapResult(BaseModel):
 
     root: str = "."
     structure: dict[str, Any] = Field(default_factory=dict)
+
+
+# ── Project Init ──────────────────────────────────────────────────────────────
+
+
+class ProjectInitResult(BaseModel):
+    """Returned by init_project_logic."""
+
+    project: str
+    files_created: list[str]

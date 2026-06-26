@@ -1,12 +1,7 @@
 import argparse
 import os
-import shutil
 
 from cli.commands.base import BaseCommand
-
-TEMPLATE_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "project-template")
-)
 
 
 class InitCommand(BaseCommand):
@@ -22,32 +17,19 @@ class InitCommand(BaseCommand):
         parser.add_argument(
             "--project", required=True, help="Project name (must be unique in TASKS_DIR)"
         )
-        parser.add_argument(
-            "--tasks-dir", default=None, help="Override TASKS_DIR environment variable"
-        )
 
     def execute(self, args: argparse.Namespace) -> None:
         from config import PROJECTS_ROOT
+        from tools.projects import init_project_logic
+        from utils.exceptions import BaseBacklogError, ValidationError
 
-        if args.tasks_dir:
-            projects_root = os.path.join(os.path.abspath(args.tasks_dir), "projects")
-        else:
-            projects_root = PROJECTS_ROOT
-
-        target = os.path.join(projects_root, args.project)
-
-        if os.path.exists(target):
-            print(f"[ERROR] Project '{args.project}' already exists at: {target}")
+        try:
+            result = init_project_logic(args.project)
+        except (ValidationError, BaseBacklogError) as e:
+            print(f"[ERROR] {e}")
             raise SystemExit(1)
 
-        template = os.path.abspath(TEMPLATE_DIR)
-        if not os.path.isdir(template):
-            print(f"[ERROR] Built-in template not found at: {template}")
-            raise SystemExit(1)
-
-        os.makedirs(projects_root, exist_ok=True)
-        shutil.copytree(template, target)
-
+        target = os.path.join(PROJECTS_ROOT, result.project)
         spec_path = os.path.join(target, "artifacts", "spec.md")
         fill_in_count = 0
         if os.path.isfile(spec_path):

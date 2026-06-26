@@ -1,5 +1,4 @@
 import os
-import sys
 
 from dotenv import load_dotenv
 
@@ -40,6 +39,7 @@ else:
 
 # NEW: Projects Root
 PROJECTS_ROOT = os.path.join(BASE_DIR, "projects")
+DEFAULT_PROJECT = os.getenv("DEFAULT_PROJECT", "default")
 
 
 def get_project_files(project: str) -> dict:
@@ -57,29 +57,20 @@ def get_project_files(project: str) -> dict:
     }
 
 
-def check_startup_config():
-    """Checks startup configuration for the default project (YourProject)."""
-    print("\n[Marrow] checking projects structure", file=sys.stderr)
-    print(f"   PROJECTS_ROOT: {PROJECTS_ROOT}", file=sys.stderr)
+def check_startup_config() -> None:
+    """Logs startup readiness."""
+    import logging
 
-    default_project = "YourProject"
-    files = get_project_files(default_project)
-
-    for key, path in files.items():
-        exists = os.path.exists(path)
-        status = "[OK]" if exists else "[ERR]"
-        size = f"{os.path.getsize(path):,} bytes" if exists else "not found"
-        print(
-            f"   {status} [{default_project}:{key}] {os.path.basename(path)} -- {size}",
-            file=sys.stderr,
-        )
-        if not exists:
-            pass  # all_ok tracking removed (was unused)
-
-    # if not all_ok:
-    print(
-        "\n   [WRN] Default project 'YourProject' files incomplete. Check migration status.",
-        file=sys.stderr,
+    logger = logging.getLogger("marrow.startup")
+    existing = (
+        [d for d in os.listdir(PROJECTS_ROOT) if os.path.isdir(os.path.join(PROJECTS_ROOT, d))]
+        if os.path.exists(PROJECTS_ROOT)
+        else []
     )
-    # else:
-    print(f"   [OK] Default project '{default_project}' ready.\n", file=sys.stderr)
+    if existing:
+        logger.info(f"[Marrow] Projects loaded: {existing}")
+    else:
+        logger.warning(
+            "[Marrow] No projects found. "
+            "Call init_project via MCP or run: marrow-admin project-init --project <name>"
+        )
