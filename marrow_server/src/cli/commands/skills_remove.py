@@ -2,10 +2,9 @@ import argparse
 import os
 import shutil
 
-from config import PROJECTS_ROOT
-
 from cli.commands.base import BaseCommand
 from cli.services.skills_registry import SkillNotRegisteredError, SkillsRegistry
+from config import PROJECTS_ROOT
 
 
 class SkillsRemoveCommand(BaseCommand):

@@ -4,9 +4,10 @@ import os
 import time
 import uuid
 
-from config import SECRET_TOKEN
 from fastapi import Request
 from starlette.responses import JSONResponse
+
+from config import SECRET_TOKEN
 from utils.metrics import get_perf_logger
 
 logger = logging.getLogger("marrow.transport.middleware")

@@ -18,7 +18,8 @@ logger = logging.getLogger("admin_cli")
 
 from cli.commands import COMMANDS  # noqa: E402
 
-if __name__ == "__main__":
+
+def main() -> None:
     parser = argparse.ArgumentParser(description="Admin CLI: Marrow management")
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
@@ -38,3 +39,7 @@ if __name__ == "__main__":
         command_map[args.command].execute(args)
     else:
         parser.print_help()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,6 +1,31 @@
 services:
 
+  marrow-init:
+    image: marrow-server
+    build:
+      context: .
+      dockerfile: marrow_server/Dockerfile
+    container_name: marrow-init
+    volumes:
+      - marrow-data:/data
+    environment:
+      TASKS_DIR: /data
+      DEFAULT_PROJECT: ${DEFAULT_PROJECT:-default}
+    command: >
+      sh -c "
+        PROJECTS_DIR=$${TASKS_DIR}/projects
+        DEFAULT=$${DEFAULT_PROJECT:-default}
+        if [ ! -d $$PROJECTS_DIR ] || [ -z $$(ls -A $$PROJECTS_DIR 2>/dev/null) ]; then
+          echo '[Marrow] First run: initializing project '$$DEFAULT'...'\
+          marrow-admin project-init --project $$DEFAULT
+        else
+          echo '[Marrow] Projects found. Skipping init.'
+        fi
+      "
+    restart: "no"
+
   marrow-server:
+    image: marrow-server
     build:
       context: .
       dockerfile: marrow_server/Dockerfile
@@ -13,11 +38,15 @@ services:
     environment:
       SECRET_TOKEN: ${SECRET_TOKEN}
       TASKS_DIR: /data
+      DEFAULT_PROJECT: ${DEFAULT_PROJECT:-default}
 
       EMBEDDING_MODEL_CODE: ${EMBEDDING_MODEL_CODE:-BAAI/bge-small-en-v1.5}
       EMBEDDING_MODEL_TEXT: ${EMBEDDING_MODEL_TEXT:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
       EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-384}
       VECT_DEBOUNCE_SECONDS: ${VECT_DEBOUNCE_SECONDS:-0.5}
+    depends_on:
+      marrow-init:
+        condition: service_completed_successfully
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')"]
