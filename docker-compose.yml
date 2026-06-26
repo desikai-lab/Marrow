@@ -16,7 +16,7 @@ services:
         PROJECTS_DIR=$${TASKS_DIR}/projects
         DEFAULT=$${DEFAULT_PROJECT:-default}
         if [ ! -d $$PROJECTS_DIR ] || [ -z $$(ls -A $$PROJECTS_DIR 2>/dev/null) ]; then
-          echo '[Marrow] First run: initializing project '$$DEFAULT'...'\
+          echo '[Marrow] First run: initializing project '$$DEFAULT'...'
           marrow-admin project-init --project $$DEFAULT
         else
           echo '[Marrow] Projects found. Skipping init.'
