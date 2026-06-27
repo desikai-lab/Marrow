@@ -1,4 +1,5 @@
 import gc
+import os
 
 import torch
 
@@ -9,19 +10,20 @@ class LazyEncoder:
     and violently garbage collects it upon closing to prevent memory starvation.
     """
 
-    def __init__(self, model_name: str = "BAAI/bge-small-en-v1.5"):
+    def __init__(self, model_name: str = None):
+        if model_name is None:
+            model_name = os.getenv("EMBEDDING_MODEL_CODE", "BAAI/bge-small-en-v1.5")
         self.model_name = model_name
         self._model = None
 
     def __enter__(self):
         from sentence_transformers import SentenceTransformer
 
-        # sentence-transformers automatically pushes the model to GPU if CUDA is available.
-        # local_files_only=True prevents huggingface_hub from making ANY network calls
-        # (version-check HEADs, tree GETs, metadata fetches) when the model is already cached.
-        # To download the model on a new machine for the first time, temporarily remove
-        # local_files_only=True (or unset HF_HUB_OFFLINE), run the worker once, then restore.
-        self._model = SentenceTransformer(self.model_name, local_files_only=True)
+        # local_files_only is controlled by HF_HUB_OFFLINE env var.
+        # Default (0): allows download on first run into the shared marrow-hf-cache volume.
+        # Set to "1" after first successful download to prevent any network calls.
+        local_files_only = os.getenv("HF_HUB_OFFLINE", "0") == "1"
+        self._model = SentenceTransformer(self.model_name, local_files_only=local_files_only)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

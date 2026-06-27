@@ -40,7 +40,7 @@ marrow_common/     — Shared schema (skeleton_schema.py)
 ```
 
 ### marrow_server
-A FastAPI + FastMCP application that exposes 22 structured MCP tools and a REST API for the worker. Storage uses **LanceDB** for vector embeddings and metadata, and **Markdown blobs** for task and artifact content. Transport is Streamable HTTP MCP (protocol version 2025-03-26).
+A FastAPI + FastMCP application that exposes 23 structured MCP tools and a REST API for the worker. Storage uses **LanceDB** for vector embeddings and metadata, and **Markdown blobs** for task and artifact content. Transport is Streamable HTTP MCP (protocol version 2025-03-26).
 
 ### marrow_worker
 A standalone background daemon that:
@@ -94,6 +94,7 @@ All tools are available to any MCP-compatible client (Claude, Cursor, custom age
 | Tool | Description |
 |---|---|
 | `list_projects` | Returns a list of all available projects |
+| `init_project` | Creates a new project workspace from the built-in template — use on Glama or any deployment without shell access |
 | `get_session_context` | Reads session state and returns phase-appropriate guidelines for the active agent role |
 | `get_guideline` | Assembles and returns the full context bundle (guidelines + ADRs) for any named agent role — use for mid-session role switches without disturbing pipeline state |
 
@@ -119,40 +120,69 @@ All tools are available to any MCP-compatible client (Claude, Cursor, custom age
 
 **Prerequisites:** [Docker](https://docs.docker.com/get-docker/) and Docker Compose
 
-**1. Clone and configure**
+**1. Get the compose file**
+
+Download `docker-compose.yml` from the repository (no full clone needed):
+
+```bash
+curl -O https://raw.githubusercontent.com/desikai-lab/Marrow/main/docker-compose.yml
+```
+
+Or clone if you prefer:
 
 ```bash
 git clone https://github.com/desikai-lab/Marrow.git
 cd Marrow
-cp marrow_server/.env.example marrow_server/.env
 ```
 
-Open `marrow_server/.env` and set the two required values:
+**2. Configure**
+
+Create a `.env` file in the same directory as `docker-compose.yml`:
 
 ```env
 SECRET_TOKEN=your-strong-random-secret
-TASKS_DIR=/data                          # leave as-is for Docker; data persists in a named volume
+
+# Name of the first project auto-created on first run
+DEFAULT_PROJECT=MyProject
+
+# Absolute path to the folder on your host that contains all your source repositories.
+# This entire folder is mounted read-only at /projects inside both server and worker.
+SOURCE_PATHS=C:\Users\you\sources       # Windows
+# SOURCE_PATHS=/home/you/sources        # Linux / macOS
+
+# Source path and project name for the first worker.
+# PROJECT_1_PATH is relative to SOURCE_PATHS — it becomes /projects/PROJECT_1_PATH inside the container.
+# It must exactly match SOURCE_ROOT in that project's .settings file.
+PROJECT_1_NAME=MyProject
+PROJECT_1_PATH=MyApp/src
 ```
 
-**2. Start both services**
+**3. Configure source wiring for each project**
+
+After first start, create a `.settings` file inside each project workspace:
+
+```
+TASKS_DIR/projects/MyProject/.settings
+```
+
+```ini
+# Path as seen from inside the server container — must match PROJECT_1_PATH above.
+SOURCE_ROOT=/projects/MyApp/src
+```
+
+See [Project Settings (.settings)](#project-settings-settings) for the full explanation.
+
+**4. Start**
 
 ```bash
 docker compose up
 ```
 
-Marrow server starts on port `8000`. The worker starts automatically once the server is healthy (allow ~20 seconds on first run for the embedding model to download).
+Marrow pulls the pre-built images, initializes your first project automatically, then starts the server and worker. Allow ~20 seconds on first run for the embedding model to download.
 
 MCP endpoint: `http://localhost:8000/mcp`
 
-**3. Initialize your first project**
-
-```bash
-docker exec marrow-server python src/cli/admin_cli.py project-init --project MyProject
-```
-
-This creates a structured workspace at `/data/MyProject/`. Open `MyProject/spec.md` and fill in your tech stack before your first agent session.
-
-**4. Connect your agent**
+**5. Connect your agent**
 
 Add Marrow to your MCP client configuration:
 
@@ -173,7 +203,29 @@ For Cursor: add the same block under `mcp` in your `~/.cursor/mcp.json`.
 
 ---
 
-### Option B — Manual / Development Setup
+### Option B — Glama (hosted, no shell access)
+
+Marrow is available as a hosted MCP server on the [Glama marketplace](https://glama.ai/mcp/servers/desikai-lab/Marrow). Glama manages the container — no Docker or shell access required.
+
+**1.** Install the Marrow server from the Glama marketplace and set `SECRET_TOKEN` in the environment settings.
+
+**2.** Open the Glama inspector and call `init_project` once to create your first project:
+
+```json
+{ "tool": "init_project", "arguments": { "project": "default" } }
+```
+
+**3.** Connect your agent and call `get_session_context` to verify the workspace is ready.
+
+For additional projects, call `init_project` again with a new name.
+
+> **Note:** Code intelligence tools (`search_code_skeletons`, `view_file_source`, etc.)
+> require a running `marrow-worker` with access to your source code. These tools are
+> unavailable on Glama unless you run a worker separately pointed at the Glama server URL.
+
+---
+
+### Option C — Manual / Development Setup
 
 <details>
 <summary>Expand for manual setup instructions</summary>
@@ -212,26 +264,39 @@ The MCP server will be available at `http://localhost:8000/mcp` by default.
 #### 2b. Initialize your first project
 
 ```bash
-python src/cli/admin_cli.py project-init --project MyProject
+marrow-admin project-init --project MyProject
 ```
 
-This copies the built-in project template into your `TASKS_DIR/MyProject/` workspace. Open `MyProject/spec.md` and fill in your tech stack before your first agent session.
+This copies the built-in project template into your `TASKS_DIR/projects/MyProject/` workspace. Open `spec.md` and fill in your tech stack before your first agent session.
+
+#### 2c. Configure source wiring
+
+Create a `.settings` file in the project workspace:
+
+```ini
+# TASKS_DIR/projects/MyProject/.settings
+SOURCE_ROOT=/absolute/path/to/your/source/code
+```
 
 #### 3. Set up marrow_worker
 
-In a separate terminal:
+In a separate terminal, start the worker pointing at your source code:
 
 ```bash
 cd marrow_worker
 pip install -e .
-cp .env.example .env
-# Edit .env — set SECRET_TOKEN (must match server) and WATCH_ROOT
-python main.py
+
+python main.py \
+  --repo-dir /absolute/path/to/your/source/code \
+  --project-name MyProject \
+  --target-url http://localhost:8000 \
+  --secret-token your-strong-random-secret \
+  --init
 ```
 
-#### 4. Connect your agent
+`--init` triggers a full scan on startup; omit it on subsequent runs.
 
-Add Marrow to your MCP client configuration:
+#### 4. Connect your agent
 
 ```json
 {
@@ -246,9 +311,55 @@ Add Marrow to your MCP client configuration:
 }
 ```
 
-For Cursor: add the same block under `mcp` in your `~/.cursor/mcp.json`.
-
 </details>
+
+---
+
+## Project Settings (.settings)
+
+Each Marrow project workspace contains a `.settings` file that tells the server where the
+corresponding source code lives on disk. Without it, the code intelligence tools
+(`search_code_skeletons`, `get_file_skeleton`, `view_file_source`, `get_project_map`) are
+disabled for that project.
+
+**Location:** `TASKS_DIR/projects/{project_name}/.settings`
+
+**Format:**
+```ini
+# Absolute path to the source code root as seen from inside the server container.
+SOURCE_ROOT=/projects/MyApp/src
+```
+
+**The key constraint — server, worker, and .settings must all agree on the same path.**
+
+Marrow uses a single shared volume (`SOURCE_PATHS` on the host, mounted as `/projects`
+in both containers) to give the server and every worker access to all source repositories.
+Each project's `.settings` then points `SOURCE_ROOT` at its own subfolder, and the
+corresponding worker watches that exact same path:
+
+```
+Host machine:
+  C:\Sources\                    ← SOURCE_PATHS in .env
+    ├── MyApp\src\
+    └── OtherApp\src\
+
+Inside both server and worker containers:
+  /projects/                     ← same volume, same paths
+    ├── MyApp/src/
+    └── OtherApp/src/
+
+TASKS_DIR/projects/
+  ├── MyApp/
+  │   └── .settings  →  SOURCE_ROOT=/projects/MyApp/src
+  └── OtherApp/
+      └── .settings  →  SOURCE_ROOT=/projects/OtherApp/src
+
+Worker for MyApp:    --repo-dir /projects/MyApp/src    --project-name MyApp
+Worker for OtherApp: --repo-dir /projects/OtherApp/src --project-name OtherApp
+```
+
+**Multiple projects** each get their own `.settings` file and their own worker service in
+`docker-compose.yml` (a commented template block is included in the compose file).
 
 ---
 
@@ -262,6 +373,7 @@ Both services are configured via environment variables (`.env` files).
 |---|---|---|
 | `SECRET_TOKEN` | Bearer token for MCP and REST API authentication | Required |
 | `TASKS_DIR` | Absolute path where project workspaces are stored | Required |
+| `DEFAULT_PROJECT` | Name of the project auto-created on first run (Docker only) | `default` |
 | `EMBEDDING_MODEL_CODE` | Sentence-transformer model for code skeleton embeddings | `BAAI/bge-small-en-v1.5` |
 | `EMBEDDING_MODEL_TEXT` | Sentence-transformer model for text/artifact embeddings | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` |
 | `EMBEDDING_DIMENSIONS` | Embedding vector dimensions — must match the chosen model | `384` |
@@ -269,26 +381,39 @@ Both services are configured via environment variables (`.env` files).
 | `VECT_DEBOUNCE_SECONDS` | Debounce delay before vectorizing a changed file | `0.5` |
 | `PORT` | HTTP server port | `8000` |
 
-### marrow_worker
+### marrow_worker (CLI arguments)
 
-| Variable | Description | Default |
+| Argument | Description | Default |
 |---|---|---|
-| `WATCH_ROOT` | Root path to watch (all subdirectories are scanned) | Required |
-| `SECRET_TOKEN` | Must match the token set in marrow_server | Required |
-| `SERVER_URL` | URL of the running marrow_server | `http://localhost:8000` |
-| `DEBOUNCE_SECONDS` | File change debounce interval in seconds | `1.0` |
-| `BATCH_SIZE` | Max skeleton chunks per delivery batch | `50` |
-| `EMBEDDING_MODEL_CODE` | Must match marrow_server embedding model | `BAAI/bge-small-en-v1.5` |
-| `EMBEDDING_DIMENSIONS` | Must match marrow_server embedding dimensions | `384` |
+| `--repo-dir` | Absolute path to the source code to watch — must match `SOURCE_ROOT` in `.settings` | `os.getcwd()` |
+| `--project-name` | Marrow project this worker indexes into | `DefaultProject` |
+| `--target-url` | URL of the running marrow_server | `http://localhost:8000` |
+| `--secret-token` | Must match `SECRET_TOKEN` on the server | — |
+| `--init` | Run a full repo scan on startup | off |
+
+### .env (Docker Compose)
+
+| Variable | Description |
+|---|---|
+| `SECRET_TOKEN` | Shared secret across all services |
+| `SOURCE_PATHS` | Host path mounted as `/projects` in server and all workers |
+| `DEFAULT_PROJECT` | First project name, auto-created on first run |
+| `PROJECT_1_NAME` | Marrow project name for the first worker |
+| `PROJECT_1_PATH` | Subfolder inside `SOURCE_PATHS` the first worker watches |
+| `PROJECT_2_NAME` | Project name for a second worker (if used) |
+| `PROJECT_2_PATH` | Subfolder for the second worker |
+| `EMBEDDING_MODEL_CODE` | Override the code skeleton embedding model (passed to both server and worker) — default `BAAI/bge-small-en-v1.5` |
+| `HF_HUB_OFFLINE` | Set to `1` after first run to block all HuggingFace network calls and use the local cache only — default `0` |
 
 ---
 
 ## Project Structure (Agent Workspace)
 
-Each project managed by Marrow has a structured workspace in `TASKS_DIR`:
+Each project managed by Marrow has a structured workspace in `TASKS_DIR/projects/`:
 
 ```
 {project_name}/
+├── .settings               # Source code location — required for code intelligence tools
 ├── session.md              # Session state — current focus, pipeline phase
 ├── spec.md                 # Project specification and architectural constants
 ├── builds/                 # YAML build manifests
