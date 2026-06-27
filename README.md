@@ -390,6 +390,7 @@ Both services are configured via environment variables (`.env` files).
 | `--target-url` | URL of the running marrow_server | `http://localhost:8000` |
 | `--secret-token` | Must match `SECRET_TOKEN` on the server | — |
 | `--init` | Run a full repo scan on startup | off |
+| `--polling-interval` | File system polling interval in seconds — lower = faster response, higher CPU on large repos | `1.0` |
 
 ### .env (Docker Compose)
 
@@ -404,6 +405,7 @@ Both services are configured via environment variables (`.env` files).
 | `PROJECT_2_PATH` | Subfolder for the second worker |
 | `EMBEDDING_MODEL_CODE` | Override the code skeleton embedding model (passed to both server and worker) — default `BAAI/bge-small-en-v1.5` |
 | `HF_HUB_OFFLINE` | Set to `1` after first run to block all HuggingFace network calls and use the local cache only — default `0` |
+| `POLLING_INTERVAL` | File polling interval in seconds for the worker — increase for large repos to reduce CPU | `1.0` |
 
 ---
 
