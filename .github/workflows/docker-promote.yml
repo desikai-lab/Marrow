@@ -1,0 +1,95 @@
+name: "Docker: Promote Image Tag"
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: 'Which component to promote?'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - server
+          - worker
+      image_tag:
+        description: 'Existing version tag to pull (e.g., 1.1.0-rc.2)'
+        required: true
+        type: string
+      target_tag_type:
+        description: 'Target alias type'
+        required: true
+        default: 'stable'
+        type: choice
+        options:
+          - stable
+          - latest
+          - custom
+      custom_tag:
+        description: 'If you selected "custom", type your tag here (e.g., lts, beta)'
+        required: false
+        type: string
+        default: ''
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    strategy:
+      matrix:
+        component: [server, worker]
+    steps:
+      - name: Check component match
+        id: check
+        run: |
+          if [ "${{ github.event.inputs.component }}" = "all" ] || [ "${{ github.event.inputs.component }}" = "${{ matrix.component }}" ]; then
+            echo "run=true" >> $GITHUB_OUTPUT
+          else
+            echo "run=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Downcase repository name
+        if: steps.check.outputs.run == 'true'
+        run: |
+          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}-${{ matrix.component }}" >> $GITHUB_ENV
+
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: steps.check.outputs.run == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine Target Tag
+        id: target
+        if: steps.check.outputs.run == 'true'
+        run: |
+          TYPE="${{ github.event.inputs.target_tag_type }}"
+          if [ "$TYPE" = "custom" ]; then
+            FINAL_TAG="${{ github.event.inputs.custom_tag }}"
+            if [ -z "$FINAL_TAG" ]; then
+              echo "ERROR: You selected 'custom' tag type but left custom_tag field empty!"
+              exit 1
+            fi
+          else
+            FINAL_TAG="$TYPE"
+          fi
+          echo "final_tag=$FINAL_TAG" >> $GITHUB_OUTPUT
+
+      - name: Pull, Retag and Push Alias
+        if: steps.check.outputs.run == 'true'
+        run: |
+          TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          EXISTING_TAG="${{ github.event.inputs.image_tag }}"
+          NEW_TAG="${{ steps.target.outputs.final_tag }}"
+          
+          echo "Promoting ${TARGET_IMAGE}:${EXISTING_TAG} to ${NEW_TAG}..."
+          
+          docker pull ${TARGET_IMAGE}:${EXISTING_TAG}
+          docker tag ${TARGET_IMAGE}:${EXISTING_TAG} ${TARGET_IMAGE}:${NEW_TAG}
+          docker push ${TARGET_IMAGE}:${NEW_TAG}
