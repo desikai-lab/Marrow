@@ -13,7 +13,7 @@ on:
           - server
           - worker
       image_tag:
-        description: 'Docker image tag (e.g., v1.0.0 or latest)'
+        description: 'Docker image tag (e.g., v1.0.0-rc.1 v1.0.0 or latest)'
         required: true
         default: 'latest'
         type: string
@@ -40,6 +40,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Downcase repository name
+        run: |
+          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}-server" >> $GITHUB_ENV
+
       - name: Log into registry ${{ env.REGISTRY }}
         uses: docker/login-action@v3
         with:
@@ -53,7 +57,7 @@ jobs:
           context: .
           file: ./marrow_server/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository }}-server:${{ github.event.inputs.image_tag }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -74,6 +78,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Downcase repository name
+        run: |
+          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}-worker" >> $GITHUB_ENV
+
       - name: Log into registry ${{ env.REGISTRY }}
         uses: docker/login-action@v3
         with:
@@ -87,6 +95,6 @@ jobs:
           context: .
           file: ./marrow_worker/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository }}-worker:${{ github.event.inputs.image_tag }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
