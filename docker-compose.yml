@@ -35,6 +35,7 @@ services:
     volumes:
       - marrow-data:/data
       - marrow-projects:/projects
+      - marrow-hf-cache:/root/.cache/huggingface
     environment:
       SECRET_TOKEN: ${SECRET_TOKEN}
       TASKS_DIR: /data
@@ -62,6 +63,7 @@ services:
     container_name: marrow-worker
     volumes:
       - ${WATCH_PATHS:-./}:/watch:ro
+      - marrow-hf-cache:/root/.cache/huggingface
     environment:
       SERVER_URL: http://marrow-server:8000
       SECRET_TOKEN: ${SECRET_TOKEN}
@@ -78,3 +80,4 @@ services:
 volumes:
   marrow-data:
   marrow-projects:
+  marrow-hf-cache:
