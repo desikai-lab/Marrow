@@ -5,7 +5,7 @@ import os
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
-from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver
 
 from src.embedding import LazyEncoder
 from src.parser import extract_chunks
@@ -162,6 +162,7 @@ async def serve(
     project_name: str,
     secret_token: str,
     run_init: bool = False,
+    polling_interval: float = 1.0,
 ):
     logger = logging.getLogger("worker")
     logger.info("Initializing Worker for %s", repo_dir)
@@ -204,7 +205,7 @@ async def serve(
     debouncer = AsyncDebouncer(loop, callback)
     bridge = SkeletonEventBridge(loop, debouncer, extensions, delete_callback=callback_delete)
 
-    observer = Observer()
+    observer = PollingObserver(timeout=polling_interval)
     observer.schedule(bridge, path=repo_dir, recursive=True)
     observer.start()
 
@@ -275,6 +276,14 @@ def main():
         action="store_true",
         help="Scan and index the entire repo before starting the file watcher",
     )
+    parser.add_argument(
+        "--polling-interval",
+        type=float,
+        default=float(os.getenv("POLLING_INTERVAL", "1.0")),
+        help="File system polling interval in seconds (default: 1.0). "
+             "Lower values increase responsiveness but raise CPU usage on large repos. "
+             "Can also be set via POLLING_INTERVAL env var.",
+    )
 
     args = parser.parse_args()
 
@@ -302,6 +311,7 @@ def main():
                 args.project_name,
                 args.secret_token,
                 run_init=args.init,
+                polling_interval=args.polling_interval,
             )
         )
     except KeyboardInterrupt:
