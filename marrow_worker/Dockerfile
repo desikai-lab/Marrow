@@ -8,6 +8,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
+# Install CPU-only torch
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
 # Install marrow_common first (local dependency)
 COPY marrow_common/ ./marrow_common/
 RUN pip install --no-cache-dir ./marrow_common
