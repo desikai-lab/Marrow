@@ -64,6 +64,7 @@ services:
       SECRET_TOKEN: ${SECRET_TOKEN}
       EMBEDDING_MODEL_CODE: ${EMBEDDING_MODEL_CODE:-BAAI/bge-small-en-v1.5}
       HF_HUB_OFFLINE: ${HF_HUB_OFFLINE:-0}
+      POLLING_INTERVAL: ${POLLING_INTERVAL:-1.0}
     command: >
       python main.py
         --repo-dir /projects/${PROJECT_1_PATH}
@@ -72,10 +73,40 @@ services:
         --secret-token ${SECRET_TOKEN}
         --extensions ${EXTENSIONS:-.cs,.ts,.py}
         --init
+    # remove --init after first successful run
     depends_on:
       marrow-server:
         condition: service_healthy
-    restart: unless-stopped
+    restart: unless-stopped    
+
+  # ---------------------------------------------------------------------------
+  # Additional worker template — one worker per project.
+  # Uncomment and duplicate this block for each extra project.
+  # Add PROJECT_2_NAME and PROJECT_2_PATH to your .env file.
+  # ---------------------------------------------------------------------------
+  # marrow-worker-2:
+  #   image: ghcr.io/desikai-lab/marrow-worker:latest
+  #   container_name: marrow-worker-2
+  #   volumes:
+  #     - marrow-projects:/projects:ro
+  #     - marrow-hf-cache:/root/.cache/huggingface
+  #   environment:
+  #     SECRET_TOKEN: ${SECRET_TOKEN} 
+  #     EMBEDDING_MODEL_CODE: ${EMBEDDING_MODEL_CODE:-BAAI/bge-small-en-v1.5}
+  #     HF_HUB_OFFLINE: ${HF_HUB_OFFLINE:-0}
+  #   command: >
+  #     python main.py
+  #       --repo-dir /projects/${PROJECT_2_PATH}
+  #       --project-name ${PROJECT_2_NAME}
+  #       --target-url http://marrow-server:8000
+  #       --secret-token ${SECRET_TOKEN}
+  #       --extensions ${EXTENSIONS:-.cs,.ts,.py}
+  #       --init
+  #     # remove --init after first successful run
+  #   depends_on:
+  #     marrow-server:
+  #       condition: service_healthy
+  #   restart: unless-stopped
 
 volumes:
   marrow-data:
