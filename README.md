@@ -415,17 +415,21 @@ Each project managed by Marrow has a structured workspace in `TASKS_DIR/projects
 
 ```
 {project_name}/
-├── .settings               # Source code location — required for code intelligence tools
-├── session.md              # Session state — current focus, pipeline phase
-├── spec.md                 # Project specification and architectural constants
-├── builds/                 # YAML build manifests
-└── docs/
-    ├── decisions/adr/        # Architectural Decision Records
-    ├── features/
-    │   ├── active/           # Features currently in development
-    │   └── archive/          # Completed work history
-    ├── manuals/              # Operational guidelines and docs
-    └── templates/            # Standardization blueprints
+├── .db                     # Vectore db and tasks Blob
+├── .history                # Folder with the files history
+├── .recycle_bin
+├── .settings               # Additional Project Configuration like SOURCE_ROOT - to define path to the Code Base
+└── artifacts               # Root folder of the project that the agent has access to        
+    ├──session.md           # Session state — current focus, pipeline phase
+    ├──spec.md              # Project specification and architectural constants
+    ├──builds/              # YAML build manifests
+    └── docs/
+        ├── decisions/adr/        # Architectural Decision Records
+        ├── features/
+        │   ├── active/           # Features currently in development
+        │   └── archive/          # Completed work history
+        ├── manuals/              # Operational guidelines and docs
+        └── templates/            # Standardization blueprints
 ```
 
 ---
