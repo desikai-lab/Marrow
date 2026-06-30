@@ -49,3 +49,51 @@ Not every task needs the full pipeline starting from Discovery. A human may set 
 - **When to use**: The human explicitly sets `next_agent_role` to a non-Discovery role, or says something equivalent to "just fix this."
 - **Minimum artefacts**: Update `session.md` with the task ID and a one-line description of the change. No `requirements.md` or `architecture.md` is required if the entry role doesn't need one.
 - **Exit**: Standard exit rules for whichever role you entered as apply — e.g. tests pass and a PR is opened if you entered as Execution — and `next_agent_role` is set per that role's `next` field in `role_profiles.yaml`.
+
+## 5. Skill & Playbook Protocol
+Skills are self-contained procedure files (SKILL.md) that extend agent behaviour for specific situations. They are registered per-role in `role_profiles.yaml` under `playbooks[]`. Every agent — regardless of role — MUST follow this protocol at session start.
+
+### 5.1 When to load skills
+
+Skills are **not loaded blindly**. You are responsible for deciding which skills apply to the current task. Loading irrelevant skills wastes context — do not do it.
+
+### 5.2 Protocol (mandatory steps)
+
+**Step 1 — Read the skill menu**
+At the start of every session, the PLAYBOOKS section of `get_session_context` lists the skills registered for your role. Each entry contains the file path and the skill's `description` from its frontmatter. Read every description carefully.
+
+**Step 2 — Match against the current task**
+For each skill ask: *Does the current task or phase match this skill's stated trigger?*
+
+| Signal in description | Load if… |
+|---|---|
+| "before any creative work" | You are about to design, plan, or spec something new |
+| "stress-test / grill a plan" | You have a draft design or requirement ready for review |
+| "before implementation" | You are about to write code or scaffold anything |
+| "break into issues / tasks" | You are about to create stories or backlog items |
+| "documentation / PRD" | You are about to write a spec, requirements.md, or ADR |
+
+If none match, proceed without loading any skill.
+
+**Step 3 — Load matching skills**
+Call `read_project_artifacts` for each skill path you decided to load. Read the full content before continuing.
+
+**Step 4 — Follow loaded skills faithfully**
+Once loaded, a skill's checklist and HARD-GATE rules are **mandatory**. Do not skip steps. Do not proceed past a HARD-GATE without explicit user approval.
+
+**Step 5 — Chain skills when instructed**
+Some skills explicitly invoke another skill at their terminal state (e.g. brainstorming → writing-plans). When you reach that terminal state, load the next skill before proceeding.
+
+### 5.3 Where skills live
+
+- Project-local skills: `skills/<name>/SKILL.md` (registered in `role_profiles.yaml`)
+- External skills can be installed from `www.skills.sh` or `mcpmarket.com` via `npx skills add`
+- After installing an external skill, register it in `role_profiles.yaml` under the relevant role
+
+### 5.4 Anti-patterns to avoid
+
+- ❌ Loading all registered skills regardless of the task
+- ❌ Reading only the description and skipping the full SKILL.md content
+- ❌ Acknowledging a HARD-GATE and then proceeding anyway
+- ❌ Forgetting to chain to the next skill at a terminal state
+- ❌ Installing a skill externally but not registering it in `role_profiles.yaml`
