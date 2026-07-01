@@ -29,6 +29,23 @@ You can use Claude for heavy architectural lifting, let it save state into Marro
 
 ---
 
+## Contents
+- [Why Marrow?](#why-marrow)
+- [Architecture](#architecture)
+- [MCP Tool Reference](#mcp-tool-reference)
+- [Requirements](#requirements)
+- [Quickstart](#quickstart)
+  - [Option A — Docker](#option-a--docker-recommended)
+  - [Option B — Glama](#option-b--glama-hosted-no-shell-access)
+  - [Option C — Manual](#option-c--manual--development-setup)
+- [Project Settings (.settings)](#project-settings-settings)
+- [Project Structure](#project-structure-agent-workspace)
+- [More Docs](#more-docs)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
 ## Architecture
 
 Marrow is composed of three packages:
@@ -265,6 +282,7 @@ The MCP server will be available at `http://localhost:8000/mcp` by default.
 
 ```bash
 marrow-admin project-init --project MyProject
+# For all admin commands see docs/ADMIN_CLI.md
 ```
 
 This copies the built-in project template into your `TASKS_DIR/projects/MyProject/` workspace. Open `spec.md` and fill in your tech stack before your first agent session.
@@ -367,45 +385,7 @@ Worker for OtherApp: --repo-dir /projects/OtherApp/src --project-name OtherApp
 
 Both services are configured via environment variables (`.env` files).
 
-### marrow_server
-
-| Variable | Description | Default |
-|---|---|---|
-| `SECRET_TOKEN` | Bearer token for MCP and REST API authentication | Required |
-| `TASKS_DIR` | Absolute path where project workspaces are stored | Required |
-| `DEFAULT_PROJECT` | Name of the project auto-created on first run (Docker only) | `default` |
-| `EMBEDDING_MODEL_CODE` | Sentence-transformer model for code skeleton embeddings | `BAAI/bge-small-en-v1.5` |
-| `EMBEDDING_MODEL_TEXT` | Sentence-transformer model for text/artifact embeddings | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` |
-| `EMBEDDING_DIMENSIONS` | Embedding vector dimensions — must match the chosen model | `384` |
-| `MAX_EMBED_CHARS` | Maximum characters to embed per chunk | `2000` |
-| `VECT_DEBOUNCE_SECONDS` | Debounce delay before vectorizing a changed file | `0.5` |
-| `PORT` | HTTP server port | `8000` |
-
-### marrow_worker (CLI arguments)
-
-| Argument | Description | Default |
-|---|---|---|
-| `--repo-dir` | Absolute path to the source code to watch — must match `SOURCE_ROOT` in `.settings` | `os.getcwd()` |
-| `--project-name` | Marrow project this worker indexes into | `DefaultProject` |
-| `--target-url` | URL of the running marrow_server | `http://localhost:8000` |
-| `--secret-token` | Must match `SECRET_TOKEN` on the server | — |
-| `--init` | Run a full repo scan on startup | off |
-| `--polling-interval` | File system polling interval in seconds — lower = faster response, higher CPU on large repos | `1.0` |
-
-### .env (Docker Compose)
-
-| Variable | Description |
-|---|---|
-| `SECRET_TOKEN` | Shared secret across all services |
-| `SOURCE_PATHS` | Host path mounted as `/projects` in server and all workers |
-| `DEFAULT_PROJECT` | First project name, auto-created on first run |
-| `PROJECT_1_NAME` | Marrow project name for the first worker |
-| `PROJECT_1_PATH` | Subfolder inside `SOURCE_PATHS` the first worker watches |
-| `PROJECT_2_NAME` | Project name for a second worker (if used) |
-| `PROJECT_2_PATH` | Subfolder for the second worker |
-| `EMBEDDING_MODEL_CODE` | Override the code skeleton embedding model (passed to both server and worker) — default `BAAI/bge-small-en-v1.5` |
-| `HF_HUB_OFFLINE` | Set to `1` after first run to block all HuggingFace network calls and use the local cache only — default `0` |
-| `POLLING_INTERVAL` | File polling interval in seconds for the worker — increase for large repos to reduce CPU | `1.0` |
+> For all configuration options see [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 
 ---
 
@@ -436,43 +416,18 @@ Each project managed by Marrow has a structured workspace in `TASKS_DIR/projects
 
 ## Build Engine
 
-Marrow includes a declarative build system for assembling complex context payloads from multiple artifact sources. Define a YAML manifest and run it via MCP:
-
-```yaml
-# builds/my_context.yaml
-name: feature_context
-version: "1.0.0"
-output:
-  format: single_file
-  filename: "context_{{DATE}}.md"
-steps:
-  - action: include_artifact
-    path: session.md
-    mode: full
-  - action: include_artifact
-    path: docs/decisions/adr/0034-product-name-marrow.md
-    mode: section
-    section_name: "Decision"
-```
-
-Run via MCP tool `run_project_build`, or locally:
-
-```bash
-python run_build.py --project MyProject --build my_context
-```
+> Build manifest format and the `build` admin command → [docs/BUILD_ENGINE.md](docs/BUILD_ENGINE.md).
 
 ---
 
-## Roadmap
+## More Docs
 
-### ✅ v1.0.0 — The Foundation
-Core MCP server, LanceDB storage, artifact management, task backlog, code skeleton indexing, build engine, session continuity.
-
-### 🟡 v1.1.0 — The Sandbox & Sync *(Active)*
-Workflow hardening, dynamic reindexing, phase-aware agent guidelines, handoff optimization.
-
-### 🔴 v2.0.0 — The AI Orchestrator *(Planned)*
-Declarative handoff, context sanitization, branch-aware indexing, diff intelligence, multi-agent orchestration.
+| Doc | Covers |
+|---|---|
+| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | All environment variables and CLI arguments for server, worker, and docker-compose |
+| [docs/ADMIN_CLI.md](docs/ADMIN_CLI.md) | `marrow-admin` and `marrow-skills` CLI commands, and `repair_blobs.py` |
+| [docs/BUILD_ENGINE.md](docs/BUILD_ENGINE.md) | Build manifest YAML format and the `build` admin command |
+| [docs/roadmap.md](docs/roadmap.md) | Live prioritised roadmap |
 
 ---
 
