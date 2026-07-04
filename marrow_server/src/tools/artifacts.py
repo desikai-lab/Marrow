@@ -1,11 +1,11 @@
+import asyncio
 import logging
 import os
+from datetime import datetime
 from typing import Any, Literal
 
-from storage.uow import UnitOfWork
-from utils.exceptions import ArtifactNotFoundError
-
 import tools.utils.session_integrity  # noqa: F401 -- import for registration side-effect
+from storage.uow import UnitOfWork
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
 from tools.utils.filesystem_utils import (
@@ -16,6 +16,7 @@ from tools.utils.filesystem_utils import (
     validate_artifact_path,
     validate_project_path,
 )
+from utils.exceptions import ArtifactNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,11 @@ def list_artifacts_logic(
     return list_directory_contents(target_dir, recursive=recursive)
 
 
+def _read_text(path: str) -> str:
+    with open(path, encoding="utf-8", errors="replace") as f:
+        return f.read()
+
+
 async def move_project_artifact_logic(project: str, src_path: str, dest_path: str) -> str:
     """Moves or renames an artifact."""
     from tools.utils.filesystem_utils import safe_move_file
@@ -93,14 +99,27 @@ async def move_project_artifact_logic(project: str, src_path: str, dest_path: st
     safe_move_file(real_src, real_dest)
 
     # Phase 3: Sync index
+    sync_warning = ""
     try:
         project_root = validate_project_path(project)
         uow = UnitOfWork(project_root)
         await uow.artifacts.rename(src_path, dest_path)
-    except (ImportError, Exception):
-        pass  # Indexing might not be fully implemented yet (Task 4)
 
-    return f"Artifact moved: {src_path} -> {dest_path}"
+        chunks_updated = await uow.chunks.rename(src_path, dest_path)
+        if chunks_updated == 0:
+            # Fallback: old path had no chunk rows (e.g. pre-fix stale state,
+            # or artifact was never chunked). Re-embed from the new location.
+            content = await asyncio.to_thread(_read_text, real_dest)
+            ext = os.path.splitext(dest_path)[1].lower()
+            await uow.chunks.upsert_chunks(dest_path, content, datetime.now().isoformat(), ext=ext)
+            logger.info(
+                f"Chunk fallback upsert performed for {dest_path} (no prior chunk rows found)."
+            )
+    except Exception as e:
+        sync_warning = f" (WARNING: index sync failed: {e})"
+        logger.error(f"Index sync failed on move {src_path} -> {dest_path}: {e}")
+
+    return f"Artifact moved: {src_path} -> {dest_path}{sync_warning}"
 
 
 async def delete_project_artifact_logic(project: str, rel_path: str) -> str:
