@@ -108,6 +108,36 @@ class ArtifactChunkRepository:
         else:
             logger.warning(f"No chunks vectorised for artifact {path}.")
 
+    async def rename(self, old_path: str, new_path: str) -> int:
+        """Metadata-only path rename across ALL chunk rows for old_path.
+        Insert-before-delete: favors transient duplication over data loss.
+        Returns the number of chunk rows renamed (0 if none found).
+        """
+        results = await asyncio.to_thread(
+            self.table.search().where(f"path = '{old_path}'", prefilter=True).to_list
+        )
+        if not results:
+            logger.warning(
+                f"No chunks found for {old_path} during rename; caller should fall back to full upsert."
+            )
+            return 0
+
+        new_rows = [dict(row, path=new_path) for row in results]
+        await asyncio.to_thread(self.table.add, new_rows)
+
+        try:
+            await asyncio.to_thread(self.table.delete, f"path = '{old_path}'")
+        except Exception as e:
+            logger.error(
+                f"Rename {old_path} -> {new_path}: new rows added, but failed to delete "
+                f"old rows: {e}. Old rows are now ghosts — will be pruned by TD4000174 "
+                f"maintenance pass, or the next full `reindex-chunks` run."
+            )
+
+        schedule_index_rebuild(self.table)
+        logger.info(f"Renamed {len(new_rows)} chunk(s) in index: {old_path} -> {new_path}")
+        return len(new_rows)
+
     @track_time(layer="repository")
     async def semantic_search(self, query_text: str, limit: int = 5) -> list[dict[str, Any]]:
         query_vector = await asyncio.to_thread(
