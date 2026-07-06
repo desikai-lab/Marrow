@@ -3,7 +3,6 @@ import os
 
 import pytest
 from pytest_httpx import HTTPXMock
-
 from src.transport import MCPClient
 
 FAKE_TOKEN = "test-secret-token"

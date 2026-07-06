@@ -1,7 +1,6 @@
 import time
 
 import pytest
-
 from cli.services.skills_registry import (
     SkillAlreadyRegisteredError,
     SkillNotRegisteredError,

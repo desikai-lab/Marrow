@@ -1,5 +1,4 @@
 import pytest
-
 from services.skeleton_query_service import search_code_skeletons_logic
 
 pytestmark = pytest.mark.integration

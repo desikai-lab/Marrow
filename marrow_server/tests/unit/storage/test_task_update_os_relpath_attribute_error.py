@@ -113,16 +113,17 @@ def test_update_task_atomically_close_with_resolution_no_attribute_error_regress
     # Also patch table.name to avoid DB connection requirements in get_table_lock
     uow.tasks.table = type("FakeTable", (), {"name": "tasks"})()  # minimal stub
 
-    # Patch get_table_lock to a no-op async context manager
-    from contextlib import asynccontextmanager
-
+    # Patch get_table_lock to return a no-op lock
     import storage.db as db_module
 
-    @asynccontextmanager
-    async def fake_lock(name):
-        yield
+    class FakeLock:
+        async def acquire(self):
+            return True
 
-    monkeypatch.setattr(db_module, "get_table_lock", fake_lock)
+        def release(self):
+            pass
+
+    monkeypatch.setattr(db_module, "get_table_lock", lambda name: FakeLock())
 
     # Run the update
     result = asyncio.run(

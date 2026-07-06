@@ -2,7 +2,6 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
-
 from src.transport.api_client import MCPClient
 from src.transport.outbox import WorkerOutbox
 

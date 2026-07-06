@@ -1,5 +1,4 @@
 import pytest
-
 from domain.validators.task_title_unique import TaskTitleUniqueValidator
 from utils.exceptions import ValidationError
 

@@ -2,7 +2,6 @@ from enum import StrEnum
 
 import pytest
 import yaml
-
 from storage.blobs import _blob_path, _sanitize_for_yaml, delete_blob, read_blob, write_blob
 
 # ---------------------------------------------------------------------------

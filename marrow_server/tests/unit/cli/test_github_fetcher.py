@@ -3,7 +3,6 @@ import urllib.error
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from cli.services.github_fetcher import GitHubFetcher, GitHubFetchError, SkillNotFoundError
 
 

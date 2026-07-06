@@ -5,12 +5,11 @@ import os
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
-from watchdog.observers.polling import PollingObserver
-
 from src.embedding import LazyEncoder
 from src.parser import extract_chunks
 from src.transport import MCPClient, WorkerOutbox
 from src.watcher import AsyncDebouncer, SkeletonEventBridge
+from watchdog.observers.polling import PollingObserver
 
 # Directories that should never be scanned during the initial repo analysis
 SKIP_DIRS = {
@@ -281,8 +280,8 @@ def main():
         type=float,
         default=float(os.getenv("POLLING_INTERVAL", "1.0")),
         help="File system polling interval in seconds (default: 1.0). "
-             "Lower values increase responsiveness but raise CPU usage on large repos. "
-             "Can also be set via POLLING_INTERVAL env var.",
+        "Lower values increase responsiveness but raise CPU usage on large repos. "
+        "Can also be set via POLLING_INTERVAL env var.",
     )
 
     args = parser.parse_args()

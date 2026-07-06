@@ -4,10 +4,9 @@ Tests for ADR-23 schema version enforcement.
 """
 
 import pytest
+from config import EMBEDDING_DIMENSIONS, SECRET_TOKEN
 from fastapi.testclient import TestClient
 from marrow_common.skeleton_schema import SCHEMA_VERSION
-
-from config import EMBEDDING_DIMENSIONS, SECRET_TOKEN
 from transport.app_factory import app
 
 client = TestClient(app, raise_server_exceptions=False)

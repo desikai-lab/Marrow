@@ -1,5 +1,4 @@
 import pytest
-
 from services.artifact_command_service import save_project_artifacts_logic
 from tools import read_project_artifacts_logic
 
