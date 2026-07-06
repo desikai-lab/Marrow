@@ -49,18 +49,6 @@ class TableLockContext:
         self._wait_start = loop.time()
         warn_at = self._timeout * 0.5
 
-        if not hasattr(self._lock, "acquire"):
-            res = self._lock.__aenter__()
-            if hasattr(res, "__await__"):
-                await res
-            self._acquired = True
-            self._held_start = loop.time()
-            logger.debug(
-                "TableLockContext: acquired '%s' (fallback context manager)",
-                self._table_name,
-            )
-            return self
-
         try:
             await asyncio.wait_for(self._lock.acquire(), timeout=warn_at)
         except TimeoutError:
@@ -93,13 +81,6 @@ class TableLockContext:
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
         if self._acquired:
-            if not hasattr(self._lock, "acquire"):
-                res = self._lock.__aexit__(exc_type, exc, tb)
-                if hasattr(res, "__await__"):
-                    await res
-                self._acquired = False
-                return
-
             hold_elapsed = asyncio.get_running_loop().time() - self._held_start
             logger.debug(
                 "TableLockContext: released '%s' after %.3fs held",

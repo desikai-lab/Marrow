@@ -121,12 +121,13 @@ class TestCompleteMultipleTasksSingleLock:
 
         lock_acquire_count = []
 
-        from contextlib import asynccontextmanager
+        class CountingLock:
+            async def acquire(self):
+                lock_acquire_count.append(1)
+                return True
 
-        @asynccontextmanager
-        async def counting_lock(name):
-            lock_acquire_count.append(1)
-            yield
+            def release(self):
+                pass
 
         with (
             patch("storage.uow.TaskRepository") as MockTaskRepo,
@@ -135,7 +136,7 @@ class TestCompleteMultipleTasksSingleLock:
             patch("storage.uow.read_blob", side_effect=lambda p: blobs[Path(p).stem]),
             patch("storage.uow.write_blob") as mock_write,
             patch("storage.uow.StatusChangeValidator"),
-            patch("storage.db.get_table_lock", side_effect=counting_lock),
+            patch("storage.db.get_table_lock", return_value=CountingLock()),
         ):
 
             def _fake_write(root, data):
