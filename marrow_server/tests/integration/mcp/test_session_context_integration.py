@@ -1,5 +1,4 @@
 import pytest
-
 from config import AGENT_PROFILE_ENGINE_ENABLED
 from services.artifact_command_service import save_project_artifacts_logic
 from tools.session_context import get_session_context_logic

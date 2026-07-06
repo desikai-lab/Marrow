@@ -7,9 +7,8 @@ import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi.testclient import TestClient
-
 from config import EMBEDDING_DIMENSIONS, SECRET_TOKEN
+from fastapi.testclient import TestClient
 from transport.app_factory import app
 
 client = TestClient(app, raise_server_exceptions=False)

@@ -3,7 +3,6 @@ import os
 from unittest.mock import patch
 
 import pytest
-
 from cli.commands.skills_remove import SkillsRemoveCommand
 from cli.services.skills_registry import SkillNotRegisteredError
 

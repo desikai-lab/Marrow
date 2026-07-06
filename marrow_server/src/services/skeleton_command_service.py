@@ -9,10 +9,9 @@ _MONOREPO_ROOT = str(Path(__file__).parents[3])
 if _MONOREPO_ROOT not in sys.path:
     sys.path.insert(0, _MONOREPO_ROOT)
 
+from config import PROJECTS_ROOT  # noqa: E402
 from marrow_common.skeleton_schema import SkeletonChunk  # noqa: E402
 from pydantic import ValidationError  # noqa: E402
-
-from config import PROJECTS_ROOT  # noqa: E402
 from storage.entities import SkeletonChunkRecord  # noqa: E402
 from storage.repositories.skeleton_repository import SkeletonRepository  # noqa: E402
 

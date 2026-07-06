@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-
 from storage.db import get_chunk_table, init_db
 from storage.uow import UnitOfWork
 

@@ -1,12 +1,11 @@
 import logging
 
+from config import EMBEDDING_DIMENSIONS
 from fastapi import APIRouter, Request
 from marrow_common.skeleton_schema import SCHEMA_VERSION
 from pydantic import BaseModel, Field, field_validator
-from starlette.responses import JSONResponse
-
-from config import EMBEDDING_DIMENSIONS
 from services.skeleton_command_service import skeleton_command_service
+from starlette.responses import JSONResponse
 
 logger = logging.getLogger("marrow.transport.vectorize")
 

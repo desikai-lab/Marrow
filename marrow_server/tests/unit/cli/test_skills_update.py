@@ -3,7 +3,6 @@ import os
 from unittest.mock import patch
 
 import pytest
-
 from cli.commands.skills_update import SkillsUpdateCommand
 from cli.services.github_fetcher import GitHubFetchError, SkillNotFoundError
 

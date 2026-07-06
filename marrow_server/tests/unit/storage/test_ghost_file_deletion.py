@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from services.skeleton_command_service import SkeletonCommandService
 from storage.repositories.skeleton_repository import SkeletonRepository
 
