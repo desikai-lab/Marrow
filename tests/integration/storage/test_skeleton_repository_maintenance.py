@@ -8,6 +8,7 @@ cleanup_old_versions() and compact_files() do not raise:
 
 Regression coverage for B4000188.
 """
+
 import datetime
 
 import pytest
@@ -17,7 +18,9 @@ from storage.repositories.skeleton_repository import SkeletonRepository
 from storage.entities import SkeletonChunkRecord
 
 
-def _make_chunk(path: str = "test/file.py", project: str = "test-project") -> SkeletonChunkRecord:
+def _make_chunk(
+    path: str = "test/file.py", project: str = "test-project"
+) -> SkeletonChunkRecord:
     """Minimal valid SkeletonChunkRecord for seeding the skeleton table."""
     return SkeletonChunkRecord(
         path=path,
@@ -71,4 +74,3 @@ async def test_compact_files_does_not_raise_pylance_import_error(tmp_path):
 
     # Must not raise "The lance library is required to use this function."
     await repo.compact_files()
-

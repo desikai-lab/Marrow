@@ -1,5 +1,5 @@
-import os
 import pytest
+
 from tools.projects import init_project_logic
 from utils.exceptions import ValidationError
 
@@ -7,12 +7,13 @@ from utils.exceptions import ValidationError
 @pytest.mark.asyncio
 async def test_init_project_happy_path(tmp_path):
     from unittest.mock import patch
+
     projects_dir = tmp_path / "projects"
 
     with patch("tools.projects.PROJECTS_ROOT", str(projects_dir)):
         result = init_project_logic("test-integration")
         assert result.project == "test-integration"
-        assert "workspace_path" not in result.model_dump()   # must NOT be exposed to agent
+        assert "workspace_path" not in result.model_dump()  # must NOT be exposed to agent
         assert len(result.files_created) > 0
 
         target_dir = projects_dir / "test-integration"
@@ -23,6 +24,7 @@ async def test_init_project_happy_path(tmp_path):
 @pytest.mark.asyncio
 async def test_init_project_already_exists(tmp_path):
     from unittest.mock import patch
+
     projects_dir = tmp_path / "projects"
     (projects_dir / "duplicate").mkdir(parents=True)
 

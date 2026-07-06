@@ -3,13 +3,13 @@ import logging
 from typing import Any
 
 import pyarrow.compute as pc
+
 from config import EMBEDDING_MODEL_TEXT
 from domain.enums import TaskPriority, TaskStatus, TaskType
-from utils.metrics import track_time
-
 from storage.db import get_table
 from storage.embeddings import embeddings_manager
 from storage.entities import TaskRecord
+from utils.metrics import track_time
 
 logger = logging.getLogger("marrow.task_repository")
 

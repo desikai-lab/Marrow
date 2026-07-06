@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 def test_serve_uses_polling_observer():
@@ -17,21 +17,26 @@ def test_serve_uses_polling_observer():
     mock_client_instance.close = AsyncMock()
     mock_client_instance._make_deliver_fn = MagicMock()
 
-    with patch("main.PollingObserver") as mock_polling, \
-         patch("main.MCPClient", return_value=mock_client_instance), \
-         patch("main.WorkerOutbox", return_value=mock_outbox_instance), \
-         patch("main.AsyncDebouncer"), \
-         patch("main.SkeletonEventBridge"), \
-         patch("main.asyncio.sleep", side_effect=asyncio.CancelledError):
+    with (
+        patch("main.PollingObserver") as mock_polling,
+        patch("main.MCPClient", return_value=mock_client_instance),
+        patch("main.WorkerOutbox", return_value=mock_outbox_instance),
+        patch("main.AsyncDebouncer"),
+        patch("main.SkeletonEventBridge"),
+        patch("main.asyncio.sleep", side_effect=asyncio.CancelledError),
+    ):
         import main
+
         try:
-            asyncio.run(main.serve(
-                repo_dir="/projects/test",
-                target_url="http://localhost:8000",
-                extensions=[".py"],
-                project_name="test",
-                secret_token="token",
-            ))
+            asyncio.run(
+                main.serve(
+                    repo_dir="/projects/test",
+                    target_url="http://localhost:8000",
+                    extensions=[".py"],
+                    project_name="test",
+                    secret_token="token",
+                )
+            )
         except asyncio.CancelledError:
             pass
 
@@ -52,22 +57,27 @@ def test_serve_passes_polling_interval_to_observer():
     mock_client_instance.close = AsyncMock()
     mock_client_instance._make_deliver_fn = MagicMock()
 
-    with patch("main.PollingObserver") as mock_polling, \
-         patch("main.MCPClient", return_value=mock_client_instance), \
-         patch("main.WorkerOutbox", return_value=mock_outbox_instance), \
-         patch("main.AsyncDebouncer"), \
-         patch("main.SkeletonEventBridge"), \
-         patch("main.asyncio.sleep", side_effect=asyncio.CancelledError):
+    with (
+        patch("main.PollingObserver") as mock_polling,
+        patch("main.MCPClient", return_value=mock_client_instance),
+        patch("main.WorkerOutbox", return_value=mock_outbox_instance),
+        patch("main.AsyncDebouncer"),
+        patch("main.SkeletonEventBridge"),
+        patch("main.asyncio.sleep", side_effect=asyncio.CancelledError),
+    ):
         import main
+
         try:
-            asyncio.run(main.serve(
-                repo_dir="/projects/test",
-                target_url="http://localhost:8000",
-                extensions=[".py"],
-                project_name="test",
-                secret_token="token",
-                polling_interval=5.0,
-            ))
+            asyncio.run(
+                main.serve(
+                    repo_dir="/projects/test",
+                    target_url="http://localhost:8000",
+                    extensions=[".py"],
+                    project_name="test",
+                    secret_token="token",
+                    polling_interval=5.0,
+                )
+            )
         except asyncio.CancelledError:
             pass
 

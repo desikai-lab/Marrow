@@ -14,6 +14,7 @@ def test_sentence_transformer_called_with_local_files_only_false_by_default():
     with patch.dict(os.environ, env, clear=True):
         with patch("sentence_transformers.SentenceTransformer", mock_st_class):
             from src.embedding.lazy_model import LazyEncoder
+
             enc = LazyEncoder()
             enc.__enter__()
 
@@ -31,6 +32,7 @@ def test_sentence_transformer_called_with_local_files_only_true_when_offline():
     with patch.dict(os.environ, {"HF_HUB_OFFLINE": "1"}):
         with patch("sentence_transformers.SentenceTransformer", mock_st_class):
             from src.embedding.lazy_model import LazyEncoder
+
             enc = LazyEncoder()
             enc.__enter__()
 
@@ -47,6 +49,7 @@ def test_lazy_encoder_reads_model_name_from_env():
     with patch.dict(os.environ, {"EMBEDDING_MODEL_CODE": "custom/model", "HF_HUB_OFFLINE": "0"}):
         with patch("sentence_transformers.SentenceTransformer", mock_st_class):
             from src.embedding.lazy_model import LazyEncoder
+
             enc = LazyEncoder()
             enc.__enter__()
 

@@ -2,9 +2,9 @@ import logging
 import re
 
 import yaml
-from tools.artifacts import read_artifact_logic
 
 from services.role_profile_service import RoleProfileLoader
+from tools.artifacts import read_artifact_logic
 
 logger = logging.getLogger(__name__)
 

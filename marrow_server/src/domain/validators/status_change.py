@@ -1,6 +1,5 @@
-from utils.exceptions import ValidationError
-
 from domain.validation import Validator
+from utils.exceptions import ValidationError
 
 
 class StatusChangeValidator(Validator):

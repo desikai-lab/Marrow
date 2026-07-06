@@ -2,6 +2,7 @@ import logging
 import os
 
 import uvicorn
+
 from app import app
 from config import check_startup_config
 from utils.logger_setup import setup_logging
