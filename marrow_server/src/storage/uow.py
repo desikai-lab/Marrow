@@ -47,9 +47,9 @@ class UnitOfWork:
 
     async def update_task_atomically(self, task_key: str, new_data: dict[str, Any]) -> TaskRecord:
         """Atomically updates a task (Blob + LanceDB) with Rollback support."""
-        from storage.db import get_table_lock
+        from storage.db import TableLockContext
 
-        async with get_table_lock(self.tasks.table.name):
+        async with TableLockContext(self.tasks.table.name):
             current_record = await self.tasks.get_by_key(task_key)
         if not current_record:
             raise TaskNotFoundError(f"Task '{task_key}' not found in index")
@@ -149,14 +149,12 @@ class UnitOfWork:
         self, task_keys: list[str], new_status: str, resolution: str | None = None
     ) -> dict:
         """Batch status move: single lock, bulk LanceDB upsert, single auto-unblock pass."""
-        from storage.db import get_table_lock
-
-        _file_lock = get_table_lock(self.tasks.table.name)
+        from storage.db import TableLockContext
 
         # key → original absolute path (for rollback)
         original_paths: dict[str, str] = {}
 
-        async with _file_lock:
+        async with TableLockContext(self.tasks.table.name):
             # Phase A — Validate all (fail-fast)
             validated = []  # list of (record, full_data, abs_file_path)
             for key in task_keys:

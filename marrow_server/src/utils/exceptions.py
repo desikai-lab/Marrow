@@ -61,3 +61,9 @@ class SourceFileError(BaseBacklogError):
     """Raised for binary files, oversized files, or unreadable source files."""
 
     pass
+
+
+class StorageTimeoutError(BaseBacklogError):
+    """Raised when acquiring a table lock exceeds its configured timeout."""
+
+    pass

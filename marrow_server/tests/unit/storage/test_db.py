@@ -1,6 +1,11 @@
+import asyncio
+import logging
 from pathlib import Path
 
-from storage.db import get_db, get_table
+import pytest
+
+from storage.db import TableLockContext, get_db, get_table, get_table_lock
+from utils.exceptions import StorageTimeoutError
 
 
 def test_init_db_fresh_project_creates_all_required_directories(tmp_project_root):
@@ -39,3 +44,75 @@ def test_get_table_repeated_calls_return_valid_non_null_objects(tmp_project_root
     # The current db.py caches the connection, not the table object itself.
     # This is acceptable behavior.
     assert t1 is not None and t2 is not None
+
+
+@pytest.mark.asyncio
+async def test_table_lock_context_fast_path_acquires_immediately_and_logs_debug(
+    caplog, tmp_project_root
+):
+    caplog.set_level(logging.DEBUG, logger="marrow.db")
+    async with TableLockContext("test_table_fast"):
+        pass
+    debug_logs = [r.message for r in caplog.records if r.levelname == "DEBUG"]
+    assert any("acquired" in msg for msg in debug_logs)
+    assert any("released" in msg for msg in debug_logs)
+
+
+@pytest.mark.asyncio
+async def test_table_lock_context_warns_at_fifty_percent_then_still_acquires(
+    caplog, tmp_project_root
+):
+    caplog.set_level(logging.WARNING, logger="marrow.db")
+    lock = get_table_lock("test_table_warn")
+    await lock.acquire()
+
+    async def release_later():
+        await asyncio.sleep(0.3)
+        lock.release()
+
+    asyncio.create_task(release_later())
+
+    async with TableLockContext("test_table_warn", timeout=0.4):
+        pass
+
+    warning_logs = [r.message for r in caplog.records if r.levelname == "WARNING"]
+    assert any("still waiting on 'test_table_warn'" in msg for msg in warning_logs)
+
+
+@pytest.mark.asyncio
+async def test_table_lock_context_raises_storage_timeout_error_on_full_timeout(tmp_project_root):
+    lock = get_table_lock("test_table_timeout")
+    await lock.acquire()
+
+    try:
+        with pytest.raises(StorageTimeoutError) as exc_info:
+            async with TableLockContext("test_table_timeout", timeout=0.2):
+                pass
+        assert exc_info.value.details["table_name"] == "test_table_timeout"
+        assert exc_info.value.details["timeout"] == 0.2
+    finally:
+        lock.release()
+
+
+@pytest.mark.asyncio
+async def test_table_lock_context_does_not_release_unheld_lock_on_timeout(tmp_project_root):
+    lock = get_table_lock("test_table_no_release")
+    await lock.acquire()
+
+    try:
+        with pytest.raises(StorageTimeoutError):
+            async with TableLockContext("test_table_no_release", timeout=0.1):
+                pass
+
+        assert lock.locked()
+    finally:
+        lock.release()
+
+
+@pytest.mark.asyncio
+async def test_table_lock_context_reuses_existing_asyncio_lock_from_get_table_lock(
+    tmp_project_root,
+):
+    lock = get_table_lock("test_table_reuse")
+    ctx = TableLockContext("test_table_reuse")
+    assert ctx._lock is lock

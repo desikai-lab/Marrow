@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from pathlib import Path
 
 import lancedb
@@ -9,6 +10,9 @@ from storage.entities import (
     SKELETON_CHUNK_SCHEMA,
     TASK_SCHEMA,
 )
+from utils.exceptions import StorageTimeoutError
+
+logger = logging.getLogger("marrow.db")
 
 _connections: dict = {}  # cache: {db_path: lancedb.DBConnection}
 _table_locks: dict[str, asyncio.Lock] = {}
@@ -22,6 +26,88 @@ def get_table_lock(table_name: str) -> asyncio.Lock:
     if table_name not in _table_locks:
         _table_locks[table_name] = asyncio.Lock()
     return _table_locks[table_name]
+
+
+class TableLockContext:
+    """Async context manager wrapping a per-table asyncio.Lock with an
+    acquisition timeout and observability logging.
+
+    Does not change the underlying lock object or _table_locks dict --
+    purely an acquisition-safety wrapper around get_table_lock().
+    """
+
+    def __init__(self, table_name: str, timeout: float = 30.0):
+        self._table_name = table_name
+        self._timeout = timeout
+        self._lock = get_table_lock(table_name)
+        self._acquired = False
+        self._wait_start = None
+        self._held_start = None
+
+    async def __aenter__(self) -> "TableLockContext":
+        loop = asyncio.get_running_loop()
+        self._wait_start = loop.time()
+        warn_at = self._timeout * 0.5
+
+        if not hasattr(self._lock, "acquire"):
+            res = self._lock.__aenter__()
+            if hasattr(res, "__await__"):
+                await res
+            self._acquired = True
+            self._held_start = loop.time()
+            logger.debug(
+                "TableLockContext: acquired '%s' (fallback context manager)",
+                self._table_name,
+            )
+            return self
+
+        try:
+            await asyncio.wait_for(self._lock.acquire(), timeout=warn_at)
+        except TimeoutError:
+            logger.warning(
+                "TableLockContext: still waiting on '%s' after %.1fs (50%% of %.1fs timeout)",
+                self._table_name,
+                warn_at,
+                self._timeout,
+            )
+            remaining = self._timeout - warn_at
+            try:
+                await asyncio.wait_for(self._lock.acquire(), timeout=remaining)
+            except TimeoutError:
+                elapsed = loop.time() - self._wait_start
+                raise StorageTimeoutError(
+                    f"Timed out acquiring lock for table '{self._table_name}' after "
+                    f"{elapsed:.1f}s (limit={self._timeout}s)",
+                    details={"table_name": self._table_name, "timeout": self._timeout},
+                )
+
+        self._acquired = True
+        self._held_start = loop.time()
+        wait_elapsed = self._held_start - self._wait_start
+        logger.debug(
+            "TableLockContext: acquired '%s' after %.3fs wait",
+            self._table_name,
+            wait_elapsed,
+        )
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:
+        if self._acquired:
+            if not hasattr(self._lock, "acquire"):
+                res = self._lock.__aexit__(exc_type, exc, tb)
+                if hasattr(res, "__await__"):
+                    await res
+                self._acquired = False
+                return
+
+            hold_elapsed = asyncio.get_running_loop().time() - self._held_start
+            logger.debug(
+                "TableLockContext: released '%s' after %.3fs held",
+                self._table_name,
+                hold_elapsed,
+            )
+            self._lock.release()
+            self._acquired = False
 
 
 def schedule_index_rebuild(table) -> None:
