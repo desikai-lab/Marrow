@@ -3,9 +3,8 @@ tests/test_grammars.py — Unit tests for src/parser/grammars.py
 """
 
 import pytest
-from tree_sitter import Language
-
 from src.parser.grammars import get_language, supported_languages
+from tree_sitter import Language
 
 # ---------------------------------------------------------------------------
 # Positive cases: every supported language loads

@@ -2,9 +2,8 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
-from watchdog.events import FileSystemEvent, FileSystemEventHandler
-
 from src.watcher.debouncer import AsyncDebouncer
+from watchdog.events import FileSystemEvent, FileSystemEventHandler
 
 
 class SkeletonEventBridge(FileSystemEventHandler):

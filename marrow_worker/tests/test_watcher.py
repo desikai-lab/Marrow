@@ -1,10 +1,9 @@
 import asyncio
 
 import pytest
-from watchdog.events import FileModifiedEvent
-
 from src.watcher.bridge import SkeletonEventBridge
 from src.watcher.debouncer import AsyncDebouncer
+from watchdog.events import FileModifiedEvent
 
 
 @pytest.mark.asyncio

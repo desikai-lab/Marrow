@@ -3,9 +3,8 @@ tests/test_dispatcher.py — Unit tests for src/parser/dispatcher.py
 """
 
 import pytest
-from tree_sitter import Parser
-
 from src.parser.dispatcher import get_parser_for_extension, supported_extensions
+from tree_sitter import Parser
 
 # ---------------------------------------------------------------------------
 # Parametrized mapping table

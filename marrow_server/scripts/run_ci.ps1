@@ -14,18 +14,18 @@ $root = Split-Path $PSScriptRoot -Parent
 
 Write-Host ""
 Write-Host "=== [1/3] ruff check ===" -ForegroundColor Cyan
-python -m ruff check ..\marrow_server ..\marrow_worker ..\marrow_common
+python -m ruff check --config pyproject.toml ..\marrow_server ..\marrow_worker ..\marrow_common
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "FAIL: ruff check found errors. Run: python -m ruff check --fix <files>" -ForegroundColor Red
+    Write-Host "FAIL: ruff check found errors. Run: python -m ruff check --fix --config pyproject.toml <files>" -ForegroundColor Red
     exit 1
 }
 Write-Host "OK" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "=== [2/3] ruff format --check ===" -ForegroundColor Cyan
-python -m ruff format --check .
+python -m ruff format --check --config pyproject.toml ..\marrow_server ..\marrow_worker ..\marrow_common
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "FAIL: formatting issues found. Run: python -m ruff format ." -ForegroundColor Red
+    Write-Host "FAIL: formatting issues found. Run: python -m ruff format --config pyproject.toml <files>" -ForegroundColor Red
     exit 1
 }
 Write-Host "OK" -ForegroundColor Green
