@@ -24,6 +24,13 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_MODEL_TEXT)
 EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "384"))
 MAX_EMBED_CHARS = int(os.getenv("MAX_EMBED_CHARS", "2000"))
 
+# Optional: explicit fastembed model cache directory.
+# Leave unset for local/Windows dev (fastembed picks an OS-appropriate default).
+# In Docker, set this to a path inside a persistent volume, e.g.:
+#   FASTEMBED_CACHE_DIR=/root/.cache/huggingface/fastembed
+# so the downloaded model survives container restarts.
+FASTEMBED_CACHE_DIR: str | None = os.getenv("FASTEMBED_CACHE_DIR") or None
+
 # Agent Profile Engine
 AGENT_PROFILE_ENGINE_ENABLED: bool = (
     os.getenv("AGENT_PROFILE_ENGINE_ENABLED", "true").lower() == "true"
