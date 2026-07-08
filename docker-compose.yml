@@ -41,6 +41,7 @@ services:
       EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-384}
       VECT_DEBOUNCE_SECONDS: ${VECT_DEBOUNCE_SECONDS:-0.5}
       HF_HUB_OFFLINE: ${HF_HUB_OFFLINE:-0}
+      FASTEMBED_CACHE_DIR: ${FASTEMBED_CACHE_DIR:-/root/.cache/huggingface/fastembed}
     depends_on:
       marrow-init:
         condition: service_completed_successfully
