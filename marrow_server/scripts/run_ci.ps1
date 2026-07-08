@@ -42,6 +42,27 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "OK" -ForegroundColor Green
 
+# After ruff --fix and ruff format, re-commit any auto-modified tracked files
+# so that the committed code always matches what ruff considers clean.
+# Without this step, GitHub CI (which runs ruff check without --fix) would
+# see the pre-fix version and fail.
+Write-Host ""
+Write-Host "=== [2b/4] git: amend commit with ruff auto-fixes (if any) ===" -ForegroundColor Cyan
+$dirty = git -C $monorepoRoot diff --name-only
+if ($dirty) {
+    Write-Host "ruff modified the following files — amending last commit:" -ForegroundColor Yellow
+    $dirty | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
+    git -C $monorepoRoot add -u
+    git -C $monorepoRoot commit --amend --no-edit
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "FAIL: git commit --amend failed." -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "Commit amended with ruff fixes." -ForegroundColor Green
+} else {
+    Write-Host "No auto-fixes applied — commit is already ruff-clean." -ForegroundColor Green
+}
+
 Write-Host ""
 Write-Host "=== [3/4] ruff check (verify clean) ===" -ForegroundColor Cyan
 Invoke-Expression "python -m ruff check --config `"$ruffConfig`" $ruffTargets"
