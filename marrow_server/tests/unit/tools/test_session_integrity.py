@@ -108,7 +108,12 @@ class TestSessionMdIntegrityHook(unittest.TestCase):
         which has no use for extra kwargs but must still accept them."""
         content = GOOD_HEADER + "**Focus:** doing things\n"
         result = self.hook.validate_and_repair(
-            PROJECT, "session.md", content, "replace_file", old_str="irrelevant", section_name="also irrelevant"
+            PROJECT,
+            "session.md",
+            content,
+            "replace_file",
+            old_str="irrelevant",
+            section_name="also irrelevant",
         )
         self.assertEqual(result, content)
 

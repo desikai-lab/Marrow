@@ -22,7 +22,9 @@ class HistoryMdIntegrityHook(IntegrityHook):
     'delete_section' (history entries are immutable).
     """
 
-    def validate_and_repair(self, project: str, rel_path: str, content: str, mode: str, **kwargs) -> str:
+    def validate_and_repair(
+        self, project: str, rel_path: str, content: str, mode: str, **kwargs
+    ) -> str:
         target_path = validate_artifact_path(project, rel_path)
 
         if mode == "patch":

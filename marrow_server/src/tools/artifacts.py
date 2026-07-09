@@ -4,11 +4,9 @@ import os
 from datetime import datetime
 from typing import Any, Literal
 
-from storage.uow import UnitOfWork
-from utils.exceptions import ArtifactNotFoundError
-
-import tools.utils.session_integrity  # noqa: F401 -- import for registration side-effect
 import tools.utils.history_integrity  # noqa: F401 -- import for registration side-effect
+import tools.utils.session_integrity  # noqa: F401 -- import for registration side-effect
+from storage.uow import UnitOfWork
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
 from tools.utils.filesystem_utils import (
@@ -19,6 +17,7 @@ from tools.utils.filesystem_utils import (
     validate_artifact_path,
     validate_project_path,
 )
+from utils.exceptions import ArtifactNotFoundError
 
 logger = logging.getLogger(__name__)
 

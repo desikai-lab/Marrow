@@ -1,4 +1,3 @@
-import os
 import shutil
 import tempfile
 import unittest
@@ -78,7 +77,11 @@ class TestHistoryMdIntegrityHook(unittest.TestCase):
         )
         with self.assertRaises(ValidationError):
             self.hook.validate_and_repair(
-                PROJECT, "docs/sessions/history.md", "edited middle\n", "patch", old_str="middle text\n"
+                PROJECT,
+                "docs/sessions/history.md",
+                "edited middle\n",
+                "patch",
+                old_str="middle text\n",
             )
 
     def test_validateAndRepair_disallowedModes_raisesValidationError(self):
