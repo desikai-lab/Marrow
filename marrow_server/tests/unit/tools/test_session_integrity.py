@@ -103,6 +103,15 @@ class TestSessionMdIntegrityHook(unittest.TestCase):
             any("nonexistent_backup_file.md" in m or "session.md" in m for m in log_ctx.output)
         )
 
+    def test_validate_and_repair_extraKwargsPassed_ignoredWithoutError(self):
+        """Confirms the ABC widening to **kwargs doesn't break SessionMdIntegrityHook,
+        which has no use for extra kwargs but must still accept them."""
+        content = GOOD_HEADER + "**Focus:** doing things\n"
+        result = self.hook.validate_and_repair(
+            PROJECT, "session.md", content, "replace_file", old_str="irrelevant", section_name="also irrelevant"
+        )
+        self.assertEqual(result, content)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -45,7 +45,7 @@ def save_artifact_logic(
 
     hook = ArtifactIntegrityRegistry.get_hook(rel_path)
     if hook:
-        content = hook.validate_and_repair(project, rel_path, content, mode)
+        content = hook.validate_and_repair(project, rel_path, content, mode, **kwargs)
 
     # Automatic backup before modification (ADR-05)
     create_artifact_backup(project, rel_path)
