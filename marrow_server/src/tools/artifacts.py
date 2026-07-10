@@ -22,6 +22,8 @@ from utils.exceptions import ArtifactNotFoundError
 logger = logging.getLogger(__name__)
 
 
+# DEPRECATED: unreferenced by any @mcp.tool(); superseded by
+# artifact_pipeline.PersistHandler (see ADR-0041 / B4000192).
 def save_artifact_logic(
     project: str,
     rel_path: str,
@@ -37,6 +39,10 @@ def save_artifact_logic(
     **kwargs,
 ) -> str:
     """Universal artifact save via the Strategy pattern."""
+    logger.warning(
+        "save_artifact_logic() is deprecated and bypasses the live save pipeline's "
+        "integrity hooks; use save_project_artifacts instead. See ADR-0041."
+    )
     if "\0" in content:
         raise ValueError("Binary data is not allowed.")
 
@@ -211,8 +217,14 @@ async def search_project_artifacts_logic(project: str, query: str) -> list[dict[
     return results
 
 
+# DEPRECATED: unreferenced by any @mcp.tool(); superseded by
+# artifact_pipeline.PersistHandler (see ADR-0041 / B4000192).
 def patch_project_artifact_logic(project: str, rel_path: str, old_str: str, new_str: str) -> str:
     """Replaces a unique substring (via the shared strategy logic)."""
+    logger.warning(
+        "patch_project_artifact_logic() is deprecated and bypasses the live save pipeline's "
+        "integrity hooks; use save_project_artifacts instead. See ADR-0041."
+    )
     return save_artifact_logic(project, rel_path, new_str, mode="patch", old_str=old_str)
 
 

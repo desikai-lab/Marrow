@@ -9,6 +9,7 @@ from config import VECT_DEBOUNCE_SECONDS
 
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
 from tools.utils.cleaner import ContentCleaner
+from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry
 from tools.utils.filesystem_utils import (
     create_artifact_backup,
     validate_artifact_path,
@@ -123,6 +124,13 @@ class PersistHandler(BaseHandler):
                         # Avoid duplicating 'content' in **kwargs
                         params = update.copy()
                         new_val = params.pop("content", "")
+
+                        # *** NEW INTEGRITY HOOK CHECK ***
+                        hook = ArtifactIntegrityRegistry.get_hook(path)
+                        if hook:
+                            new_val = hook.validate_and_repair(
+                                ctx.project, path, new_val, mode, **params
+                            )
 
                         # Apply transformation to the entire content
                         current_content = strategy.transform(current_content, new_val, **params)
