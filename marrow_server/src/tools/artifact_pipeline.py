@@ -6,10 +6,9 @@ from typing import Any
 
 # legacy reference removed
 from config import VECT_DEBOUNCE_SECONDS
-
+from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
 from tools.utils.cleaner import ContentCleaner
-from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry
 from tools.utils.filesystem_utils import (
     create_artifact_backup,
     validate_artifact_path,
@@ -128,8 +127,9 @@ class PersistHandler(BaseHandler):
                         # *** NEW INTEGRITY HOOK CHECK ***
                         hook = ArtifactIntegrityRegistry.get_hook(path)
                         if hook:
+                            hook_params = {k: v for k, v in params.items() if k != "mode"}
                             new_val = hook.validate_and_repair(
-                                ctx.project, path, new_val, mode, **params
+                                ctx.project, path, new_val, mode, **hook_params
                             )
 
                         # Apply transformation to the entire content
