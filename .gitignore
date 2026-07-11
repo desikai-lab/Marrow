@@ -57,3 +57,4 @@ htmlcov/
 # Marrow runtime
 session_lock
 *.lock
+.continue/mcpServers/new-mcp-server.yaml

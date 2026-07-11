@@ -18,7 +18,9 @@ SESSION_MD_HEADER_PREFIXES = (
 
 
 class SessionMdIntegrityHook(IntegrityHook):
-    def validate_and_repair(self, project: str, rel_path: str, content: str, mode: str) -> str:
+    def validate_and_repair(
+        self, project: str, rel_path: str, content: str, mode: str, **kwargs
+    ) -> str:
         if mode != "replace_file":
             return content  # other modes (patch, replace_section, etc.) can't drop the header wholesale
 

@@ -9,8 +9,15 @@ class IntegrityHook(ABC):
     """
 
     @abstractmethod
-    def validate_and_repair(self, project: str, rel_path: str, content: str, mode: str) -> str:
-        """Return the (possibly repaired) content to actually persist."""
+    def validate_and_repair(
+        self, project: str, rel_path: str, content: str, mode: str, **kwargs
+    ) -> str:
+        """Return the (possibly repaired) content to actually persist.
+
+        **kwargs carries the same mode-specific arguments passed to the underlying
+        SaveStrategy (e.g. 'old_str' for patch, 'section_name' for append_section),
+        so a hook can validate not just *what* is being written but *where*.
+        """
         ...
 
 
