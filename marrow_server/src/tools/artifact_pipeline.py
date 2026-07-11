@@ -6,6 +6,7 @@ from typing import Any
 
 # legacy reference removed
 from config import VECT_DEBOUNCE_SECONDS
+
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
 from tools.utils.cleaner import ContentCleaner

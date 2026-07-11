@@ -1,8 +1,9 @@
 import os
 
+from utils.exceptions import ValidationError
+
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry, IntegrityHook
 from tools.utils.filesystem_utils import validate_artifact_path
-from utils.exceptions import ValidationError
 
 
 class HistoryMdIntegrityHook(IntegrityHook):
