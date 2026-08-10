@@ -9,7 +9,7 @@ class IntegrityHook(ABC):
     """
 
     @abstractmethod
-    def validate_and_repair(
+    async def validate_and_repair(
         self, project: str, rel_path: str, content: str, mode: str, **kwargs
     ) -> str:
         """Return the (possibly repaired) content to actually persist.

@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # DEPRECATED: unreferenced by any @mcp.tool(); superseded by
 # artifact_pipeline.PersistHandler (see ADR-0041 / B4000192).
-def save_artifact_logic(
+async def save_artifact_logic(
     project: str,
     rel_path: str,
     content: str,
@@ -52,7 +52,7 @@ def save_artifact_logic(
 
     hook = ArtifactIntegrityRegistry.get_hook(rel_path)
     if hook:
-        content = hook.validate_and_repair(project, rel_path, content, mode, **kwargs)
+        content = await hook.validate_and_repair(project, rel_path, content, mode, **kwargs)
 
     # Automatic backup before modification (ADR-05)
     create_artifact_backup(project, rel_path)
@@ -220,13 +220,13 @@ async def search_project_artifacts_logic(project: str, query: str) -> list[dict[
 
 # DEPRECATED: unreferenced by any @mcp.tool(); superseded by
 # artifact_pipeline.PersistHandler (see ADR-0041 / B4000192).
-def patch_project_artifact_logic(project: str, rel_path: str, old_str: str, new_str: str) -> str:
+async def patch_project_artifact_logic(project: str, rel_path: str, old_str: str, new_str: str) -> str:
     """Replaces a unique substring (via the shared strategy logic)."""
     logger.warning(
         "patch_project_artifact_logic() is deprecated and bypasses the live save pipeline's "
         "integrity hooks; use save_project_artifacts instead. See ADR-0041."
     )
-    return save_artifact_logic(project, rel_path, new_str, mode="patch", old_str=old_str)
+    return await save_artifact_logic(project, rel_path, new_str, mode="patch", old_str=old_str)
 
 
 def get_project_artifact_outline_logic(project: str, rel_path: str) -> str:

@@ -7,7 +7,7 @@ from tools.utils.filesystem_utils import validate_artifact_path
 
 
 class HistoryMdIntegrityHook(IntegrityHook):
-    """Enforces that docs/sessions/history.md can only ever be modified at
+    """Enforces that sessions/history.md can only ever be modified at
     the very start of the file (position 0). This preserves the file's
     existing reverse-chronological (newest-first) convention and guarantees
     past entries can never be silently edited, truncated, or overwritten.
@@ -23,7 +23,7 @@ class HistoryMdIntegrityHook(IntegrityHook):
     'delete_section' (history entries are immutable).
     """
 
-    def validate_and_repair(
+    async def validate_and_repair(
         self, project: str, rel_path: str, content: str, mode: str, **kwargs
     ) -> str:
         target_path = validate_artifact_path(project, rel_path)

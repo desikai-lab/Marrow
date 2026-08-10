@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry, IntegrityHook
 from tools.utils.filesystem_utils import (
@@ -16,13 +17,24 @@ SESSION_MD_HEADER_PREFIXES = (
     "next_agent_role:",
 )
 
+_NEXT_AGENT_ROLE_RE = re.compile(r"^\*\*next_agent_role:\*\*\s*(.+?)\s*$", re.MULTILINE)
+_CURRENT_TASK_RE = re.compile(r"^\*\*Current Task:\*\*.*$", re.MULTILINE)
+_HANDOVER_NOTE_RE = re.compile(r"^## Handover Note\n(.*?)(?=\n## |\Z)", re.MULTILINE | re.DOTALL)
+
 
 class SessionMdIntegrityHook(IntegrityHook):
-    def validate_and_repair(
+    async def validate_and_repair(
         self, project: str, rel_path: str, content: str, mode: str, **kwargs
     ) -> str:
+        if mode == "patch":
+            old_str = kwargs.get("old_str", "")
+            await self._maybe_append_history(project, rel_path, old_str, content)
+            return content
+
         if mode != "replace_file":
-            return content  # other modes (patch, replace_section, etc.) can't drop the header wholesale
+            return content
+
+        await self._maybe_append_history(project, rel_path, "", content)
 
         has_header = "# Session State" in content and "next_agent_role:" in content
         if has_header:
@@ -36,8 +48,87 @@ class SessionMdIntegrityHook(IntegrityHook):
         if header_block:
             return header_block + content
         # Nothing recoverable to repair from — let it persist as-is.
-        # session_service.load() will raise its own clear, actionable error on next read.
         return content
+
+    async def _maybe_append_history(
+        self, project: str, rel_path: str, old_str: str, new_content: str
+    ) -> None:
+        """Stateless, per-call check: if next_agent_role differs between the OLD live
+        session.md content and the NEW content being written, mechanically extract
+        Current Task + Handover Note and prepend an entry to sessions/history.md.
+        Never raises -- any failure is logged and swallowed (REQ-03).
+        """
+        try:
+            target_path = validate_artifact_path(project, rel_path)
+        except ValueError:
+            return
+        if not os.path.exists(target_path):
+            return  # REQ-04: first-ever write
+
+        try:
+            with open(target_path, encoding="utf-8-sig", errors="replace", newline="") as f:
+                old_content = f.read()
+        except OSError:
+            return
+
+        if not old_content:
+            return  # REQ-04
+
+        old_role = self._extract_next_agent_role(old_content)
+        new_role = self._extract_next_agent_role(new_content)
+        if old_role is None or new_role is None or old_role == new_role:
+            return  # HARD STOP save or unparseable content: no-op
+
+        entry = self._build_history_entry(old_content)
+        if entry is None:
+            return
+
+        try:
+            from services.artifact_command_service import save_project_artifacts_logic
+
+            history_path = validate_artifact_path(project, "sessions/history.md")
+            existing_first_line = ""
+            if os.path.exists(history_path):
+                with open(history_path, encoding="utf-8-sig", errors="replace", newline="") as f:
+                    existing_first_line = f.read()
+
+            await save_project_artifacts_logic(
+                project,
+                [
+                    {
+                        "path": "sessions/history.md",
+                        "mode": "patch",
+                        "old_str": existing_first_line,
+                        "content": entry + "\n\n" + existing_first_line,
+                    }
+                ],
+            )
+        except Exception as e:
+            logger.warning(
+                "Failed to append history entry for project '%s' on genuine role "
+                "transition (%s -> %s): %s",
+                project,
+                old_role,
+                new_role,
+                e,
+            )
+
+    def _extract_next_agent_role(self, content: str) -> str | None:
+        match = _NEXT_AGENT_ROLE_RE.search(content)
+        return match.group(1) if match else None
+
+    def _build_history_entry(self, old_content: str) -> str | None:
+        task_match = _CURRENT_TASK_RE.search(old_content)
+        handover_match = _HANDOVER_NOTE_RE.search(old_content)
+        if not task_match and not handover_match:
+            return None
+        lines = []
+        if task_match:
+            lines.append(task_match.group(0))
+        if handover_match:
+            lines.append("## Handover Note")
+            lines.append(handover_match.group(1).strip())
+        return "\n".join(lines)
 
     def _extract_header_block(self, project: str, rel_path: str) -> str | None:
         """Two-stage recovery: try live file first (catches the common case where only the

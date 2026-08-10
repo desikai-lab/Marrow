@@ -9,7 +9,7 @@ from tools.artifacts import save_artifact_logic
 PROJECT = "TestProject"
 
 
-class TestSaveArtifactLogicSessionMdValidation(unittest.TestCase):
+class TestSaveArtifactLogicSessionMdValidation(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
         self.artifacts = Path(self.tmp) / PROJECT / "artifacts"
@@ -26,43 +26,43 @@ class TestSaveArtifactLogicSessionMdValidation(unittest.TestCase):
             p.stop()
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def test_saveArtifactLogic_validSessionMdHeader_writtenUnchanged(self):
+    async def test_saveArtifactLogic_validSessionMdHeader_writtenUnchanged(self):
         good = (
             "# Session State — Proj\n"
             "**Current Task:** F1 — desc\n"
             "**next_agent_role:** Planning Agent\n\n"
             "**Focus:** doing things\n"
         )
-        save_artifact_logic(PROJECT, "session.md", good, mode="replace_file")
+        await save_artifact_logic(PROJECT, "session.md", good, mode="replace_file")
         written = (self.artifacts / "session.md").read_text(encoding="utf-8-sig")
         self.assertEqual(written, good)
 
-    def test_saveArtifactLogic_nonSessionMdFile_validationSkipped(self):
+    async def test_saveArtifactLogic_nonSessionMdFile_validationSkipped(self):
         content = "not a session header at all"
-        save_artifact_logic(PROJECT, "spec.md", content, mode="replace_file")
+        await save_artifact_logic(PROJECT, "spec.md", content, mode="replace_file")
         written = (self.artifacts / "spec.md").read_text(encoding="utf-8-sig")
         self.assertEqual(written, content)
 
-    def test_saveArtifactLogic_malformedHeaderWithPriorBackup_repairsFromBackup(self):
+    async def test_saveArtifactLogic_malformedHeaderWithPriorBackup_repairsFromBackup(self):
         good = (
             "# Session State — Proj\n"
             "**Current Task:** F1 — desc\n"
             "**next_agent_role:** Planning Agent\n\n"
             "**Focus:** first write\n"
         )
-        save_artifact_logic(PROJECT, "session.md", good, mode="replace_file")
+        await save_artifact_logic(PROJECT, "session.md", good, mode="replace_file")
 
         broken = "**Focus:** second write, header got clobbered\n"
-        save_artifact_logic(PROJECT, "session.md", broken, mode="replace_file")
+        await save_artifact_logic(PROJECT, "session.md", broken, mode="replace_file")
 
         written = (self.artifacts / "session.md").read_text(encoding="utf-8-sig")
         self.assertTrue(written.startswith("# Session State — Proj"))
         self.assertIn("**next_agent_role:** Planning Agent", written)
         self.assertIn("second write, header got clobbered", written)
 
-    def test_saveArtifactLogic_malformedHeaderNoBackupYet_writesUnrepairedContent(self):
+    async def test_saveArtifactLogic_malformedHeaderNoBackupYet_writesUnrepairedContent(self):
         broken = "no header at all on first write\n"
-        save_artifact_logic(PROJECT, "session.md", broken, mode="replace_file")
+        await save_artifact_logic(PROJECT, "session.md", broken, mode="replace_file")
         written = (self.artifacts / "session.md").read_text(encoding="utf-8-sig")
         self.assertEqual(written, broken)
 
