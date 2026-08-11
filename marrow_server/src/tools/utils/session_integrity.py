@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from datetime import date
 
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry, IntegrityHook
 from tools.utils.filesystem_utils import (
@@ -79,7 +80,7 @@ class SessionMdIntegrityHook(IntegrityHook):
         if old_role is None or new_role is None or old_role == new_role:
             return  # HARD STOP save or unparseable content: no-op
 
-        entry = self._build_history_entry(old_content)
+        entry = self._build_history_entry(old_content, old_role, new_role)
         if entry is None:
             return
 
@@ -117,15 +118,28 @@ class SessionMdIntegrityHook(IntegrityHook):
         match = _NEXT_AGENT_ROLE_RE.search(content)
         return match.group(1) if match else None
 
-    def _build_history_entry(self, old_content: str) -> str | None:
+    def _build_history_entry(
+        self, old_content: str, old_role: str, new_role: str
+    ) -> str | None:
         task_match = _CURRENT_TASK_RE.search(old_content)
         handover_match = _HANDOVER_NOTE_RE.search(old_content)
         if not task_match and not handover_match:
             return None
-        lines = []
+
+        # --- heading: ## Date — Task Title ---
+        today = date.today().isoformat()  # e.g. "2026-08-11"
         if task_match:
-            lines.append(task_match.group(0))
+            # **Current Task:** F4000189 — Some Title  →  extract "F4000189 — Some Title"
+            raw = task_match.group(0)  # full line
+            task_title = re.sub(r"^\*\*Current Task:\*\*\s*", "", raw).strip()
+        else:
+            task_title = "Session Handoff"
+        heading = f"## {today} — {task_title}"
+
+        lines = [heading]
+        lines.append(f"**next_agent_role:** {old_role}")
         if handover_match:
+            lines.append("")
             lines.append("## Handover Note")
             lines.append(handover_match.group(1).strip())
         return "\n".join(lines)

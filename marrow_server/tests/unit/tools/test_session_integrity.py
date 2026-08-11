@@ -145,8 +145,10 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(project_arg, PROJECT)
             self.assertEqual(updates[0]["path"], "sessions/history.md")
             self.assertEqual(updates[0]["mode"], "patch")
-            self.assertIn("**Current Task:** F1 — Old task", updates[0]["content"])
-            self.assertIn("Planning finished successfully.", updates[0]["content"])
+            # New format: ## Date — Task Title heading + **next_agent_role:** metadata
+            self.assertIn("F1 — Old task", updates[0]["content"])  # task title in heading
+            self.assertIn("**next_agent_role:** Planning Agent", updates[0]["content"])  # departing role
+            self.assertIn("Planning finished successfully.", updates[0]["content"])  # handover body
 
     async def test_validateAndRepair_sameRole_doesNotAppendHistory(self):
         from tools.artifacts import save_artifact_logic
