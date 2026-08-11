@@ -129,7 +129,7 @@ class PersistHandler(BaseHandler):
                         hook = ArtifactIntegrityRegistry.get_hook(path)
                         if hook:
                             hook_params = {k: v for k, v in params.items() if k != "mode"}
-                            new_val = hook.validate_and_repair(
+                            new_val = await hook.validate_and_repair(
                                 ctx.project, path, new_val, mode, **hook_params
                             )
 

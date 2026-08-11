@@ -12,12 +12,12 @@ GOOD_HEADER = (
 PROJECT = "TestProject"
 
 
-class TestSessionMdIntegrityHook(unittest.TestCase):
+class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.hook = SessionMdIntegrityHook()
         self.tmp = tempfile.mkdtemp()
         self.project_path = Path(self.tmp) / PROJECT
-        (self.project_path / "artifacts").mkdir(parents=True)
+        (self.project_path / "artifacts" / "sessions").mkdir(parents=True)
         self.patchers = [
             patch("config.PROJECTS_ROOT", self.tmp),
             patch("tools.utils.filesystem_utils.PROJECTS_ROOT", self.tmp),
@@ -32,38 +32,38 @@ class TestSessionMdIntegrityHook(unittest.TestCase):
 
     # ── mode guard ──────────────────────────────────────────────────────────
 
-    def test_validateAndRepair_nonReplaceFileMode_contentUnchanged(self):
+    async def test_validateAndRepair_nonReplaceFileMode_contentUnchanged(self):
         """Non replace_file modes must never trigger the repair logic."""
         broken = "no header at all\n"
-        result = self.hook.validate_and_repair(
+        result = await self.hook.validate_and_repair(
             PROJECT, "session.md", broken, mode="replace_section"
         )
         self.assertEqual(result, broken)
 
-    def test_validateAndRepair_patchMode_contentUnchanged(self):
+    async def test_validateAndRepair_patchMode_contentUnchanged(self):
         broken = "no header at all\n"
-        result = self.hook.validate_and_repair(PROJECT, "session.md", broken, mode="patch")
+        result = await self.hook.validate_and_repair(PROJECT, "session.md", broken, mode="patch")
         self.assertEqual(result, broken)
 
     # ── well-formed content ──────────────────────────────────────────────────
 
-    def test_validateAndRepair_wellFormedContent_passesThroughUnchanged(self):
+    async def test_validateAndRepair_wellFormedContent_passesThroughUnchanged(self):
         content = GOOD_HEADER + "**Focus:** doing things\n"
-        result = self.hook.validate_and_repair(PROJECT, "session.md", content, mode="replace_file")
+        result = await self.hook.validate_and_repair(PROJECT, "session.md", content, mode="replace_file")
         self.assertEqual(result, content)
 
     # ── malformed content with history ──────────────────────────────────────
 
-    def test_validateAndRepair_malformedWithPriorBackup_repairsFromHistory(self):
+    async def test_validateAndRepair_malformedWithPriorBackup_repairsFromHistory(self):
         from tools.artifacts import save_artifact_logic
 
         # Seed a well-formed version so there's a backup
-        save_artifact_logic(
+        await save_artifact_logic(
             PROJECT, "session.md", GOOD_HEADER + "first write\n", mode="replace_file"
         )
 
         broken = "focus content only, no header\n"
-        result = self.hook.validate_and_repair(PROJECT, "session.md", broken, mode="replace_file")
+        result = await self.hook.validate_and_repair(PROJECT, "session.md", broken, mode="replace_file")
 
         self.assertIn("# Session State", result)
         self.assertIn("next_agent_role:", result)
@@ -71,17 +71,16 @@ class TestSessionMdIntegrityHook(unittest.TestCase):
 
     # ── malformed content with no history ───────────────────────────────────
 
-    def test_validateAndRepair_malformedNoBackupYet_writesAsIs(self):
+    async def test_validateAndRepair_malformedNoBackupYet_writesAsIs(self):
         broken = "no header at all on first write\n"
-        result = self.hook.validate_and_repair(PROJECT, "session.md", broken, mode="replace_file")
+        result = await self.hook.validate_and_repair(PROJECT, "session.md", broken, mode="replace_file")
         # No backup exists — gracefully degrades, returns content unchanged
         self.assertEqual(result, broken)
 
     # ── unreadable backup graceful degradation ───────────────────────────────
 
-    def test_validateAndRepair_backupUnreadable_logsWarningAndContinues(self):
+    async def test_validateAndRepair_backupUnreadable_logsWarningAndContinues(self):
         """An OSError on a backup file must be logged and not escape validate_and_repair."""
-        # Inject a fake history entry that points to a non-existent file
         fake_history = [{"backup_name": "nonexistent_backup_file.md"}]
         with (
             patch("tools.utils.session_integrity.get_artifact_history", return_value=fake_history),
@@ -92,22 +91,18 @@ class TestSessionMdIntegrityHook(unittest.TestCase):
             self.assertLogs("tools.utils.session_integrity", level="WARNING") as log_ctx,
         ):
             broken = "missing header\n"
-            result = self.hook.validate_and_repair(
+            result = await self.hook.validate_and_repair(
                 PROJECT, "session.md", broken, mode="replace_file"
             )
 
-        # No exception escapes
         self.assertEqual(result, broken)
-        # Warning was logged (either from repair trigger or backup read failure)
         self.assertTrue(
             any("nonexistent_backup_file.md" in m or "session.md" in m for m in log_ctx.output)
         )
 
-    def test_validate_and_repair_extraKwargsPassed_ignoredWithoutError(self):
-        """Confirms the ABC widening to **kwargs doesn't break SessionMdIntegrityHook,
-        which has no use for extra kwargs but must still accept them."""
+    async def test_validate_and_repair_extraKwargsPassed_ignoredWithoutError(self):
         content = GOOD_HEADER + "**Focus:** doing things\n"
-        result = self.hook.validate_and_repair(
+        result = await self.hook.validate_and_repair(
             PROJECT,
             "session.md",
             content,
@@ -116,6 +111,119 @@ class TestSessionMdIntegrityHook(unittest.TestCase):
             section_name="also irrelevant",
         )
         self.assertEqual(result, content)
+
+    # ── genuine phase transition auto-append tests (REQ-01..REQ-05) ─────────────
+
+    async def test_validateAndRepair_genuineRoleTransition_appendsHistoryEntry(self):
+        from tools.artifacts import save_artifact_logic
+
+        old_session = (
+            "# Session State — Proj\n"
+            "**Current Task:** F1 — Old task\n"
+            "**next_agent_role:** Planning Agent\n\n"
+            "## Handover Note\n"
+            "Planning finished successfully."
+        )
+        await save_artifact_logic(PROJECT, "session.md", old_session, mode="replace_file")
+
+        new_session = (
+            "# Session State — Proj\n"
+            "**Current Task:** F1 — Old task\n"
+            "**next_agent_role:** Execution Agent\n\n"
+            "## Handover Note\n"
+            "Execution in progress."
+        )
+
+        with patch("services.artifact_command_service.save_project_artifacts_logic") as mock_save:
+            mock_save.return_value = []
+            await self.hook.validate_and_repair(
+                PROJECT, "session.md", new_session, mode="replace_file"
+            )
+            mock_save.assert_called_once()
+            args, kwargs = mock_save.call_args
+            project_arg, updates = args[0], args[1]
+            self.assertEqual(project_arg, PROJECT)
+            self.assertEqual(updates[0]["path"], "sessions/history.md")
+            self.assertEqual(updates[0]["mode"], "patch")
+            # New format: ## Date — Task Title heading + **next_agent_role:** metadata
+            self.assertIn("F1 — Old task", updates[0]["content"])  # task title in heading
+            self.assertIn("**next_agent_role:** Planning Agent", updates[0]["content"])  # departing role
+            self.assertIn("Planning finished successfully.", updates[0]["content"])  # handover body
+
+    async def test_validateAndRepair_sameRole_doesNotAppendHistory(self):
+        from tools.artifacts import save_artifact_logic
+
+        old_session = (
+            "# Session State — Proj\n"
+            "**Current Task:** F1 — Old task\n"
+            "**next_agent_role:** Execution Agent\n\n"
+            "## Handover Note\n"
+            "Step 1 done."
+        )
+        await save_artifact_logic(PROJECT, "session.md", old_session, mode="replace_file")
+
+        new_session = (
+            "# Session State — Proj\n"
+            "**Current Task:** F1 — Old task\n"
+            "**next_agent_role:** Execution Agent\n\n"
+            "## Handover Note\n"
+            "Step 2 done."
+        )
+
+        with patch("services.artifact_command_service.save_project_artifacts_logic") as mock_save:
+            await self.hook.validate_and_repair(
+                PROJECT, "session.md", new_session, mode="replace_file"
+            )
+            mock_save.assert_not_called()
+
+    async def test_validateAndRepair_firstEverWrite_skipsHistory(self):
+        new_session = (
+            "# Session State — Proj\n"
+            "**Current Task:** F1 — Old task\n"
+            "**next_agent_role:** Execution Agent\n\n"
+            "## Handover Note\n"
+            "First write ever."
+        )
+
+        with patch("services.artifact_command_service.save_project_artifacts_logic") as mock_save:
+            await self.hook.validate_and_repair(
+                PROJECT, "session.md", new_session, mode="replace_file"
+            )
+            mock_save.assert_not_called()
+
+    async def test_validateAndRepair_historyWriteFails_swallowsExceptionAndLogsWarning(self):
+        from tools.artifacts import save_artifact_logic
+
+        old_session = (
+            "# Session State — Proj\n"
+            "**Current Task:** F1 — Old task\n"
+            "**next_agent_role:** Planning Agent\n\n"
+            "## Handover Note\n"
+            "Planning finished."
+        )
+        await save_artifact_logic(PROJECT, "session.md", old_session, mode="replace_file")
+
+        new_session = (
+            "# Session State — Proj\n"
+            "**Current Task:** F1 — Old task\n"
+            "**next_agent_role:** Execution Agent\n\n"
+            "## Handover Note\n"
+            "Execution started."
+        )
+
+        with (
+            patch(
+                "services.artifact_command_service.save_project_artifacts_logic",
+                side_effect=RuntimeError("Disk error writing history"),
+            ),
+            self.assertLogs("tools.utils.session_integrity", level="WARNING") as log_ctx,
+        ):
+            result = await self.hook.validate_and_repair(
+                PROJECT, "session.md", new_session, mode="replace_file"
+            )
+
+        self.assertEqual(result, new_session)
+        self.assertTrue(any("Failed to append history entry" in m for m in log_ctx.output))
 
 
 if __name__ == "__main__":

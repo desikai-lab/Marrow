@@ -332,7 +332,7 @@ class ReplaceChunkStrategy(SaveStrategy):
 
 class PatchStrategy(SaveStrategy):
     def validate(self, content: str, **kwargs):
-        if not kwargs.get("old_str"):
+        if "old_str" not in kwargs or kwargs["old_str"] is None:
             raise ValueError("Mode 'patch' requires 'old_str'.")
         if not content.strip():
             raise ValueError("Mode 'patch' requires non-empty replacement content.")
