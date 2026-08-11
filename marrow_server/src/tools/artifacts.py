@@ -220,7 +220,9 @@ async def search_project_artifacts_logic(project: str, query: str) -> list[dict[
 
 # DEPRECATED: unreferenced by any @mcp.tool(); superseded by
 # artifact_pipeline.PersistHandler (see ADR-0041 / B4000192).
-async def patch_project_artifact_logic(project: str, rel_path: str, old_str: str, new_str: str) -> str:
+async def patch_project_artifact_logic(
+    project: str, rel_path: str, old_str: str, new_str: str
+) -> str:
     """Replaces a unique substring (via the shared strategy logic)."""
     logger.warning(
         "patch_project_artifact_logic() is deprecated and bypasses the live save pipeline's "

@@ -118,9 +118,7 @@ class SessionMdIntegrityHook(IntegrityHook):
         match = _NEXT_AGENT_ROLE_RE.search(content)
         return match.group(1) if match else None
 
-    def _build_history_entry(
-        self, old_content: str, old_role: str, new_role: str
-    ) -> str | None:
+    def _build_history_entry(self, old_content: str, old_role: str, new_role: str) -> str | None:
         task_match = _CURRENT_TASK_RE.search(old_content)
         handover_match = _HANDOVER_NOTE_RE.search(old_content)
         if not task_match and not handover_match:
