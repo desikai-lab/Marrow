@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import logging
 import os
 from datetime import datetime
@@ -78,23 +79,28 @@ class ReindexChunksCommand(BaseCommand):
 
         logger.info(f"Reindexing chunks for {len(files_to_index)} file(s)...")
 
-        success_count = 0
-        for rel_path in tqdm(files_to_index, desc="Chunks", unit="file"):
-            try:
-                full_path = os.path.join(project_root, rel_path)
-                with open(full_path, encoding="utf-8") as f:
-                    content = f.read()
+        async def _run_reindex() -> int:
+            count = 0
+            for rel_path in tqdm(files_to_index, desc="Chunks", unit="file"):
+                try:
+                    full_path = os.path.join(project_root, rel_path)
+                    with open(full_path, encoding="utf-8") as f:
+                        content = f.read()
 
-                clean_content = ContentCleaner.clean(content)
-                updated_at = datetime.fromtimestamp(os.path.getmtime(full_path)).isoformat()
+                    clean_content = ContentCleaner.clean(content)
+                    updated_at = datetime.fromtimestamp(os.path.getmtime(full_path)).isoformat()
 
-                if not args.dry_run:
-                    ext = os.path.splitext(rel_path)[1].lower()
-                    repo.upsert_chunks(rel_path, clean_content, updated_at, ext=ext)
+                    if not args.dry_run:
+                        ext = os.path.splitext(rel_path)[1].lower()
+                        await repo.upsert_chunks(rel_path, clean_content, updated_at, ext=ext)
 
-                success_count += 1
+                    count += 1
 
-            except Exception as e:
-                logger.error(f"Error reindexing chunks for {rel_path}: {e}")
+                except Exception as e:
+                    logger.error(f"Error reindexing chunks for {rel_path}: {e}")
+
+            return count
+
+        success_count = asyncio.run(_run_reindex())
 
         logger.info(f"Finished: {success_count} file(s) processed.")
