@@ -50,3 +50,34 @@ class TestFullReadStrategyStrict(unittest.TestCase):
         self.assertTrue(result.startswith("x"))
 
 
+class TestPagedReadStrategy(unittest.TestCase):
+    def setUp(self):
+        import os
+        import tempfile
+
+        self.tmp = tempfile.mkdtemp()
+        self.path = os.path.join(self.tmp, "big.md")
+        with open(self.path, "w", encoding="utf-8") as f:
+            f.write("\n".join(f"line{i}" for i in range(2000)))  # well over 10000 chars
+
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_PagedReadStrategy_ContentExceedsMaxChars_TruncatesWithMarker(self):
+        from tools.utils.artifact_strategies import PagedReadStrategy
+
+        result = PagedReadStrategy().read(self.path)
+        self.assertIn("[Text truncated: limit 10000 characters exceeded]", result)
+
+    def test_PagedReadStrategy_DirectionEnd_ReturnsLastMaxCharsWindow(self):
+        from tools.utils.artifact_strategies import PagedReadStrategy
+
+        result = PagedReadStrategy().read(self.path, max_chars=50, direction="end")
+        with open(self.path, encoding="utf-8") as f:
+            full_text = f.read()
+        self.assertTrue(full_text.rstrip().endswith(result.strip().splitlines()[-1]))
+
+
+

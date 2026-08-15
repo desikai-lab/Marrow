@@ -131,6 +131,29 @@ class FullReadStrategy(ReadStrategy):
         return apply_read_filters(text, None, 0, line_numbers, direction="begin")
 
 
+class PagedReadStrategy(ReadStrategy):
+    def validate(self, **kwargs):
+        pass
+
+    def read(self, path: str, **kwargs) -> str:
+        max_chars = kwargs.get("max_chars", 10000)
+        skip_chars = kwargs.get("skip_chars", 0)
+        line_numbers = kwargs.get("line_numbers", False)
+        direction = kwargs.get("direction", "begin")
+
+        if (
+            os.path.getsize(path) > 1024 * 1024
+            and not skip_chars
+            and not kwargs.get("force", False)
+        ):
+            raise ValueError("File too large (>1MB). Use pagination (skip_chars) or 'lines' mode.")
+
+        with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
+            text = f.read()
+
+        return apply_read_filters(text, max_chars, skip_chars, line_numbers, direction=direction)
+
+
 class SectionReadStrategy(ReadStrategy):
     def validate(self, **kwargs):
         if not kwargs.get("section_name"):
