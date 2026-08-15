@@ -112,6 +112,30 @@ class TestSectionReadStrategyFull(unittest.TestCase):
         self.assertNotIn("truncated", result)
 
 
+class TestLinesReadStrategyFull(unittest.TestCase):
+    def setUp(self):
+        import os
+        import tempfile
+
+        self.tmp = tempfile.mkdtemp()
+        self.path = os.path.join(self.tmp, "doc.md")
+        with open(self.path, "w", encoding="utf-8") as f:
+            f.write("\n".join(f"line {i}" for i in range(1, 1501)))  # 1500 lines, > 10000 chars
+
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_LinesReadStrategy_RangeExceedsDefaultMaxChars_ReturnsCompleteRange(self):
+        from tools.utils.artifact_strategies import LinesReadStrategy
+
+        result = LinesReadStrategy().read(self.path, start_line=1, end_line=1500)
+        self.assertIn("line 1500", result)
+        self.assertNotIn("truncated", result)
+
+
+
 
 
 

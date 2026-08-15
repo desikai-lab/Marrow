@@ -205,7 +205,7 @@ class LinesReadStrategy(ReadStrategy):
         text = "\n".join(lines)
         return apply_read_filters(
             text,
-            kwargs.get("max_chars", 10000),
+            None,
             kwargs.get("skip_chars", 0),
             kwargs.get("line_numbers", False),
             start_line=start_line,
