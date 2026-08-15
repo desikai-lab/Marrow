@@ -64,7 +64,7 @@ async def save_artifact_logic(
 def read_artifact_logic(
     project: str,
     rel_path: str,
-    mode: Literal["full", "section", "lines"] = "full",
+    mode: Literal["full", "section", "lines", "paged"] = "paged",
     direction: Literal["begin", "end"] = "begin",
     **kwargs,
 ) -> str:
