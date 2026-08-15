@@ -119,23 +119,16 @@ class FullReadStrategy(ReadStrategy):
         pass
 
     def read(self, path: str, **kwargs) -> str:
-        max_chars = kwargs.get("max_chars", 10000)
-        skip_chars = kwargs.get("skip_chars", 0)
         line_numbers = kwargs.get("line_numbers", False)
 
-        if (
-            os.path.getsize(path) > 1024 * 1024
-            and not skip_chars
-            and not kwargs.get("force", False)
-        ):
-            raise ValueError("File too large (>1MB). Use pagination (skip_chars) or 'lines' mode.")
+        if os.path.getsize(path) > 1024 * 1024 and not kwargs.get("force", False):
+            raise ValueError("File too large (>1MB). Use mode='paged' or mode='lines'.")
 
         with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
             text = f.read()
 
-        return apply_read_filters(
-            text, max_chars, skip_chars, line_numbers, direction=kwargs.get("direction", "begin")
-        )
+        # max_chars, skip_chars, direction intentionally ignored — 'full' always returns 0..EOF.
+        return apply_read_filters(text, None, 0, line_numbers, direction="begin")
 
 
 class SectionReadStrategy(ReadStrategy):
