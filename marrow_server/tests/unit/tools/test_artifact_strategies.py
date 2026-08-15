@@ -135,6 +135,40 @@ class TestLinesReadStrategyFull(unittest.TestCase):
         self.assertNotIn("truncated", result)
 
 
+class TestGetSessionContextRegression(unittest.TestCase):
+    def setUp(self):
+        import os
+        import tempfile
+        from unittest.mock import patch
+
+        self.tmp = tempfile.mkdtemp()
+        self.project_dir = os.path.join(self.tmp, "TestProject", "artifacts")
+        os.makedirs(self.project_dir)
+        self.patchers = [
+            patch("config.PROJECTS_ROOT", self.tmp),
+            patch("tools.utils.filesystem_utils.PROJECTS_ROOT", self.tmp),
+        ]
+        for p in self.patchers:
+            p.start()
+        with open(os.path.join(self.project_dir, "session.md"), "w", encoding="utf-8") as f:
+            f.write("# Session State\n" + ("padding line\n" * 900))  # > 10000 chars
+
+    def tearDown(self):
+        import shutil
+
+        for p in self.patchers:
+            p.stop()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_GetSessionContext_SessionMdExceedsDefaultMaxChars_NotTruncated(self):
+        from tools.artifacts import read_artifact_logic
+
+        result = read_artifact_logic("TestProject", "session.md", mode="full")
+        self.assertNotIn("truncated", result)
+        self.assertIn("padding line", result.splitlines()[-1])
+
+
+
 
 
 
