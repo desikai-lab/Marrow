@@ -14,6 +14,7 @@ class TestReadRequestModeDefault(unittest.TestCase):
 
     def test_readArtifactLogic_defaultMode_isPaged(self):
         import inspect
+
         from tools.artifacts import read_artifact_logic
 
         sig = inspect.signature(read_artifact_logic)
@@ -166,10 +167,3 @@ class TestGetSessionContextRegression(unittest.TestCase):
         result = read_artifact_logic("TestProject", "session.md", mode="full")
         self.assertNotIn("truncated", result)
         self.assertIn("padding line", result.splitlines()[-1])
-
-
-
-
-
-
-
