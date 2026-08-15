@@ -88,5 +88,30 @@ class TestArtifactStrategyFactoryPaged(unittest.TestCase):
         self.assertIsInstance(strategy, PagedReadStrategy)
 
 
+class TestSectionReadStrategyFull(unittest.TestCase):
+    def setUp(self):
+        import os
+        import tempfile
+
+        self.tmp = tempfile.mkdtemp()
+        self.path = os.path.join(self.tmp, "doc.md")
+        section_body = "\n".join(f"detail line {i}" for i in range(600))  # > 10000 chars
+        with open(self.path, "w", encoding="utf-8") as f:
+            f.write(f"# Intro\nshort\n\n## Target\n{section_body}\n\n## Next\nother\n")
+
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_SectionReadStrategy_SectionExceedsDefaultMaxChars_ReturnsCompleteSection(self):
+        from tools.utils.artifact_strategies import SectionReadStrategy
+
+        result = SectionReadStrategy().read(self.path, section_name="Target")
+        self.assertIn("detail line 599", result)
+        self.assertNotIn("truncated", result)
+
+
+
 
 
