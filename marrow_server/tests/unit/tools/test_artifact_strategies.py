@@ -80,4 +80,13 @@ class TestPagedReadStrategy(unittest.TestCase):
         self.assertTrue(full_text.rstrip().endswith(result.strip().splitlines()[-1]))
 
 
+class TestArtifactStrategyFactoryPaged(unittest.TestCase):
+    def test_ArtifactStrategyFactory_PagedMode_ReturnsPagedReadStrategy(self):
+        from tools.utils.artifact_strategies import ArtifactStrategyFactory, PagedReadStrategy
+
+        strategy = ArtifactStrategyFactory.get_read_strategy("paged")
+        self.assertIsInstance(strategy, PagedReadStrategy)
+
+
+
 

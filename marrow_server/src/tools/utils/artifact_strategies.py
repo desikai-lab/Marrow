@@ -412,6 +412,7 @@ class DeleteSectionStrategy(SaveStrategy):
 class ArtifactStrategyFactory:
     _read_map = {
         "full": FullReadStrategy(),
+        "paged": PagedReadStrategy(),
         "section": SectionReadStrategy(),
         "lines": LinesReadStrategy(),
     }
