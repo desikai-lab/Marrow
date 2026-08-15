@@ -45,12 +45,17 @@ class ReadRequest(BaseModel):
         str, Field(description="Path to the artifact (e.g. 'README.md' or 'docs/spec.md')")
     ]
     mode: Annotated[
-        Literal["full", "section", "lines"],
+        Literal["full", "section", "lines", "paged"],
         Field(
-            default="full",
-            description="Read mode: 'full' (entire file), 'section' (single section), 'lines' (line range)",
+            default="paged",
+            description=(
+                "Read mode: 'full' (entire file, 0..EOF, ignores pagination params), "
+                "'paged' (windowed read — max_chars/skip_chars/direction apply), "
+                "'section' (single section, whole section returned), "
+                "'lines' (line range, whole range returned)"
+            ),
         ),
-    ] = "full"
+    ] = "paged"
     direction: Annotated[
         Literal["begin", "end"],
         Field(

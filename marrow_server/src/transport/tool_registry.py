@@ -345,7 +345,9 @@ def register_all_tools(mcp: FastMCP) -> None:
         Each item in `reads` targets one file and specifies an independent read mode.
 
         Read modes per item:
-          full    — returns the entire file content (default).
+          full    — returns the entire file content.
+          paged   — windowed read of the entire file. max_chars (default 10000), skip_chars,
+                    and direction (default).
           section — returns only the content under a named ## header (requires section_name).
           lines   — returns a specific line range (requires start_line and end_line).
 

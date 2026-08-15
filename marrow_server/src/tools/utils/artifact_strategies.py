@@ -119,9 +119,27 @@ class FullReadStrategy(ReadStrategy):
         pass
 
     def read(self, path: str, **kwargs) -> str:
+        line_numbers = kwargs.get("line_numbers", False)
+
+        if os.path.getsize(path) > 1024 * 1024 and not kwargs.get("force", False):
+            raise ValueError("File too large (>1MB). Use mode='paged' or mode='lines'.")
+
+        with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
+            text = f.read()
+
+        # max_chars, skip_chars, direction intentionally ignored — 'full' always returns 0..EOF.
+        return apply_read_filters(text, None, 0, line_numbers, direction="begin")
+
+
+class PagedReadStrategy(ReadStrategy):
+    def validate(self, **kwargs):
+        pass
+
+    def read(self, path: str, **kwargs) -> str:
         max_chars = kwargs.get("max_chars", 10000)
         skip_chars = kwargs.get("skip_chars", 0)
         line_numbers = kwargs.get("line_numbers", False)
+        direction = kwargs.get("direction", "begin")
 
         if (
             os.path.getsize(path) > 1024 * 1024
@@ -133,9 +151,7 @@ class FullReadStrategy(ReadStrategy):
         with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
             text = f.read()
 
-        return apply_read_filters(
-            text, max_chars, skip_chars, line_numbers, direction=kwargs.get("direction", "begin")
-        )
+        return apply_read_filters(text, max_chars, skip_chars, line_numbers, direction=direction)
 
 
 class SectionReadStrategy(ReadStrategy):
@@ -158,7 +174,7 @@ class SectionReadStrategy(ReadStrategy):
         start_line = content[:start_pos].count("\n") + 1
         return apply_read_filters(
             section_text,
-            kwargs.get("max_chars", 10000),
+            None,
             kwargs.get("skip_chars", 0),
             kwargs.get("line_numbers", False),
             start_line=start_line,
@@ -189,7 +205,7 @@ class LinesReadStrategy(ReadStrategy):
         text = "\n".join(lines)
         return apply_read_filters(
             text,
-            kwargs.get("max_chars", 10000),
+            None,
             kwargs.get("skip_chars", 0),
             kwargs.get("line_numbers", False),
             start_line=start_line,
@@ -396,6 +412,7 @@ class DeleteSectionStrategy(SaveStrategy):
 class ArtifactStrategyFactory:
     _read_map = {
         "full": FullReadStrategy(),
+        "paged": PagedReadStrategy(),
         "section": SectionReadStrategy(),
         "lines": LinesReadStrategy(),
     }
