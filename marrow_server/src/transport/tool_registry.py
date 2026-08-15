@@ -345,15 +345,29 @@ def register_all_tools(mcp: FastMCP) -> None:
         Each item in `reads` targets one file and specifies an independent read mode.
 
         Read modes per item:
-          full    — returns the entire file content (default).
-          section — returns only the content under a named ## header (requires section_name).
-          lines   — returns a specific line range (requires start_line and end_line).
+          full    — returns the ENTIRE file content, position 0 to EOF, always. max_chars,
+                    skip_chars, and direction are ignored in this mode (this is the point of
+                    'full' — no partial reads). Only line_numbers still applies.
+          paged   — windowed read of the entire file. max_chars (default 10000), skip_chars,
+                    and direction all apply here — use this mode for deliberate pagination
+                    through a large file.
+          section — returns the ENTIRE content under a named ## header (requires section_name).
+                    max_chars is ignored (the whole section is always returned). skip_chars
+                    still offsets from the start of the section; direction has no effect.
+          lines   — returns the ENTIRE specified line range (requires start_line and end_line).
+                    max_chars is ignored (the whole range is always returned). skip_chars
+                    still offsets from the start of the range; direction has no effect.
 
         Optional per-item fields:
-          max_chars     : int  — truncate response at N characters (default 10000).
-          skip_chars    : int  — skip N characters from the start of the selection.
-          direction     : 'begin' | 'end' — read from start or end of file (default 'begin').
-          line_numbers  : bool — prefix each line with its 1-based line number.
+          max_chars     : int  — response character limit. Only meaningful for mode='paged'
+                          (default 10000); ignored by 'full', 'section', and 'lines'.
+          skip_chars    : int  — skip N characters from the start of the selection. Meaningful
+                          for 'paged', 'section', and 'lines'; ignored by 'full'.
+          direction     : 'begin' | 'end' — read from start or end (default 'begin'). Only
+                          meaningful for mode='paged' (it works together with max_chars to
+                          compute an end-anchored window); has no effect in other modes.
+          line_numbers  : bool — prefix each line with its 1-based line number. Works in all
+                          modes.
 
         Do NOT loop this tool per file — batch all reads into a single call to minimise
         round-trips. For source code files in src/, use view_file_source instead.
