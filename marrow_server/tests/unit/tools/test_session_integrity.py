@@ -49,7 +49,9 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
 
     async def test_validateAndRepair_wellFormedContent_passesThroughUnchanged(self):
         content = GOOD_HEADER + "**Focus:** doing things\n"
-        result = await self.hook.validate_and_repair(PROJECT, "session.md", content, mode="replace_file")
+        result = await self.hook.validate_and_repair(
+            PROJECT, "session.md", content, mode="replace_file"
+        )
         self.assertEqual(result, content)
 
     # ── malformed content with history ──────────────────────────────────────
@@ -63,7 +65,9 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
         )
 
         broken = "focus content only, no header\n"
-        result = await self.hook.validate_and_repair(PROJECT, "session.md", broken, mode="replace_file")
+        result = await self.hook.validate_and_repair(
+            PROJECT, "session.md", broken, mode="replace_file"
+        )
 
         self.assertIn("# Session State", result)
         self.assertIn("next_agent_role:", result)
@@ -73,7 +77,9 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
 
     async def test_validateAndRepair_malformedNoBackupYet_writesAsIs(self):
         broken = "no header at all on first write\n"
-        result = await self.hook.validate_and_repair(PROJECT, "session.md", broken, mode="replace_file")
+        result = await self.hook.validate_and_repair(
+            PROJECT, "session.md", broken, mode="replace_file"
+        )
         # No backup exists — gracefully degrades, returns content unchanged
         self.assertEqual(result, broken)
 
@@ -147,7 +153,9 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(updates[0]["mode"], "patch")
             # New format: ## Date — Task Title heading + **next_agent_role:** metadata
             self.assertIn("F1 — Old task", updates[0]["content"])  # task title in heading
-            self.assertIn("**next_agent_role:** Planning Agent", updates[0]["content"])  # departing role
+            self.assertIn(
+                "**next_agent_role:** Planning Agent", updates[0]["content"]
+            )  # departing role
             self.assertIn("Planning finished successfully.", updates[0]["content"])  # handover body
 
     async def test_validateAndRepair_sameRole_doesNotAppendHistory(self):
@@ -224,6 +232,179 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result, new_session)
         self.assertTrue(any("Failed to append history entry" in m for m in log_ctx.output))
+
+
+class TestExtractHandoverBody(unittest.TestCase):
+    def setUp(self):
+        self.hook = SessionMdIntegrityHook()
+
+    def test_extractHandoverBody_canonicalHeading_capturesBodyByteIdenticalToOriginal(self):
+        old_content = (
+            "# Session State\n\n"
+            "**Current Task:** B1 \u2014 thing\n"
+            "**next_agent_role:** discovery\n\n"
+            "## Handover Note\n"
+            "Do the thing.\n"
+            "And more.\n"
+        )
+        body, used_fallback = self.hook._extract_handover_body(old_content)
+        self.assertEqual(body, "Do the thing.\nAnd more.")
+        self.assertFalse(used_fallback)
+
+    def test_extractHandoverBody_boldLabelHeadingLike_capturesBodyAfterLabel(self):
+        old_content = (
+            "# Session State\n\n"
+            "**Current Task:** B1 \u2014 thing\n"
+            "**next_agent_role:** discovery\n"
+            "**Handover to Discovery Agent:**\n"
+            "- item1\n"
+            "- item2\n"
+        )
+        body, used_fallback = self.hook._extract_handover_body(old_content)
+        self.assertEqual(body, "- item1\n- item2")
+        self.assertFalse(used_fallback)
+
+    def test_extractHandoverBody_tier1BeatsTier2_prioritizesHeadingOverEarlierIncidentalMention(
+        self,
+    ):
+        old_content = (
+            "# Session State\n\n"
+            "**Current Task:** B1 \u2014 thing\n"
+            "**Task status:** DONE, no handover concerns from this session\n"
+            "**next_agent_role:** discovery\n"
+            "**Handover to Discovery Agent:**\n"
+            "- Pick up next task from backlog.\n"
+        )
+        body, used_fallback = self.hook._extract_handover_body(old_content)
+        self.assertEqual(body, "- Pick up next task from backlog.")
+        self.assertFalse(used_fallback)
+
+    def test_extractHandoverBody_tier2OnlyNoHeadingLike_usesIncidentalMentionLine(self):
+        old_content = (
+            "# Session State\n\n"
+            "**Current Task:** B1 \u2014 thing\n"
+            "**Task status:** DONE, no handover concerns from this session\n"
+            "**next_agent_role:** discovery\n"
+        )
+        body, used_fallback = self.hook._extract_handover_body(old_content)
+        self.assertEqual(body, "**next_agent_role:** discovery")
+        self.assertFalse(used_fallback)
+
+    def test_extractHandoverBody_noHandoverAnywhere_fallsBackToWholeBodyAfterHeader(self):
+        old_content = (
+            "# Session State\n\n**Current Task:** B1 \u2014 thing\n**next_agent_role:** discovery\n"
+        )
+        body, used_fallback = self.hook._extract_handover_body(old_content)
+        self.assertEqual(body, "**Current Task:** B1 \u2014 thing\n**next_agent_role:** discovery")
+        self.assertTrue(used_fallback)
+
+    def test_extractHandoverBody_headingLikeLineIsLastLineWithEmptyCapture_fallsBackToWholeBody(
+        self,
+    ):
+        old_content = (
+            "# Session State\n\n"
+            "**Current Task:** B1 \u2014 thing\n"
+            "**next_agent_role:** discovery\n"
+            "## Handover Note"
+        )
+        body, used_fallback = self.hook._extract_handover_body(old_content)
+        self.assertEqual(
+            body,
+            "**Current Task:** B1 \u2014 thing\n**next_agent_role:** discovery\n## Handover Note",
+        )
+        self.assertTrue(used_fallback)
+
+
+class TestBuildHistoryEntry(unittest.TestCase):
+    def setUp(self):
+        self.hook = SessionMdIntegrityHook()
+
+    @patch("tools.utils.session_integrity.date")
+    def test_buildHistoryEntry_canonicalHeading_preservesOriginalFormattingByteIdentical(
+        self, mock_date
+    ):
+        mock_date.today.return_value.isoformat.return_value = "2026-08-16"
+        old_content = (
+            "# Session State\n\n"
+            "**Current Task:** B4000203 \u2014 history.md entries silently drop Handover\n"
+            "**next_agent_role:** execution\n\n"
+            "## Handover Note\n"
+            "- item 1\n"
+            "- item 2"
+        )
+        entry = self.hook._build_history_entry(old_content, "execution", "discovery")
+        expected = (
+            "## 2026-08-16 \u2014 B4000203 \u2014 history.md entries silently drop Handover\n"
+            "**next_agent_role:** execution\n\n"
+            "## Handover Note\n"
+            "- item 1\n"
+            "- item 2"
+        )
+        self.assertEqual(entry, expected)
+
+    @patch("tools.utils.session_integrity.date")
+    def test_buildHistoryEntry_boldLabelHeadingLike_emitsCanonicalHandoverNoteHeader(
+        self, mock_date
+    ):
+        mock_date.today.return_value.isoformat.return_value = "2026-08-16"
+        old_content = (
+            "# Session State\n\n"
+            "**Current Task:** B4000203 \u2014 title\n"
+            "**next_agent_role:** planning\n"
+            "**Handover to Execution Agent:**\n"
+            "- item A\n"
+            "- item B"
+        )
+        entry = self.hook._build_history_entry(old_content, "planning", "execution")
+        expected = (
+            "## 2026-08-16 \u2014 B4000203 \u2014 title\n"
+            "**next_agent_role:** planning\n\n"
+            "## Handover Note\n"
+            "- item A\n"
+            "- item B"
+        )
+        self.assertEqual(entry, expected)
+
+    @patch("tools.utils.session_integrity.logger.warning")
+    @patch("tools.utils.session_integrity.date")
+    def test_buildHistoryEntry_fallbackPath_logsWarning(self, mock_date, mock_log_warning):
+        mock_date.today.return_value.isoformat.return_value = "2026-08-16"
+        old_content = (
+            "# Session State\n\n"
+            "**Current Task:** B4000203 \u2014 title\n"
+            "**next_agent_role:** execution\n"
+        )
+        entry = self.hook._build_history_entry(old_content, "execution", "discovery")
+        expected = (
+            "## 2026-08-16 \u2014 B4000203 \u2014 title\n"
+            "**next_agent_role:** execution\n\n"
+            "## Handover Note\n"
+            "**Current Task:** B4000203 \u2014 title\n"
+            "**next_agent_role:** execution"
+        )
+        self.assertEqual(entry, expected)
+        mock_log_warning.assert_called_once_with(
+            "Could not locate handover section in session.md; falling back to whole-body handover."
+        )
+
+    @patch("tools.utils.session_integrity.logger.warning")
+    @patch("tools.utils.session_integrity.date")
+    def test_buildHistoryEntry_tier1Match_doesNotLogWarning(self, mock_date, mock_log_warning):
+        mock_date.today.return_value.isoformat.return_value = "2026-08-16"
+        old_content = (
+            "# Session State\n\n"
+            "**Current Task:** B4000203 \u2014 title\n"
+            "**next_agent_role:** execution\n"
+            "## Handover Note\n"
+            "Body text\n"
+        )
+        self.hook._build_history_entry(old_content, "execution", "discovery")
+        mock_log_warning.assert_not_called()
+
+    def test_buildHistoryEntry_neitherTaskNorHandoverMatch_returnsNone(self):
+        old_content = "Just random text without task or handover headers."
+        entry = self.hook._build_history_entry(old_content, "execution", "discovery")
+        self.assertIsNone(entry)
 
 
 if __name__ == "__main__":
