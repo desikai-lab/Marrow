@@ -20,7 +20,7 @@ SESSION_MD_HEADER_PREFIXES = (
 
 _NEXT_AGENT_ROLE_RE = re.compile(r"^\*\*next_agent_role:\*\*\s*(.+?)\s*$", re.MULTILINE)
 _CURRENT_TASK_RE = re.compile(r"^\*\*Current Task:\*\*.*$", re.MULTILINE)
-_HANDOVER_NOTE_RE = re.compile(r"^## Handover Note\n(.*?)(?=\n## |\Z)", re.MULTILINE | re.DOTALL)
+_HEADING_LIKE_HANDOVER_RE = re.compile(r"^[\s#*]*handover\b", re.IGNORECASE)
 
 
 class SessionMdIntegrityHook(IntegrityHook):
@@ -118,11 +118,64 @@ class SessionMdIntegrityHook(IntegrityHook):
         match = _NEXT_AGENT_ROLE_RE.search(content)
         return match.group(1) if match else None
 
+    def _extract_handover_body(self, old_content: str) -> tuple[str, bool]:
+        """Returns (body_text, used_fallback).
+
+        Two-tier priority scan over every line containing "handover":
+          Tier 1 (heading-like): "handover" is the first real word on the
+          line once markdown decoration ('#', '*', whitespace) is stripped
+          — covers '## Handover Note' and '**Handover to X Agent:**' styles.
+          Tier 2 (incidental mention): "handover" appears anywhere else on
+          the line, e.g. '**Task status:** DONE, no handover concerns...'.
+
+        The first Tier-1 line anywhere in the file always wins over any
+        Tier-2 line, regardless of file position. Tier 2 is only used when
+        no Tier-1 line exists at all. If neither tier yields a non-empty
+        captured body, fall back to the entire body after the
+        '# Session State' header line so the entry is never just a bare
+        heading.
+        """
+        lines = old_content.splitlines()
+        heading_idx = None
+        mention_idx = None
+        for i, line in enumerate(lines):
+            if "handover" not in line.lower():
+                continue
+            if heading_idx is None and _HEADING_LIKE_HANDOVER_RE.match(line):
+                heading_idx = i
+                break  # Tier-1 match found; it always wins, stop scanning
+            if mention_idx is None:
+                mention_idx = i
+
+        start_idx = heading_idx if heading_idx is not None else mention_idx
+
+        if start_idx is not None:
+            body_start = start_idx + 1
+            end_idx = next(
+                (j for j in range(body_start, len(lines)) if lines[j].startswith("## ")),
+                len(lines),
+            )
+            body = "\n".join(lines[body_start:end_idx]).strip()
+            if body:
+                return body, False
+
+        fallback_start = next(
+            (i + 1 for i, line in enumerate(lines) if line.strip() == "# Session State"),
+            0,
+        )
+        body = "\n".join(lines[fallback_start:]).strip()
+        return body, True
+
     def _build_history_entry(self, old_content: str, old_role: str, new_role: str) -> str | None:
         task_match = _CURRENT_TASK_RE.search(old_content)
-        handover_match = _HANDOVER_NOTE_RE.search(old_content)
-        if not task_match and not handover_match:
+        handover_body, used_fallback = self._extract_handover_body(old_content)
+        if not task_match and used_fallback:
             return None
+
+        if used_fallback:
+            logger.warning(
+                "Could not locate handover section in session.md; falling back to whole-body handover."
+            )
 
         # --- heading: ## Date — Task Title ---
         today = date.today().isoformat()  # e.g. "2026-08-11"
@@ -136,10 +189,10 @@ class SessionMdIntegrityHook(IntegrityHook):
 
         lines = [heading]
         lines.append(f"**next_agent_role:** {old_role}")
-        if handover_match:
+        if handover_body:
             lines.append("")
             lines.append("## Handover Note")
-            lines.append(handover_match.group(1).strip())
+            lines.append(handover_body)
         return "\n".join(lines)
 
     def _extract_header_block(self, project: str, rel_path: str) -> str | None:
