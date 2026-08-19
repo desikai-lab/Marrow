@@ -92,9 +92,23 @@ class WriteRequest(BaseModel):
     content: Annotated[
         str,
         Field(
-            description="Content to write or replace. In 'patch' mode, this is the replacement string."
+            default="",
+            description=(
+                "Content to write or replace. In 'patch' mode, this is the replacement "
+                "string — or use 'new_str' instead (alias, patch mode only)."
+            ),
         ),
-    ]
+    ] = ""
+    new_str: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Alias for 'content' in 'patch' mode only. Takes precedence over "
+                "'content' if both are supplied."
+            ),
+        ),
+    ] = None
     mode: Annotated[
         Literal[
             "replace_file",
@@ -138,6 +152,10 @@ class WriteRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_content_by_mode(self) -> "WriteRequest":
+        # Alias resolution (REQ-01): new_str wins over content when both are present and mode is patch.
+        if self.mode == "patch" and self.new_str:
+            self.content = self.new_str
+
         # Content can be empty only for section deletion or chunk replacement (line deletion)
         if self.mode not in ["delete_section", "replace_chunk"] and not self.content.strip():
             raise ValueError(f"Field 'content' cannot be empty for mode '{self.mode}'")
