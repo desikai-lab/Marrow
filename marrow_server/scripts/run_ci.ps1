@@ -16,17 +16,17 @@ $ErrorActionPreference = "Stop"
 # So the marrow_server root is always one directory above $PSScriptRoot.
 $marrowServerRoot = Split-Path $PSScriptRoot -Parent
 $monorepoRoot     = Split-Path $marrowServerRoot -Parent
-$ruffConfig       = Join-Path $marrowServerRoot "pyproject.toml"
 
-$ruffTargets = @(
-    (Join-Path $monorepoRoot "marrow_server"),
-    (Join-Path $monorepoRoot "marrow_worker"),
-    (Join-Path $monorepoRoot "marrow_common")
-) -join " "
+$ruffTargets = "marrow_server/src marrow_worker/src marrow_common/"
+$ruffConfigArg = "--config marrow_server/pyproject.toml"
+
+# All ruff commands run from the monorepo root with relative paths.
+Push-Location $monorepoRoot
+try {
 
 Write-Host ""
 Write-Host "=== [1/4] ruff check --fix (auto-fix) ===" -ForegroundColor Cyan
-Invoke-Expression "python -m ruff check --fix --config `"$ruffConfig`" $ruffTargets"
+Invoke-Expression "python -m ruff check --fix $ruffConfigArg $ruffTargets"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "FAIL: ruff check found unfixable errors." -ForegroundColor Red
     exit 1
@@ -35,12 +35,16 @@ Write-Host "OK" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "=== [2/4] ruff format (auto-format) ===" -ForegroundColor Cyan
-Invoke-Expression "python -m ruff format --config `"$ruffConfig`" $ruffTargets"
+Invoke-Expression "python -m ruff format $ruffConfigArg $ruffTargets"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "FAIL: ruff format failed." -ForegroundColor Red
     exit 1
 }
 Write-Host "OK" -ForegroundColor Green
+
+} finally {
+    Pop-Location
+}
 
 # After ruff --fix and ruff format, re-commit any auto-modified tracked files
 # so that the committed code always matches what ruff considers clean.
@@ -63,14 +67,21 @@ if ($dirty) {
     Write-Host "No auto-fixes applied — commit is already ruff-clean." -ForegroundColor Green
 }
 
+Push-Location $monorepoRoot
+try {
+
 Write-Host ""
 Write-Host "=== [3/4] ruff check (verify clean) ===" -ForegroundColor Cyan
-Invoke-Expression "python -m ruff check --config `"$ruffConfig`" $ruffTargets"
+Invoke-Expression "python -m ruff check $ruffConfigArg $ruffTargets"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "FAIL: ruff check still has errors after auto-fix (manual fix required)." -ForegroundColor Red
     exit 1
 }
 Write-Host "OK" -ForegroundColor Green
+
+} finally {
+    Pop-Location
+}
 
 if (-not $SkipTests) {
     Write-Host ""

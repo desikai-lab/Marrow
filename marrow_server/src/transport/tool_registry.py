@@ -405,6 +405,7 @@ def register_all_tools(mcp: FastMCP) -> None:
             d = u.model_dump()
             extra = d.pop("extra_fields", {})
             d.update(extra) if extra else None
+            d["_explicit_fields"] = set(u.model_fields_set)
             updates_dict.append(d)
         results = await save_project_artifacts_logic(project, updates_dict)
         return [r.model_dump() for r in results]

@@ -8,7 +8,6 @@ from .artifacts import (
     read_artifact_logic,
     read_project_artifacts_logic,
     restore_project_artifact_logic,
-    save_artifact_logic,
     search_project_artifacts_logic,
 )
 from .builds import run_project_build_logic
@@ -27,7 +26,6 @@ __all__ = [
     "read_artifact_logic",
     "read_project_artifacts_logic",
     "restore_project_artifact_logic",
-    "save_artifact_logic",
     "search_project_artifacts_logic",
     "run_project_build_logic",
     "list_projects_logic",

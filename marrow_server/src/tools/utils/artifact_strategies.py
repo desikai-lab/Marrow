@@ -99,6 +99,8 @@ class ReadStrategy(ABC):
 
 
 class SaveStrategy(ABC):
+    ALLOWED_FIELDS: set[str] = set()
+
     @abstractmethod
     def save(self, path: str, content: str, **kwargs) -> str:
         pass
@@ -111,6 +113,36 @@ class SaveStrategy(ABC):
     def transform(self, existing_content: str, new_content: str, **kwargs) -> str:
         """Applies a change to the content string and returns the result."""
         pass
+
+
+def find_unknown_fields(strategy: SaveStrategy, explicit_fields: set[str]) -> str | None:
+    """Check if caller supplied fields that strategy does not use.
+
+    Returns formatted warning message or None. Never raises.
+    Ignores framework fields (path, mode, extra_fields).
+    """
+    ignored_framework_fields = {"path", "mode", "extra_fields"}
+    mode_name = type(strategy).__name__.removesuffix("Strategy").lower()
+
+    if mode_name == "replacefile":
+        mode_name = "replace_file"
+    elif mode_name == "appendsection":
+        mode_name = "append_section"
+    elif mode_name == "replacesection":
+        mode_name = "replace_section"
+    elif mode_name == "replacechunk":
+        mode_name = "replace_chunk"
+    elif mode_name == "deletesection":
+        mode_name = "delete_section"
+
+    unknown = explicit_fields - strategy.ALLOWED_FIELDS - ignored_framework_fields
+
+    if not unknown:
+        return None
+
+    sorted_unknown = sorted(list(unknown))
+    fields_fmt = ", ".join(f"'{f}'" for f in sorted_unknown)
+    return f"Field(s) {fields_fmt} are not used by write mode '{mode_name}' and were ignored."
 
 
 # --- READ IMPLEMENTATIONS ---
@@ -217,6 +249,8 @@ class LinesReadStrategy(ReadStrategy):
 
 
 class ReplaceFileStrategy(SaveStrategy):
+    ALLOWED_FIELDS = {"content"}
+
     def validate(self, content: str, **kwargs):
         if not content.strip():
             raise ValueError("Mode 'replace_file' requires non-empty content.")
@@ -233,6 +267,8 @@ class ReplaceFileStrategy(SaveStrategy):
 
 
 class AppendSectionStrategy(SaveStrategy):
+    ALLOWED_FIELDS = {"content", "section_name", "header_level"}
+
     def validate(self, content: str, **kwargs):
         if not kwargs.get("section_name"):
             raise ValueError("Mode 'append_section' (write) requires 'section_name'.")
@@ -267,6 +303,8 @@ class AppendSectionStrategy(SaveStrategy):
 
 
 class ReplaceSectionStrategy(SaveStrategy):
+    ALLOWED_FIELDS = {"content", "section_name", "header_level"}
+
     def validate(self, content: str, **kwargs):
         if not kwargs.get("section_name"):
             raise ValueError("Mode 'replace_section' (write) requires 'section_name'.")
@@ -308,6 +346,8 @@ class ReplaceSectionStrategy(SaveStrategy):
 
 
 class ReplaceChunkStrategy(SaveStrategy):
+    ALLOWED_FIELDS = {"content", "start_line", "end_line"}
+
     def validate(self, content: str, **kwargs):
         if "start_line" not in kwargs or "end_line" not in kwargs:
             raise ValueError("Mode 'replace_chunk' REQUIRES start_line and end_line (1-indexed).")
@@ -347,6 +387,8 @@ class ReplaceChunkStrategy(SaveStrategy):
 
 
 class PatchStrategy(SaveStrategy):
+    ALLOWED_FIELDS = {"content", "new_str", "old_str"}
+
     def validate(self, content: str, **kwargs):
         if "old_str" not in kwargs or kwargs["old_str"] is None:
             raise ValueError("Mode 'patch' requires 'old_str'.")
@@ -377,6 +419,8 @@ class PatchStrategy(SaveStrategy):
 
 
 class DeleteSectionStrategy(SaveStrategy):
+    ALLOWED_FIELDS = {"section_name"}
+
     def validate(self, content: str, **kwargs):
         if not kwargs.get("section_name"):
             raise ValueError("Mode 'delete_section' requires 'section_name'.")

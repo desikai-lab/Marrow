@@ -9,10 +9,9 @@ from utils.exceptions import ArtifactNotFoundError
 
 import tools.utils.history_integrity  # noqa: F401 -- import for registration side-effect
 import tools.utils.session_integrity  # noqa: F401 -- import for registration side-effect
-from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry
+from tools.artifact_pipeline import save_project_artifacts_logic
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
 from tools.utils.filesystem_utils import (
-    create_artifact_backup,
     get_artifact_history,
     recycle_file,
     restore_backup,
@@ -21,44 +20,6 @@ from tools.utils.filesystem_utils import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-# DEPRECATED: unreferenced by any @mcp.tool(); superseded by
-# artifact_pipeline.PersistHandler (see ADR-0041 / B4000192).
-async def save_artifact_logic(
-    project: str,
-    rel_path: str,
-    content: str,
-    mode: Literal[
-        "replace_file",
-        "replace_section",
-        "append_section",
-        "replace_chunk",
-        "patch",
-        "delete_section",
-    ] = "replace_file",
-    **kwargs,
-) -> str:
-    """Universal artifact save via the Strategy pattern."""
-    logger.warning(
-        "save_artifact_logic() is deprecated and bypasses the live save pipeline's "
-        "integrity hooks; use save_project_artifacts instead. See ADR-0041."
-    )
-    if "\0" in content:
-        raise ValueError("Binary data is not allowed.")
-
-    target_path = validate_artifact_path(project, rel_path)
-    os.makedirs(os.path.dirname(target_path), exist_ok=True)
-
-    hook = ArtifactIntegrityRegistry.get_hook(rel_path)
-    if hook:
-        content = await hook.validate_and_repair(project, rel_path, content, mode, **kwargs)
-
-    # Automatic backup before modification (ADR-05)
-    create_artifact_backup(project, rel_path)
-
-    strategy = ArtifactStrategyFactory.get_save_strategy(mode)
-    return strategy.save(target_path, content, **kwargs)
 
 
 def read_artifact_logic(
@@ -228,7 +189,11 @@ async def patch_project_artifact_logic(
         "patch_project_artifact_logic() is deprecated and bypasses the live save pipeline's "
         "integrity hooks; use save_project_artifacts instead. See ADR-0041."
     )
-    return await save_artifact_logic(project, rel_path, new_str, mode="patch", old_str=old_str)
+    res = await save_project_artifacts_logic(
+        project,
+        [{"path": rel_path, "content": new_str, "mode": "patch", "old_str": old_str}],
+    )
+    return res[0].get("message", "")
 
 
 def get_project_artifact_outline_logic(project: str, rel_path: str) -> str:

@@ -25,7 +25,7 @@ def _read_project_file(tmp_project: str, rel_path: str) -> str:
 
 def _read_history_head(tmp_project: str) -> str:
     """Returns current history.md content, or '' if it doesn't exist yet."""
-    full_path = os.path.join(PROJECTS_ROOT, tmp_project, "artifacts", "docs/sessions/history.md")
+    full_path = os.path.join(PROJECTS_ROOT, tmp_project, "artifacts", "sessions/history.md")
     if not os.path.exists(full_path):
         return ""
     with open(full_path, encoding="utf-8-sig", errors="replace") as f:
@@ -35,7 +35,7 @@ def _read_history_head(tmp_project: str) -> str:
 async def test_saveProjectArtifacts_replaceFileOnHistoryMd_rejectedWithValidationError(tmp_project):
     updates = [
         {
-            "path": "docs/sessions/history.md",
+            "path": "sessions/history.md",
             "mode": "replace_file",
             "content": "this should never be allowed",
         }
@@ -61,12 +61,12 @@ async def test_saveProjectArtifacts_replaceFileOnSessionMd_repairsMissingHeader(
 
 
 async def test_saveProjectArtifacts_patchOnHistoryMd_succeedsAndPrepends(tmp_project):
-    _write_initial_file(tmp_project, "docs/sessions/history.md", "# Session History\nInitial historical log.\n")
+    _write_initial_file(tmp_project, "sessions/history.md", "# Session History\nInitial historical log.\n")
     current_head = _read_history_head(tmp_project)
     new_entry = "## Prepend-Test Entry A\n"
     updates = [
         {
-            "path": "docs/sessions/history.md",
+            "path": "sessions/history.md",
             "mode": "patch",
             "old_str": current_head,
             "content": new_entry + current_head,
@@ -74,7 +74,7 @@ async def test_saveProjectArtifacts_patchOnHistoryMd_succeedsAndPrepends(tmp_pro
     ]
     results = await save_project_artifacts_logic(tmp_project, updates)
     assert results[0].status == "success"
-    persisted = _read_project_file(tmp_project, "docs/sessions/history.md")
+    persisted = _read_project_file(tmp_project, "sessions/history.md")
     assert persisted.startswith(new_entry)
 
 
@@ -93,19 +93,19 @@ async def test_saveProjectArtifacts_unguardedPath_unaffectedByHookLookup(tmp_pro
 
 
 async def test_saveProjectArtifacts_mixedModeBatchOnHistoryMd_secondPatchValidatesAgainstStaleDisk(tmp_project):
-    _write_initial_file(tmp_project, "docs/sessions/history.md", "# Session History\nInitial historical log.\n")
+    _write_initial_file(tmp_project, "sessions/history.md", "# Session History\nInitial historical log.\n")
     current_head = _read_history_head(tmp_project)
     entry_c = "## Batch-Test Entry C\n"
     entry_d = "## Batch-Test Entry D\n"
     updates = [
         {
-            "path": "docs/sessions/history.md",
+            "path": "sessions/history.md",
             "mode": "patch",
             "old_str": current_head,
             "content": entry_c + current_head,
         },
         {
-            "path": "docs/sessions/history.md",
+            "path": "sessions/history.md",
             "mode": "patch",
             "old_str": entry_c + current_head,
             "content": entry_d + entry_c + current_head,

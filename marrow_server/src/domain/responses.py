@@ -88,6 +88,7 @@ class ArtifactWriteResult(BaseModel):
     path: str | None = None
     status: str
     message: str
+    warning: str | None = None
 
 
 # ── Skeleton Query ────────────────────────────────────────────────────────────
