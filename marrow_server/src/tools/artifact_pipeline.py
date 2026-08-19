@@ -8,7 +8,10 @@ from typing import Any
 from config import VECT_DEBOUNCE_SECONDS
 
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry
-from tools.utils.artifact_strategies import ArtifactStrategyFactory
+from tools.utils.artifact_strategies import (
+    ArtifactStrategyFactory,
+    find_unknown_fields,
+)
 from tools.utils.cleaner import ContentCleaner
 from tools.utils.filesystem_utils import (
     create_artifact_backup,
@@ -123,6 +126,9 @@ class PersistHandler(BaseHandler):
 
                         # Avoid duplicating 'content' in **kwargs
                         params = update.copy()
+                        explicit_fields = params.pop("_explicit_fields", None)
+                        if explicit_fields is None:
+                            explicit_fields = set(params.keys())
                         new_val = params.pop("content", "")
 
                         # *** NEW INTEGRITY HOOK CHECK ***
@@ -136,11 +142,17 @@ class PersistHandler(BaseHandler):
                         # Apply transformation to the entire content
                         current_content = strategy.transform(current_content, new_val, **params)
 
-                        ctx.results[original_idx] = {
+                        warning = find_unknown_fields(strategy, explicit_fields)
+
+                        result_entry: dict[str, Any] = {
                             "path": path,
                             "status": "success",
                             "message": f"Applied {mode} to memory successfully.",
                         }
+                        if warning is not None:
+                            result_entry["warning"] = warning
+
+                        ctx.results[original_idx] = result_entry
                         applied_successfully.append(original_idx)
                     except Exception as e:
                         ctx.results[original_idx] = {
