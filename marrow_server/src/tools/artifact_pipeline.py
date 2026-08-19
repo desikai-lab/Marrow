@@ -105,9 +105,7 @@ class PersistHandler(BaseHandler):
                 if file_exists:
 
                     def read_file():
-                        with open(
-                            abs_path, encoding="utf-8-sig", errors="replace", newline=""
-                        ) as f:
+                        with open(abs_path, encoding="utf-8-sig", errors="replace") as f:
                             return f.read()
 
                     current_content = await asyncio.to_thread(read_file)

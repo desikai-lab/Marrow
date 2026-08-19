@@ -115,9 +115,7 @@ class SaveStrategy(ABC):
         pass
 
 
-def find_unknown_fields(
-    strategy: SaveStrategy, explicit_fields: set[str]
-) -> str | None:
+def find_unknown_fields(strategy: SaveStrategy, explicit_fields: set[str]) -> str | None:
     """Check if caller supplied fields that strategy does not use.
 
     Returns formatted warning message or None. Never raises.
@@ -137,9 +135,7 @@ def find_unknown_fields(
     elif mode_name == "deletesection":
         mode_name = "delete_section"
 
-    unknown = (
-        explicit_fields - strategy.ALLOWED_FIELDS - ignored_framework_fields
-    )
+    unknown = explicit_fields - strategy.ALLOWED_FIELDS - ignored_framework_fields
 
     if not unknown:
         return None

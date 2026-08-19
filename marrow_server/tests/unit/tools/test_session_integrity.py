@@ -57,11 +57,18 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
     # ── malformed content with history ──────────────────────────────────────
 
     async def test_validateAndRepair_malformedWithPriorBackup_repairsFromHistory(self):
-        from tools.artifacts import save_artifact_logic
+        from tools.artifact_pipeline import save_project_artifacts_logic
 
         # Seed a well-formed version so there's a backup
-        await save_artifact_logic(
-            PROJECT, "session.md", GOOD_HEADER + "first write\n", mode="replace_file"
+        await save_project_artifacts_logic(
+            PROJECT,
+            [
+                {
+                    "path": "session.md",
+                    "content": GOOD_HEADER + "first write\n",
+                    "mode": "replace_file",
+                }
+            ],
         )
 
         broken = "focus content only, no header\n"
@@ -121,7 +128,7 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
     # ── genuine phase transition auto-append tests (REQ-01..REQ-05) ─────────────
 
     async def test_validateAndRepair_genuineRoleTransition_appendsHistoryEntry(self):
-        from tools.artifacts import save_artifact_logic
+        from tools.artifact_pipeline import save_project_artifacts_logic
 
         old_session = (
             "# Session State — Proj\n"
@@ -130,7 +137,9 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
             "## Handover Note\n"
             "Planning finished successfully."
         )
-        await save_artifact_logic(PROJECT, "session.md", old_session, mode="replace_file")
+        await save_project_artifacts_logic(
+            PROJECT, [{"path": "session.md", "content": old_session, "mode": "replace_file"}]
+        )
 
         new_session = (
             "# Session State — Proj\n"
@@ -159,7 +168,7 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
             self.assertIn("Planning finished successfully.", updates[0]["content"])  # handover body
 
     async def test_validateAndRepair_sameRole_doesNotAppendHistory(self):
-        from tools.artifacts import save_artifact_logic
+        from tools.artifact_pipeline import save_project_artifacts_logic
 
         old_session = (
             "# Session State — Proj\n"
@@ -168,7 +177,9 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
             "## Handover Note\n"
             "Step 1 done."
         )
-        await save_artifact_logic(PROJECT, "session.md", old_session, mode="replace_file")
+        await save_project_artifacts_logic(
+            PROJECT, [{"path": "session.md", "content": old_session, "mode": "replace_file"}]
+        )
 
         new_session = (
             "# Session State — Proj\n"
@@ -200,7 +211,7 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
             mock_save.assert_not_called()
 
     async def test_validateAndRepair_historyWriteFails_swallowsExceptionAndLogsWarning(self):
-        from tools.artifacts import save_artifact_logic
+        from tools.artifact_pipeline import save_project_artifacts_logic
 
         old_session = (
             "# Session State — Proj\n"
@@ -209,7 +220,9 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
             "## Handover Note\n"
             "Planning finished."
         )
-        await save_artifact_logic(PROJECT, "session.md", old_session, mode="replace_file")
+        await save_project_artifacts_logic(
+            PROJECT, [{"path": "session.md", "content": old_session, "mode": "replace_file"}]
+        )
 
         new_session = (
             "# Session State — Proj\n"

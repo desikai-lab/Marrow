@@ -9,6 +9,8 @@ from utils.exceptions import ArtifactNotFoundError
 
 import tools.utils.history_integrity  # noqa: F401 -- import for registration side-effect
 import tools.utils.session_integrity  # noqa: F401 -- import for registration side-effect
+from tools.artifact_pipeline import save_project_artifacts_logic
+from tools.utils.artifact_strategies import ArtifactStrategyFactory
 from tools.utils.filesystem_utils import (
     get_artifact_history,
     recycle_file,
@@ -187,7 +189,11 @@ async def patch_project_artifact_logic(
         "patch_project_artifact_logic() is deprecated and bypasses the live save pipeline's "
         "integrity hooks; use save_project_artifacts instead. See ADR-0041."
     )
-    return await save_artifact_logic(project, rel_path, new_str, mode="patch", old_str=old_str)
+    res = await save_project_artifacts_logic(
+        project,
+        [{"path": rel_path, "content": new_str, "mode": "patch", "old_str": old_str}],
+    )
+    return res[0].get("message", "")
 
 
 def get_project_artifact_outline_logic(project: str, rel_path: str) -> str:
