@@ -87,8 +87,11 @@ class ReindexCommand(BaseCommand):
 
         logger.info(f"Reindexing artifacts for project '{project_name}'...")
 
+        artifacts_root = os.path.join(project_root, "artifacts")
+        search_root = artifacts_root if os.path.exists(artifacts_root) else project_root
+
         all_files = []
-        for root_dir, dirs, files in os.walk(project_root):
+        for root_dir, dirs, files in os.walk(search_root):
             dirs[:] = [d for d in dirs if not d.startswith(".")]
             for f in files:
                 if f.endswith(".md"):
@@ -120,7 +123,7 @@ class ReindexCommand(BaseCommand):
 
         for file_path in tqdm(all_files, desc="Artifacts", unit="file"):
             try:
-                rel_path = os.path.relpath(file_path, project_root).replace("\\", "/")
+                rel_path = os.path.relpath(file_path, search_root).replace("\\", "/")
                 with open(file_path, encoding="utf-8") as f:
                     content = f.read()
 

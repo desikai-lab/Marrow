@@ -50,8 +50,9 @@ class MaintenanceCommand(BaseCommand):
                 skeleton_repo = SkeletonRepository(project_root)
                 artifact_chunk_repo = ArtifactChunkRepository(project_root)
                 artifact_strategy = FilesystemExistenceStrategy(
-                    root_resolver=lambda _project, _root=project_root: _root
+                    root_resolver=lambda project: os.path.join(PROJECTS_ROOT, project, "artifacts")
                 )
+
 
                 artifact_pruner = GhostPruner(repo=artifact_chunk_repo, strategy=artifact_strategy)
 
