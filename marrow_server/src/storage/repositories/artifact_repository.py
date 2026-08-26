@@ -138,6 +138,43 @@ class ArtifactChunkRepository:
         logger.info(f"Renamed {len(new_rows)} chunk(s) in index: {old_path} -> {new_path}")
         return len(new_rows)
 
+    async def count_rows(self) -> int:
+        """Row count for the empty-table short-circuit used by GhostPruner
+        (see storage/ghost_pruner.py, ADR-0043)."""
+        return await asyncio.to_thread(self.table.count_rows)
+
+    async def get_all_indexed_paths(self, project: str) -> list[str]:
+        """Returns unique paths currently indexed in this project's artifact-
+        chunk table. `project` is accepted for GhostPruningRepository protocol
+        parity (see storage/ghost_pruner.py); it is not used to filter rows
+        because this table already holds exactly one project's data (scoped
+        via project_root at __init__) and carries no `project` column,
+        unlike SkeletonChunkRecord.
+        """
+        results = await asyncio.to_thread(self.table.search().to_list)
+        seen: set[str] = set()
+        paths: list[str] = []
+        for r in results:
+            p = r["path"]
+            if p not in seen:
+                seen.add(p)
+                paths.append(p)
+        return paths
+
+    async def delete_chunks_by_path(self, path: str, project: str) -> int:
+        """Deletes all chunk rows for `path`. `project` accepted for protocol
+        parity, unused for the same reason as get_all_indexed_paths above.
+        Returns the number of rows deleted.
+        """
+        results = await asyncio.to_thread(
+            self.table.search().where(f"path = '{path}'", prefilter=True).to_list
+        )
+        count = len(results)
+        await asyncio.to_thread(self.table.delete, f"path = '{path}'")
+        logger.info(f"Pruned {count} ghost chunk(s) for artifact {path}.")
+        return count
+
+
     @track_time(layer="repository")
     async def semantic_search(self, query_text: str, limit: int = 5) -> list[dict[str, Any]]:
         query_vector = await asyncio.to_thread(
