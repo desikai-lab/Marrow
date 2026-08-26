@@ -53,7 +53,6 @@ class MaintenanceCommand(BaseCommand):
                     root_resolver=lambda project: os.path.join(PROJECTS_ROOT, project, "artifacts")
                 )
 
-
                 artifact_pruner = GhostPruner(repo=artifact_chunk_repo, strategy=artifact_strategy)
 
                 service = MaintenanceService(

@@ -79,7 +79,6 @@ class ReindexChunksCommand(BaseCommand):
                         rel_path = os.path.relpath(full_path, search_root).replace("\\", "/")
                         files_to_index.append(rel_path)
 
-
         if not files_to_index:
             logger.warning("No files for reindexing found.")
             return
