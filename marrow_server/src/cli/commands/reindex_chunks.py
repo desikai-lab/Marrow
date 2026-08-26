@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from tqdm import tqdm
 
@@ -111,8 +111,6 @@ class ReindexChunksCommand(BaseCommand):
         if not args.dry_run:
             # Bulk upserts accumulate many small fragments and version manifests.
             # Compact and purge immediately so disk usage stays bounded.
-            import datetime
-
             try:
                 repo.table.compact_files()
                 logger.info("artifact_chunks: compacted files.")
@@ -120,7 +118,7 @@ class ReindexChunksCommand(BaseCommand):
                 logger.warning(f"Post-reindex compact_files failed: {e}")
             try:
                 repo.table.cleanup_old_versions(
-                    older_than=datetime.timedelta(minutes=0), delete_unverified=True
+                    older_than=timedelta(minutes=0), delete_unverified=True
                 )
                 logger.info("artifact_chunks: purged old version snapshots.")
             except Exception as e:
