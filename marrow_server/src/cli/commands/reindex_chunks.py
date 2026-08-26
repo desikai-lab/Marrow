@@ -46,8 +46,6 @@ class ReindexChunksCommand(BaseCommand):
 
         if args.file:
             target_path = args.file.replace("\\", "/")
-            if target_path.startswith("artifacts/"):
-                target_path = target_path[len("artifacts/") :]
             file_path = os.path.join(search_root, target_path)
             if os.path.exists(file_path):
                 files_to_index.append(target_path)

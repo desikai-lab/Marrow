@@ -33,11 +33,6 @@ class ArtifactRepository:
         )
 
     async def upsert(self, path: str, content: str, updated: str) -> None:
-        if path.startswith("artifacts/"):
-            path = path[len("artifacts/") :]
-        elif path.startswith("artifacts\\"):
-            path = path[len("artifacts\\") :]
-
         await asyncio.to_thread(self.table.delete, f"path = '{path}'")
         record = ArtifactRecord(path=path, updated=updated)
         record = await self._ensure_vector(record, content)
