@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from tqdm import tqdm
 
@@ -41,10 +41,14 @@ class ReindexChunksCommand(BaseCommand):
         repo = ArtifactChunkRepository(project_root)
         files_to_index = []
 
+        artifacts_root = os.path.join(project_root, "artifacts")
+        search_root = artifacts_root if os.path.exists(artifacts_root) else project_root
+
         if args.file:
-            file_path = os.path.join(project_root, args.file)
+            target_path = args.file.replace("\\", "/")
+            file_path = os.path.join(search_root, target_path)
             if os.path.exists(file_path):
-                files_to_index.append(args.file)
+                files_to_index.append(target_path)
             else:
                 logger.error(f"File not found: {file_path}")
                 return
@@ -55,7 +59,7 @@ class ReindexChunksCommand(BaseCommand):
                 except Exception:
                     pass
 
-            for root, dirs, files in os.walk(project_root):
+            for root, dirs, files in os.walk(search_root):
                 dirs[:] = [d for d in dirs if not d.startswith(".")]
                 for f in files:
                     if f.endswith((".md", ".txt", ".json")):
@@ -70,7 +74,7 @@ class ReindexChunksCommand(BaseCommand):
                         ):
                             continue
                         full_path = os.path.join(root, f)
-                        rel_path = os.path.relpath(full_path, project_root).replace("\\", "/")
+                        rel_path = os.path.relpath(full_path, search_root).replace("\\", "/")
                         files_to_index.append(rel_path)
 
         if not files_to_index:
@@ -83,7 +87,7 @@ class ReindexChunksCommand(BaseCommand):
             count = 0
             for rel_path in tqdm(files_to_index, desc="Chunks", unit="file"):
                 try:
-                    full_path = os.path.join(project_root, rel_path)
+                    full_path = os.path.join(search_root, rel_path)
                     with open(full_path, encoding="utf-8") as f:
                         content = f.read()
 
@@ -102,5 +106,20 @@ class ReindexChunksCommand(BaseCommand):
             return count
 
         success_count = asyncio.run(_run_reindex())
-
         logger.info(f"Finished: {success_count} file(s) processed.")
+
+        if not args.dry_run:
+            # Bulk upserts accumulate many small fragments and version manifests.
+            # Compact and purge immediately so disk usage stays bounded.
+            try:
+                repo.table.compact_files()
+                logger.info("artifact_chunks: compacted files.")
+            except Exception as e:
+                logger.warning(f"Post-reindex compact_files failed: {e}")
+            try:
+                repo.table.cleanup_old_versions(
+                    older_than=timedelta(minutes=0), delete_unverified=True
+                )
+                logger.info("artifact_chunks: purged old version snapshots.")
+            except Exception as e:
+                logger.warning(f"Post-reindex cleanup_old_versions failed: {e}")

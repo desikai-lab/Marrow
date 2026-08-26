@@ -59,19 +59,33 @@ async def maintenance_loop() -> None:
                 _logger.debug("[Maintenance] Skipping %s: no DB found.", project_name)
                 continue
             try:
+                from storage.ghost_pruner import FilesystemExistenceStrategy, GhostPruner
+                from storage.repositories.artifact_repository import ArtifactChunkRepository
+
                 repo = SkeletonRepository(project_root)
+
+                artifact_chunk_repo = ArtifactChunkRepository(project_root)
+                artifact_strategy = FilesystemExistenceStrategy(
+                    root_resolver=lambda project: os.path.join(PROJECTS_ROOT, project, "artifacts")
+                )
+
+                artifact_pruner = GhostPruner(repo=artifact_chunk_repo, strategy=artifact_strategy)
+
                 service = MaintenanceService(
                     project_root=project_root,
                     project_name=project_name,
                     skeleton_repo=repo,
+                    artifact_ghost_pruner=artifact_pruner,
                 )
                 report = await service.run()
                 _logger.info(
-                    "[Maintenance] %s — compact: %s, versions: %s, ghosts: %d, errors: %d",
+                    "[Maintenance] %s — compact: %s, versions: %s, ghosts: %d, "
+                    "artifact_chunks_pruned: %d, errors: %d",
                     project_name,
                     report.files_compacted,
                     report.versions_cleaned,
                     report.ghosts_pruned,
+                    report.artifact_chunks_pruned,
                     len(report.errors),
                 )
                 if report.errors:

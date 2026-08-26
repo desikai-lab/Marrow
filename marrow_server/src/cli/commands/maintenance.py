@@ -29,6 +29,8 @@ class MaintenanceCommand(BaseCommand):
     def execute(self, args: argparse.Namespace) -> None:
         from config import PROJECTS_ROOT
         from services.maintenance_service import MaintenanceService
+        from storage.ghost_pruner import FilesystemExistenceStrategy, GhostPruner
+        from storage.repositories.artifact_repository import ArtifactChunkRepository
         from storage.repositories.skeleton_repository import SkeletonRepository
 
         async def run_for_project(project_name: str):
@@ -46,11 +48,19 @@ class MaintenanceCommand(BaseCommand):
 
             try:
                 skeleton_repo = SkeletonRepository(project_root)
+                artifact_chunk_repo = ArtifactChunkRepository(project_root)
+                artifact_strategy = FilesystemExistenceStrategy(
+                    root_resolver=lambda project: os.path.join(PROJECTS_ROOT, project, "artifacts")
+                )
+
+                artifact_pruner = GhostPruner(repo=artifact_chunk_repo, strategy=artifact_strategy)
+
                 service = MaintenanceService(
                     project_root=project_root,
                     project_name=project_name,
                     skeleton_repo=skeleton_repo,
                     older_than_hours=args.older_than_hours,
+                    artifact_ghost_pruner=artifact_pruner,
                 )
 
                 report = await service.run()
@@ -61,8 +71,10 @@ class MaintenanceCommand(BaseCommand):
                         f"Maintenance finished successfully for {project_name}. "
                         f"Compact: {report.files_compacted}, "
                         f"Cleanup: {report.versions_cleaned}, "
-                        f"Pruned: {report.ghosts_pruned}"
+                        f"Ghosts Pruned: {report.ghosts_pruned}, "
+                        f"Artifact Chunks Pruned: {report.artifact_chunks_pruned}"
                     )
+
             except Exception as e:
                 print(f"Failed to run maintenance for {project_name}: {e}")
 
