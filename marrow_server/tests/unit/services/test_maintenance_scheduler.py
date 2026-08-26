@@ -28,9 +28,11 @@ class TestMaintenanceScheduler(unittest.IsolatedAsyncioTestCase):
             shutil.rmtree(self.test_root)
 
     @patch("services.maintenance_service.MaintenanceService")
+    @patch("storage.repositories.artifact_repository.ArtifactChunkRepository")
     @patch("storage.repositories.skeleton_repository.SkeletonRepository")
     @patch("asyncio.sleep", return_value=None)
-    async def test_loop_error_isolation(self, mock_sleep, mock_repo, mock_service):
+    async def test_loop_error_isolation(self, mock_sleep, mock_skeleton_repo, mock_artifact_repo, mock_service):
+
         # Patch config.PROJECTS_ROOT to point to our test directory
         with patch("config.PROJECTS_ROOT", self.test_root):
             # Setup mocks
@@ -54,3 +56,37 @@ class TestMaintenanceScheduler(unittest.IsolatedAsyncioTestCase):
 
             # Verify both were called despite the first one failing
             self.assertEqual(mock_service.call_count, 2)
+
+    @patch("services.maintenance_service.MaintenanceService")
+    @patch("storage.repositories.artifact_repository.ArtifactChunkRepository")
+    @patch("storage.repositories.skeleton_repository.SkeletonRepository")
+    @patch("asyncio.sleep", return_value=None)
+    async def test_loop_wires_artifact_ghost_pruner_into_maintenance_service(
+        self, mock_sleep, mock_skeleton_repo, mock_artifact_repo, mock_service
+    ):
+        from storage.ghost_pruner import GhostPruner
+
+        with patch("config.PROJECTS_ROOT", self.test_root):
+            inst = AsyncMock()
+            inst.run.return_value = MagicMock(
+                errors=[],
+                files_compacted=True,
+                versions_cleaned=True,
+                ghosts_pruned=0,
+                artifact_chunks_pruned=0,
+            )
+            mock_service.side_effect = [inst, inst]
+
+            mock_sleep.side_effect = [None, asyncio.CancelledError()]
+
+            try:
+                await maintenance_loop()
+            except asyncio.CancelledError:
+                pass
+
+            self.assertEqual(mock_service.call_count, 2)
+            for call in mock_service.call_args_list:
+                _, kwargs = call
+                self.assertIn("artifact_ghost_pruner", kwargs)
+                self.assertIsInstance(kwargs["artifact_ghost_pruner"], GhostPruner)
+
