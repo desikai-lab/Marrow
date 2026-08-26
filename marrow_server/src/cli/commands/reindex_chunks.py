@@ -106,5 +106,22 @@ class ReindexChunksCommand(BaseCommand):
             return count
 
         success_count = asyncio.run(_run_reindex())
-
         logger.info(f"Finished: {success_count} file(s) processed.")
+
+        if not args.dry_run:
+            # Bulk upserts accumulate many small fragments and version manifests.
+            # Compact and purge immediately so disk usage stays bounded.
+            import datetime
+
+            try:
+                repo.table.compact_files()
+                logger.info("artifact_chunks: compacted files.")
+            except Exception as e:
+                logger.warning(f"Post-reindex compact_files failed: {e}")
+            try:
+                repo.table.cleanup_old_versions(
+                    older_than=datetime.timedelta(minutes=0), delete_unverified=True
+                )
+                logger.info("artifact_chunks: purged old version snapshots.")
+            except Exception as e:
+                logger.warning(f"Post-reindex cleanup_old_versions failed: {e}")
