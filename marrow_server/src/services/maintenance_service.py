@@ -6,6 +6,11 @@ from pathlib import Path
 
 from storage.repositories.skeleton_repository import SkeletonRepository
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from storage.ghost_pruner import GhostPruner
+
 logger = logging.getLogger("marrow.maintenance")
 
 
@@ -15,6 +20,7 @@ class MaintenanceReport:
     versions_cleaned: bool = False
     files_compacted: bool = False
     ghosts_pruned: int = 0
+    artifact_chunks_pruned: int = 0
     duration_ms: float = 0.0
     errors: list[str] = field(default_factory=list)
 
@@ -26,26 +32,29 @@ class MaintenanceService:
         project_name: str,
         skeleton_repo: SkeletonRepository,
         older_than_hours: int = 2,
+        artifact_ghost_pruner: "GhostPruner | None" = None,
     ):
         self.project_root = project_root
         self.project_name = project_name
         self.skeleton_repo = skeleton_repo
         self.older_than_hours = older_than_hours
+        self.artifact_ghost_pruner = artifact_ghost_pruner
 
     async def run(self) -> MaintenanceReport:
-        """Execute all 3 phases independently."""
+        """Execute all phases independently."""
         t0 = time.monotonic()
         report = MaintenanceReport(project_root=self.project_root)
 
         report.versions_cleaned = await self._cleanup_versions(report.errors)
         report.files_compacted = await self._compact_files(report.errors)
         # report.ghosts_pruned = await self._prune_ghost_records(report.errors)
+        report.artifact_chunks_pruned = await self._prune_artifact_ghosts(report.errors)
 
         report.duration_ms = (time.monotonic() - t0) * 1000
         logger.info(
             f"Maintenance completed for {self.project_name} in {report.duration_ms:.2f}ms. "
             f"Cleaned versions: {report.versions_cleaned}, Compacted: {report.files_compacted}, "
-            # f"Ghosts pruned: {report.ghosts_pruned}. Errors: {len(report.errors)}"
+            f"Artifact chunk ghosts pruned: {report.artifact_chunks_pruned}. Errors: {len(report.errors)}"
         )
         return report
 
@@ -95,3 +104,19 @@ class MaintenanceService:
             logger.error(msg)
             errors.append(msg)
             return pruned_count
+
+    async def _prune_artifact_ghosts(self, errors: list[str]) -> int:
+        """Prunes ArtifactChunkRepository ghost rows via the injected GhostPruner.
+        Mirrors the try/except-per-phase isolation of every other phase in
+        run() -- a failure here must not affect phases that already ran.
+        """
+        if self.artifact_ghost_pruner is None:
+            return 0
+        try:
+            return await self.artifact_ghost_pruner.prune(self.project_name)
+        except Exception as e:
+            msg = f"Failed to prune artifact chunk ghost records: {e}"
+            logger.error(msg)
+            errors.append(msg)
+            return 0
+
