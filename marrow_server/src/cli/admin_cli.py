@@ -9,8 +9,16 @@ if sys.stdout.encoding.lower() != "utf-8":
     except (AttributeError, TypeError):
         pass
 
-# Add project root to module search path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add project root and src to module search path
+src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+server_root = os.path.dirname(src_dir)
+monorepo_root = os.path.dirname(server_root)
+
+for d in (monorepo_root, server_root, src_dir):
+    if d in sys.path:
+        sys.path.remove(d)
+    sys.path.insert(0, d)
+
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
