@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from mcp_core import mcp
 from storage.db import index_rebuild_worker
-
 from transport.middleware import (
     DebugLoggingMiddleware,
     FixHostHeaderMiddleware,
@@ -91,7 +91,6 @@ async def maintenance_loop() -> None:
                     _logger.warning("[Maintenance] %s errors: %s", project_name, report.errors)
             except Exception as e:
                 _logger.error("[Maintenance] Failed for %s: %s", project_name, e)
-
 
         _logger.info("[Maintenance] Cycle complete.")
 

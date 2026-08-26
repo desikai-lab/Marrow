@@ -3,10 +3,9 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from storage.repositories.skeleton_repository import SkeletonRepository
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from storage.ghost_pruner import GhostPruner
@@ -119,4 +118,3 @@ class MaintenanceService:
             logger.error(msg)
             errors.append(msg)
             return 0
-

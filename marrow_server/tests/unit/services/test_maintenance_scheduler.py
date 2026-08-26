@@ -31,7 +31,9 @@ class TestMaintenanceScheduler(unittest.IsolatedAsyncioTestCase):
     @patch("storage.repositories.artifact_repository.ArtifactChunkRepository")
     @patch("storage.repositories.skeleton_repository.SkeletonRepository")
     @patch("asyncio.sleep", return_value=None)
-    async def test_loop_error_isolation(self, mock_sleep, mock_skeleton_repo, mock_artifact_repo, mock_service):
+    async def test_loop_error_isolation(
+        self, mock_sleep, mock_skeleton_repo, mock_artifact_repo, mock_service
+    ):
 
         # Patch config.PROJECTS_ROOT to point to our test directory
         with patch("config.PROJECTS_ROOT", self.test_root):
@@ -89,4 +91,3 @@ class TestMaintenanceScheduler(unittest.IsolatedAsyncioTestCase):
                 _, kwargs = call
                 self.assertIn("artifact_ghost_pruner", kwargs)
                 self.assertIsInstance(kwargs["artifact_ghost_pruner"], GhostPruner)
-

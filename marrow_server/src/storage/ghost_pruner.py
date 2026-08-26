@@ -12,8 +12,9 @@ call site is explicitly NOT wired to this engine -- see ADR-0043.
 
 import asyncio
 import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Protocol
+from typing import Protocol
 
 logger = logging.getLogger("marrow.ghost_pruner")
 

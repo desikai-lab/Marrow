@@ -109,9 +109,10 @@ class TestMaintenanceService(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(len(report.errors), 2)
         self.assertTrue(any("Version cleanup failed" in err for err in report.errors))
-        self.assertTrue(any("Failed to prune artifact chunk ghost records" in err for err in report.errors))
+        self.assertTrue(
+            any("Failed to prune artifact chunk ghost records" in err for err in report.errors)
+        )
 
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -3,12 +3,11 @@ import logging
 from typing import Any
 
 from config import EMBEDDING_MODEL_TEXT, MAX_EMBED_CHARS
-from utils.metrics import track_time
-
 from storage.artifact_chunker import ChunkerFactory
 from storage.db import get_artifact_table, get_chunk_table, schedule_index_rebuild
 from storage.embeddings import embeddings_manager
 from storage.entities import ArtifactChunkRecord, ArtifactRecord
+from utils.metrics import track_time
 
 logger = logging.getLogger("marrow.artifact_repository")
 
@@ -173,7 +172,6 @@ class ArtifactChunkRepository:
         await asyncio.to_thread(self.table.delete, f"path = '{path}'")
         logger.info(f"Pruned {count} ghost chunk(s) for artifact {path}.")
         return count
-
 
     @track_time(layer="repository")
     async def semantic_search(self, query_text: str, limit: int = 5) -> list[dict[str, Any]]:

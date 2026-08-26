@@ -82,8 +82,12 @@ class TestArtifactChunkRepositoryGhostPruningMethods(unittest.TestCase):
     def test_delete_chunks_by_path_removes_all_rows_for_path_only(self):
         uow = UnitOfWork(self.project_root)
         multi_content = "## H2\nSection one\n\n## H3\nSection two"
-        asyncio.run(uow.chunks.upsert_chunks("target.md", multi_content, datetime.now().isoformat()))
-        asyncio.run(uow.chunks.upsert_chunks("keep.md", "# H1\nkeep me", datetime.now().isoformat()))
+        asyncio.run(
+            uow.chunks.upsert_chunks("target.md", multi_content, datetime.now().isoformat())
+        )
+        asyncio.run(
+            uow.chunks.upsert_chunks("keep.md", "# H1\nkeep me", datetime.now().isoformat())
+        )
 
         deleted_count = asyncio.run(uow.chunks.delete_chunks_by_path("target.md", self.project))
 
@@ -96,7 +100,9 @@ class TestArtifactChunkRepositoryGhostPruningMethods(unittest.TestCase):
     def test_delete_chunks_by_path_nonexistent_path_returns_zero(self):
         uow = UnitOfWork(self.project_root)
 
-        deleted_count = asyncio.run(uow.chunks.delete_chunks_by_path("never-indexed.md", self.project))
+        deleted_count = asyncio.run(
+            uow.chunks.delete_chunks_by_path("never-indexed.md", self.project)
+        )
 
         self.assertEqual(deleted_count, 0)
 

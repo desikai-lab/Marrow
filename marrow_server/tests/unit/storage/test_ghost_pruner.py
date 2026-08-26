@@ -65,7 +65,11 @@ class TestGhostPruner(unittest.IsolatedAsyncioTestCase):
 
     async def test_prune_mixed_paths_only_deletes_missing_ones(self):
         self.mock_repo.count_rows.return_value = 5
-        self.mock_repo.get_all_indexed_paths.return_value = ["gone.md", "still_here.md", "also_gone.md"]
+        self.mock_repo.get_all_indexed_paths.return_value = [
+            "gone.md",
+            "still_here.md",
+            "also_gone.md",
+        ]
         self.mock_strategy.exists.side_effect = lambda project, path: path == "still_here.md"
 
         result = await self.pruner.prune("proj")
