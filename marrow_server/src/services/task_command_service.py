@@ -64,7 +64,7 @@ async def complete_tasks_logic(task_ids: list[str], project: str) -> str:
     return summary
 
 
-async def add_tasks_logic(tasks_input: list[TaskInput], project: str) -> str:
+async def add_tasks_logic(tasks_input: list[TaskInput], project: str) -> dict[str, Any]:
     """
     Experimental tool for adding tasks via Decoupled Storage.
     Uses TaskInput from models.py.
@@ -87,12 +87,14 @@ async def add_tasks_logic(tasks_input: list[TaskInput], project: str) -> str:
         next_id = await uow.tasks.get_next_id()
 
         now = get_now_iso()
+        created_ids: list[str] = []
 
         for ti in tasks_input:
             # B19: Title uniqueness check
             TaskTitleUniqueValidator(ti.title, existing_tasks, project).validate()
 
             t_id = f"{ti.type}{next_id}"
+            created_ids.append(t_id)
             blocked_by = ti.blocked_by if ti.blocked_by else []
             if isinstance(blocked_by, str):
                 blocked_by = [blocked_by]
@@ -131,4 +133,8 @@ async def add_tasks_logic(tasks_input: list[TaskInput], project: str) -> str:
 
             next_id += 1
 
-        return f"Successfully added {len(tasks_input)} task(s) to project {project} (Decoupled). Next ID: {next_id}"
+        return {
+            "created_task_ids": created_ids,
+            "message": f"Successfully added {len(tasks_input)} task(s) to project {project}.",
+            "next_available_id": next_id,
+        }

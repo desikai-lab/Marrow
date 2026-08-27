@@ -51,7 +51,10 @@ async def test_add_tasks_logic_valid_task_and_duplicate_title_raises_value_error
 
             result1 = await add_tasks_logic([task1], TEST_PROJECT)
             print(f"Result 1: {result1}")
-            assert "Successfully added 1 task(s)" in result1
+            assert isinstance(result1, dict)
+            assert result1["created_task_ids"] == ["F1"]
+            assert result1["next_available_id"] == 2
+            assert "Successfully added 1 task(s)" in result1["message"]
 
             # 3. Test uniqueness (duplicate title)
             task_dup = TaskInput(
@@ -77,7 +80,10 @@ async def test_add_tasks_logic_valid_task_and_duplicate_title_raises_value_error
 
             result2 = await add_tasks_logic(tasks, TEST_PROJECT)
             print(f"Result 2: {result2}")
-            assert "Successfully added 2 task(s)" in result2
+            assert isinstance(result2, dict)
+            assert result2["created_task_ids"] == ["B2", "TD3"]
+            assert result2["next_available_id"] == 4
+            assert "Successfully added 2 task(s)" in result2["message"]
 
             # Verify in DB
             repo = TaskRepository(TEST_PROJECT_PATH)
