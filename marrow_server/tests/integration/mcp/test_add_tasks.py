@@ -15,8 +15,25 @@ async def test_add_tasks_logic_single_task_returns_success_message(tmp_project):
         solution="Some solution details",
     )
     result = await add_tasks_logic([task], tmp_project)
-    assert isinstance(result, str)
-    assert "Successfully added" in result
+    assert isinstance(result, dict)
+    assert len(result["created_task_ids"]) == 1
+    assert result["created_task_ids"][0].startswith("TD")
+    assert result["next_available_id"] >= 2
+    assert "Successfully added 1 task(s)" in result["message"]
+
+
+async def test_add_tasks_logic_batch_tasks_returns_all_created_ids(tmp_project):
+    tasks = [
+        TaskInput(title="INT-TEST: Batch Task 1", type="F", priority="low", problem="P1", solution="S1"),
+        TaskInput(title="INT-TEST: Batch Task 2", type="B", priority="high", problem="P2", solution="S2"),
+    ]
+    result = await add_tasks_logic(tasks, tmp_project)
+    assert isinstance(result, dict)
+    assert len(result["created_task_ids"]) == 2
+    assert result["created_task_ids"][0].startswith("F")
+    assert result["created_task_ids"][1].startswith("B")
+    assert result["next_available_id"] >= 3
+    assert "Successfully added 2 task(s)" in result["message"]
 
 
 async def test_add_tasks_logic_duplicate_title_raises_ValidationError(tmp_project):

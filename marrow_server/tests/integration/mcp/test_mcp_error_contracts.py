@@ -33,8 +33,10 @@ async def test_mcp_error_handler_success_result_passes_through_unchanged(tmp_pro
         solution="Test solution",
     )
     result = await _add_tasks_tool(tmp_project, [task])
-    assert isinstance(result, str)
-    assert "Successfully added" in result
+    assert isinstance(result, dict)
+    assert len(result["created_task_ids"]) == 1
+    assert result["created_task_ids"][0].startswith("TD")
+    assert "Successfully added" in result["message"]
 
 
 async def test_mcp_error_handler_domain_error_returns_structured_error_dict(tmp_project):
@@ -63,7 +65,7 @@ async def test_mcp_error_handler_real_domain_error_duplicate_task_returns_error_
     )
     # First write succeeds
     result1 = await _add_tasks_tool(tmp_project, [task])
-    assert isinstance(result1, str)
+    assert isinstance(result1, dict)
 
     # Second write triggers duplicate check inside add_tasks_logic, raising ValidationError.
     # Decorator should catch it and return structured dict instead of raising.
