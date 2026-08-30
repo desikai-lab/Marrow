@@ -1,7 +1,7 @@
 import os
 from enum import Enum
 
-from config import PROJECTS_ROOT
+import config
 from tools.utils import project_settings
 
 from .project_file_error import ProjectFileError
@@ -81,8 +81,10 @@ def get_raw_path(
 
 def _project_root(project: str) -> str | None:
     safe_project = os.path.basename(project)
-    root = os.path.normpath(os.path.join(PROJECTS_ROOT, safe_project))
-    if not root.startswith(os.path.normpath(PROJECTS_ROOT)):
+    if not safe_project:
+        return None
+    root = os.path.normpath(os.path.join(config.PROJECTS_ROOT, safe_project))
+    if not root.startswith(os.path.normpath(config.PROJECTS_ROOT)):
         return None
     return root
 
