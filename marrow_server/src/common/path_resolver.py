@@ -2,7 +2,6 @@ import os
 from enum import Enum
 
 import config
-from tools.utils import project_settings
 
 from .project_file_error import ProjectFileError
 from .project_path import ProjectPath
@@ -114,6 +113,8 @@ def _resolve(project: str, relative_path: str, kind: ResourceKind) -> str | None
 
 
 def _resolve_source(project: str, relative_path: str) -> str | None:
+    from tools.utils import project_settings
+
     settings = project_settings.load_project_settings(project)
     if not settings.source_tools_available or settings.source_root is None:
         return None

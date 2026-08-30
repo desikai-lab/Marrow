@@ -8,6 +8,7 @@ from typing import Any
 from common import path_resolver
 from common.path_resolver import ResourceKind
 from common.project_file_error import ProjectFileError
+from config import PROJECTS_ROOT
 
 _file_lock = threading.Lock()
 
