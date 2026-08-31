@@ -19,7 +19,6 @@ class TestArtifactPipelineUnknownFields(unittest.IsolatedAsyncioTestCase):
         )
         self.patchers = [
             patch("config.PROJECTS_ROOT", self.tmp),
-            patch("tools.utils.filesystem_utils.PROJECTS_ROOT", self.tmp),
         ]
         for p in self.patchers:
             p.start()

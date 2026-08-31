@@ -18,7 +18,6 @@ class TestHistoryMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
         (self.project_path / "artifacts" / "docs" / "sessions").mkdir(parents=True)
         self.patchers = [
             patch("config.PROJECTS_ROOT", self.tmp),
-            patch("tools.utils.filesystem_utils.PROJECTS_ROOT", self.tmp),
             patch("tools.utils.history_integrity.validate_artifact_path", self._mock_validate_path),
         ]
         for p in self.patchers:

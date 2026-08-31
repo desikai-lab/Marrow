@@ -5,7 +5,9 @@ import threading
 from datetime import datetime
 from typing import Any
 
-from config import PROJECTS_ROOT
+from common import path_resolver
+from common.path_resolver import ResourceKind
+from common.project_file_error import ProjectFileError
 
 _file_lock = threading.Lock()
 
@@ -17,29 +19,23 @@ def get_now_iso() -> str:
 
 def validate_project_path(project: str) -> str:
     """Validates the project path and returns the absolute path to the project folder."""
-    safe_project = os.path.basename(project)
-    prj_path = os.path.normpath(os.path.join(PROJECTS_ROOT, safe_project))
-    if not prj_path.startswith(os.path.normpath(PROJECTS_ROOT)):
-        raise ValueError("Invalid project path")
-    return prj_path
+    try:
+        return path_resolver.get_raw_path(project, "", ResourceKind.ROOT)
+    except ProjectFileError:
+        raise ValueError("Invalid project path") from None
 
 
 def validate_artifact_path(project: str, rel_path: str) -> str:
     """Validates the artifact path and ensures it is inside the project's artifacts/ folder."""
-    prj_path = validate_project_path(project)
-    art_root = os.path.normpath(os.path.join(prj_path, "artifacts"))
-
-    # README.md is permitted at the project root
     if rel_path.lower() == "readme.md":
-        target = os.path.normpath(os.path.join(prj_path, "README.md"))
-        if not target.startswith(prj_path):
-            raise ValueError("Path traversal attempt")
-        return target
-
-    full_path = os.path.normpath(os.path.join(art_root, rel_path))
-    if not full_path.startswith(art_root):
-        raise ValueError("Path traversal attempt")
-    return full_path
+        try:
+            return path_resolver.get_raw_path(project, "README.md", ResourceKind.ROOT)
+        except ProjectFileError:
+            raise ValueError("Path traversal attempt") from None
+    try:
+        return path_resolver.get_raw_path(project, rel_path, ResourceKind.ARTIFACTS)
+    except ProjectFileError:
+        raise ValueError("Path traversal attempt") from None
 
 
 def create_artifact_backup(project: str, rel_path: str):
