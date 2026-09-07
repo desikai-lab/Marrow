@@ -13,6 +13,8 @@ class ResourceKind(Enum):
     TASKS_BLOB = "tasks_blob"
     TEMPLATE = "template"
     ROOT = "root"
+    HISTORY = "history"
+    RECYCLE_BIN = "recycle_bin"
 
 
 _READ_ONLY_KINDS = frozenset({ResourceKind.SOURCE})
@@ -20,6 +22,8 @@ _READ_ONLY_KINDS = frozenset({ResourceKind.SOURCE})
 _FIXED_SUBPATH: dict[ResourceKind, str] = {
     ResourceKind.ARTIFACTS: "artifacts",
     ResourceKind.TASKS_BLOB: os.path.join(".db", "blobs"),
+    ResourceKind.HISTORY: ".history",
+    ResourceKind.RECYCLE_BIN: ".recycle_bin",
 }
 
 _IO_OPTIONS: dict[ResourceKind, dict] = {
@@ -76,6 +80,18 @@ def get_raw_path(
     if absolute is None:
         raise ProjectFileError(relative_path)
     return absolute
+
+
+def get_history_raw_dir(project: str, item_rel_path: str, namespace: str) -> str:
+    """Per-item history folder, mirroring the item's own project-relative path.
+    Named _raw_ to match get_raw_path()'s convention -- returns a constructed
+    path only, no existence/validation guarantee beyond what get_raw_path gives.
+    namespace='artifacts', item_rel_path='docs/x.md'
+      -> .history/artifacts/docs/x.md/{timestamp}.md
+    namespace='tasks', item_rel_path='active/TD4000220.md'
+      -> .history/tasks/active/TD4000220.md/{timestamp}.md
+    """
+    return get_raw_path(project, os.path.join(namespace, item_rel_path), ResourceKind.HISTORY)
 
 
 def _project_root(project: str) -> str | None:

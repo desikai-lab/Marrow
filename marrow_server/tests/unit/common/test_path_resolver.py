@@ -7,6 +7,7 @@ from common.path_resolver import (
     ResourceKind,
     get_artifacts_path,
     get_blob_path,
+    get_history_raw_dir,
     get_raw_path,
     get_source_path,
 )
@@ -76,3 +77,28 @@ def test_get_path_project_name_with_traversal_sanitizes_project_name():
 def test_get_path_relative_path_with_traversal_raises_project_file_error():
     with pytest.raises(ProjectFileError):
         get_artifacts_path("MyProject", "../../etc/passwd")
+
+
+def test_get_raw_path_history_kind_returns_bare_history_root_string():
+    raw = get_raw_path("MyProject", "", kind=ResourceKind.HISTORY)
+    assert isinstance(raw, str)
+    assert raw.endswith(".history")
+
+
+def test_get_raw_path_recycle_bin_kind_returns_recycle_bin_root_string():
+    raw = get_raw_path("MyProject", "", kind=ResourceKind.RECYCLE_BIN)
+    assert isinstance(raw, str)
+    assert raw.endswith(".recycle_bin")
+
+
+def test_get_history_raw_dir_mirrors_item_path_under_namespace():
+    raw = get_history_raw_dir("MyProject", "docs/spec.md", "artifacts")
+    assert isinstance(raw, str)
+    assert raw.endswith(os.path.join(".history", "artifacts", "docs", "spec.md"))
+
+
+def test_get_history_raw_dir_different_namespaces_do_not_collide():
+    artifacts_dir = get_history_raw_dir("MyProject", "TD4000217.md", "artifacts")
+    tasks_dir = get_history_raw_dir("MyProject", "TD4000217.md", "tasks")
+    assert artifacts_dir != tasks_dir
+
