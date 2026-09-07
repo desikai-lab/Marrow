@@ -74,8 +74,8 @@ def get_raw_path(
     ALLOWLISTED CALLERS ONLY (enforced by implementation_plan_migrations.md Step 15's lint rule):
       services/skeleton_query_service.py, storage/migrate.py, cli/commands/diag_index.py,
       cli/commands/reindex.py, cli/commands/reindex_chunks.py, tools/projects.py,
-      cli/commands/repair_blobs.py, tools/utils/filesystem_utils.py
-      (full 8-file allowlist — see implementation_plan_migrations.md Steps 6, 12, and 15)."""
+      cli/commands/repair_blobs.py, tools/utils/filesystem_utils.py, storage/uow.py
+      (full 9-file allowlist — see implementation_plan_migrations.md Steps 6, 12, and 15)."""
     absolute = _resolve(project, relative_path, kind)
     if absolute is None:
         raise ProjectFileError(relative_path)

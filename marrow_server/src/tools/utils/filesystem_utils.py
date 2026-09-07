@@ -137,6 +137,13 @@ def restore_backup(project: str, rel_path: str, backup_name: str) -> str:
     except ProjectFileError:
         raise ValueError("Invalid backup source") from None
 
+    # Secondary guard: src must be strictly inside the per-item history folder.
+    # get_raw_path only prevents escaping .history/ entirely; a crafted backup_name
+    # like "../../../other" can still resolve to a sibling path inside .history/.
+    item_history_dir = path_resolver.get_history_raw_dir(project, rel_path, "artifacts")
+    if not os.path.normpath(src).startswith(os.path.normpath(item_history_dir) + os.sep):
+        raise ValueError("Invalid backup source")
+
     dest = validate_artifact_path(project, rel_path)
 
     if not os.path.exists(src):
