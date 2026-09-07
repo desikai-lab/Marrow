@@ -121,7 +121,9 @@ def get_artifact_history(project: str, rel_path: str) -> list[dict[str, Any]]:
     return [
         {
             "backup_name": fname,
-            "date": datetime.fromtimestamp(os.path.getmtime(os.path.join(history_dir, fname))).strftime("%Y-%m-%d %H:%M:%S"),
+            "date": datetime.fromtimestamp(
+                os.path.getmtime(os.path.join(history_dir, fname))
+            ).strftime("%Y-%m-%d %H:%M:%S"),
             "size": os.path.getsize(os.path.join(history_dir, fname)),
         }
         for fname in sorted(os.listdir(history_dir), reverse=True)

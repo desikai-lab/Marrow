@@ -4,11 +4,11 @@ import re
 from datetime import date
 
 from common.path_resolver import ResourceKind, get_history_raw_dir, get_raw_path
+
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry, IntegrityHook
 from tools.utils.filesystem_utils import (
     get_artifact_history,
     validate_artifact_path,
-    validate_project_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -240,7 +240,9 @@ class SessionMdIntegrityHook(IntegrityHook):
                 logger.warning("Invalid backup name '%s' in artifact history", h["backup_name"])
                 continue
             if not backup_path.startswith(history_dir + os.sep) and backup_path != history_dir:
-                logger.warning("Backup path '%s' outside item history dir '%s'", backup_path, history_dir)
+                logger.warning(
+                    "Backup path '%s' outside item history dir '%s'", backup_path, history_dir
+                )
                 continue
             try:
                 with open(backup_path, encoding="utf-8-sig", errors="replace") as f:
