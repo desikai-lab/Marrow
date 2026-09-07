@@ -101,13 +101,12 @@ def recycle_file(project: str, rel_path: str) -> str:
     if not os.path.exists(real_src):
         return f"File {rel_path} not found."
 
-    prj_path = validate_project_path(project)
-    recycle_root = os.path.join(prj_path, ".recycle_bin")
-    os.makedirs(recycle_root, exist_ok=True)
-
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     name, ext = os.path.splitext(os.path.basename(real_src))
-    target_path = os.path.join(recycle_root, f"{name}_{timestamp}{ext}")
+    target_path = path_resolver.get_raw_path(
+        project, f"{name}_{timestamp}{ext}", ResourceKind.RECYCLE_BIN
+    )
+    os.makedirs(os.path.dirname(target_path), exist_ok=True)
 
     shutil.move(real_src, target_path)
     return f"File {rel_path} moved to recycle bin."

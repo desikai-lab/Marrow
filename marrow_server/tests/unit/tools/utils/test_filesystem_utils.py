@@ -1,9 +1,6 @@
-import os
-
-import pytest
-
 from tools.utils.filesystem_utils import (
     create_artifact_backup,
+    recycle_file,
     validate_artifact_path,
     validate_project_path,
 )
@@ -82,4 +79,31 @@ def test_create_artifact_backup_missingSourceFile_noOpsSilently(tmp_path, monkey
 
     history_root = tmp_path / "test_proj" / ".history"
     assert not history_root.exists()
+
+
+def test_recycle_file_existingFile_movesIntoRecycleBinRoot(tmp_path, monkeypatch):
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
+    art_dir = tmp_path / "test_proj" / "artifacts"
+    art_dir.mkdir(parents=True)
+    src_file = art_dir / "note.md"
+    src_file.write_text("content")
+
+    result = recycle_file("test_proj", "note.md")
+
+    assert result == "File note.md moved to recycle bin."
+    assert not src_file.exists()
+    recycle_root = tmp_path / "test_proj" / ".recycle_bin"
+    moved = list(recycle_root.glob("note_*.md"))
+    assert len(moved) == 1
+
+
+def test_recycle_file_missingFile_returnsNotFoundMessageWithoutRaising(tmp_path, monkeypatch):
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
+    art_dir = tmp_path / "test_proj" / "artifacts"
+    art_dir.mkdir(parents=True)
+
+    result = recycle_file("test_proj", "missing.md")
+
+    assert result == "File missing.md not found."
+
 
