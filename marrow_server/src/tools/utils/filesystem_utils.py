@@ -130,15 +130,14 @@ def get_artifact_history(project: str, rel_path: str) -> list[dict[str, Any]]:
 
 def restore_backup(project: str, rel_path: str, backup_name: str) -> str:
     """Restores an artifact from a backup."""
-    prj_path = validate_project_path(project)
-    rel_dir = os.path.dirname(rel_path)
+    try:
+        src = path_resolver.get_raw_path(
+            project, os.path.join("artifacts", rel_path, backup_name), ResourceKind.HISTORY
+        )
+    except ProjectFileError:
+        raise ValueError("Invalid backup source") from None
 
-    src = os.path.normpath(os.path.join(prj_path, ".history", "artifacts", rel_dir, backup_name))
     dest = validate_artifact_path(project, rel_path)
-
-    # Guard against path traversal outside the .history folder
-    if not src.startswith(os.path.normpath(os.path.join(prj_path, ".history"))):
-        raise ValueError("Invalid backup source")
 
     if not os.path.exists(src):
         raise FileNotFoundError(f"Backup {backup_name} not found.")

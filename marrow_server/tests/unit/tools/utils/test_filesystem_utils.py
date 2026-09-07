@@ -6,6 +6,7 @@ from tools.utils.filesystem_utils import (
     create_artifact_backup,
     get_artifact_history,
     recycle_file,
+    restore_backup,
     validate_artifact_path,
     validate_project_path,
 )
@@ -146,6 +147,44 @@ def test_get_artifact_history_doesNotLeakSiblingItemsBackups(tmp_path, monkeypat
     create_artifact_backup("test_proj", "docs/spec2.md")
 
     assert len(get_artifact_history("test_proj", "docs/spec.md")) == 1
+
+
+def test_restore_backup_validBackup_copiesBackupContentBackToOriginal(tmp_path, monkeypatch):
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
+    art_dir = tmp_path / "test_proj" / "artifacts" / "docs"
+    art_dir.mkdir(parents=True)
+    target = art_dir / "spec.md"
+    target.write_text("v1")
+    create_artifact_backup("test_proj", "docs/spec.md")
+    history_dir = tmp_path / "test_proj" / ".history" / "artifacts" / "docs" / "spec.md"
+    backup_name = next(history_dir.glob("*.md")).name
+    target.write_text("v2")
+
+    result = restore_backup("test_proj", "docs/spec.md", backup_name)
+
+    assert result == f"Artifact docs/spec.md successfully restored from {backup_name}."
+    assert target.read_text() == "v1"
+
+
+def test_restore_backup_missingBackupName_raisesFileNotFoundError(tmp_path, monkeypatch):
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
+    art_dir = tmp_path / "test_proj" / "artifacts" / "docs"
+    art_dir.mkdir(parents=True)
+    (art_dir / "spec.md").write_text("v1")
+
+    with pytest.raises(FileNotFoundError, match="Backup nonexistent.md not found"):
+        restore_backup("test_proj", "docs/spec.md", "nonexistent.md")
+
+
+def test_restore_backup_traversalInBackupName_raisesValueError(tmp_path, monkeypatch):
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
+    art_dir = tmp_path / "test_proj" / "artifacts" / "docs"
+    art_dir.mkdir(parents=True)
+    (art_dir / "spec.md").write_text("v1")
+
+    with pytest.raises(ValueError, match="Invalid backup source"):
+        restore_backup("test_proj", "docs/spec.md", "../../../etc/passwd")
+
 
 
 
