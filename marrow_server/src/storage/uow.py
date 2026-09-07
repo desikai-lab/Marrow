@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from common import path_resolver
 from domain.validators.status_change import StatusChangeValidator
 from utils.exceptions import DomainProtectionError, TaskNotFoundError
 
@@ -69,10 +70,13 @@ class UnitOfWork:
                 "project": current_record.project,
             }
 
-        # Create a Backup for Rollback
-        history_dir = Path(self.project_root) / ".history" / task_key
-        history_dir.mkdir(parents=True, exist_ok=True)
-        backup_path = history_dir / f"{task_key}.md.bak"
+        # Create a Backup for Rollback (per-item timestamped history)
+        history_dir = path_resolver.get_history_raw_dir(
+            self.project_root, current_record.file_path, "tasks"
+        )
+        os.makedirs(history_dir, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = os.path.join(history_dir, f"{timestamp}.md")
 
         if os.path.exists(file_path):
             await asyncio.to_thread(shutil.copy2, file_path, backup_path)

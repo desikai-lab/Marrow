@@ -4,8 +4,9 @@ from storage.entities import TaskRecord
 
 
 @pytest.fixture
-def tmp_project_root(tmp_path):
+def tmp_project_root(tmp_path, monkeypatch):
     """Creates a temporary project structure for testing."""
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
     project_root = tmp_path / "test_project"
     project_root.mkdir()
     # Initialize DB and directories

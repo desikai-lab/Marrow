@@ -38,10 +38,12 @@ def _make_blob(key: str, status: str = "active") -> dict:
 
 
 @pytest.fixture()
-def tmp_project(tmp_path):
-    blobs_dir = tmp_path / ".db" / "blobs" / "active"
+def tmp_project(tmp_path, monkeypatch):
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
+    project_dir = tmp_path / "test_project"
+    blobs_dir = project_dir / ".db" / "blobs" / "active"
     blobs_dir.mkdir(parents=True)
-    return tmp_path
+    return project_dir
 
 
 @pytest.mark.asyncio
@@ -108,3 +110,43 @@ async def test_move_tasks_batch_atomically_still_succeeds_after_lock_migration(t
 
         assert key in result["completed"]
         assert result["unblocked"] == []
+
+
+@pytest.mark.asyncio
+async def test_update_task_atomically_writesTimestampedBackupUnderTasksNamespace(tmp_project):
+    key = "TD001"
+    blob_data = _make_blob(key)
+    record = _make_record(key)
+
+    # Pre-seed real blob file so the backup copy actually runs
+    blob_path = tmp_project / record.file_path
+    blob_path.parent.mkdir(parents=True, exist_ok=True)
+    blob_path.write_text(json.dumps(blob_data), encoding="utf-8")
+
+    with (
+        patch("storage.uow.TaskRepository") as MockTaskRepo,
+        patch("storage.uow.ArtifactRepository"),
+        patch("storage.uow.ArtifactChunkRepository"),
+        patch("storage.uow.read_blob", return_value=blob_data),
+        patch("storage.uow.write_blob") as mock_write,
+    ):
+        mock_write.return_value = tmp_project / record.file_path
+        repo_instance = MockTaskRepo.return_value
+        repo_instance.get_by_key = AsyncMock(return_value=record)
+        repo_instance.upsert = AsyncMock()
+        repo_instance.table.name = "tasks"
+
+        uow = UnitOfWork(str(tmp_project))
+        await uow.update_task_atomically(key, {"title": "Updated 1"})
+
+        history_dir = tmp_project / ".history" / "tasks" / ".db" / "blobs" / "active" / f"{key}.md"
+        backups = list(history_dir.glob("*.md"))
+        assert len(backups) == 1
+
+        import asyncio as _asyncio
+        await _asyncio.sleep(1)  # ensure distinct timestamp
+        await uow.update_task_atomically(key, {"title": "Updated 2"})
+
+        backups = list(history_dir.glob("*.md"))
+        assert len(backups) == 2
+
