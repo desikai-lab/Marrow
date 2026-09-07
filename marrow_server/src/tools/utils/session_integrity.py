@@ -3,6 +3,7 @@ import os
 import re
 from datetime import date
 
+from common.path_resolver import ResourceKind, get_history_raw_dir, get_raw_path
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry, IntegrityHook
 from tools.utils.filesystem_utils import (
     get_artifact_history,
@@ -231,10 +232,16 @@ class SessionMdIntegrityHook(IntegrityHook):
 
     def _extract_from_history(self, project: str, rel_path: str) -> str | None:
         history = get_artifact_history(project, rel_path)
-        prj_path = validate_project_path(project)
-        rel_dir = os.path.dirname(rel_path)
+        history_dir = get_history_raw_dir(project, rel_path, "artifacts")
         for h in history:
-            backup_path = os.path.join(prj_path, ".history", "artifacts", rel_dir, h["backup_name"])
+            try:
+                backup_path = get_raw_path(project, h["backup_name"], ResourceKind.HISTORY)
+            except ValueError:
+                logger.warning("Invalid backup name '%s' in artifact history", h["backup_name"])
+                continue
+            if not backup_path.startswith(history_dir + os.sep) and backup_path != history_dir:
+                logger.warning("Backup path '%s' outside item history dir '%s'", backup_path, history_dir)
+                continue
             try:
                 with open(backup_path, encoding="utf-8-sig", errors="replace") as f:
                     backup_content = f.read()
