@@ -4,6 +4,7 @@ import pytest
 
 from tools.utils.filesystem_utils import (
     create_artifact_backup,
+    get_artifact_history,
     recycle_file,
     validate_artifact_path,
     validate_project_path,
@@ -109,5 +110,42 @@ def test_recycle_file_missingFile_returnsNotFoundMessageWithoutRaising(tmp_path,
     result = recycle_file("test_proj", "missing.md")
 
     assert result == "File missing.md not found."
+
+
+def test_get_artifact_history_afterBackup_listsBareTimestampedBackup(tmp_path, monkeypatch):
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
+    art_dir = tmp_path / "test_proj" / "artifacts" / "docs"
+    art_dir.mkdir(parents=True)
+    (art_dir / "spec.md").write_text("content")
+    create_artifact_backup("test_proj", "docs/spec.md")
+
+    history = get_artifact_history("test_proj", "docs/spec.md")
+
+    assert len(history) == 1
+    assert history[0]["backup_name"].endswith(".md")
+    assert not history[0]["backup_name"].startswith("spec")
+    assert "date" in history[0]
+    assert history[0]["size"] == len("content")
+
+
+def test_get_artifact_history_noHistoryDir_returnsEmptyList(tmp_path, monkeypatch):
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
+    art_dir = tmp_path / "test_proj" / "artifacts"
+    art_dir.mkdir(parents=True)
+
+    assert get_artifact_history("test_proj", "docs/spec.md") == []
+
+
+def test_get_artifact_history_doesNotLeakSiblingItemsBackups(tmp_path, monkeypatch):
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
+    art_dir = tmp_path / "test_proj" / "artifacts" / "docs"
+    art_dir.mkdir(parents=True)
+    (art_dir / "spec.md").write_text("a")
+    (art_dir / "spec2.md").write_text("b")
+    create_artifact_backup("test_proj", "docs/spec.md")
+    create_artifact_backup("test_proj", "docs/spec2.md")
+
+    assert len(get_artifact_history("test_proj", "docs/spec.md")) == 1
+
 
 

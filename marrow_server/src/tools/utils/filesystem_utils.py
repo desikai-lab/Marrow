@@ -114,25 +114,18 @@ def recycle_file(project: str, rel_path: str) -> str:
 
 def get_artifact_history(project: str, rel_path: str) -> list[dict[str, Any]]:
     """Returns a list of available backups for the artifact."""
-    prj_path = validate_project_path(project)
-    name, ext = os.path.splitext(os.path.basename(rel_path))
-    rel_dir = os.path.dirname(rel_path)
-
-    history_dir = os.path.join(prj_path, ".history", "artifacts", rel_dir)
-    if not os.path.exists(history_dir):
+    history_dir = path_resolver.get_history_raw_dir(project, rel_path, "artifacts")
+    if not os.path.isdir(history_dir):
         return []
 
-    backups = []
-    # Pattern: name_YYYYMMDD_HHMMSS.ext
-    for f in os.listdir(history_dir):
-        if f.startswith(f"{name}_") and f.endswith(ext):
-            full_path = os.path.join(history_dir, f)
-            mtime = os.path.getmtime(full_path)
-            dt = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
-            backups.append({"backup_name": f, "date": dt, "size": os.path.getsize(full_path)})
-
-    # Sort: newest first
-    return sorted(backups, key=lambda x: x["backup_name"], reverse=True)
+    return [
+        {
+            "backup_name": fname,
+            "date": datetime.fromtimestamp(os.path.getmtime(os.path.join(history_dir, fname))).strftime("%Y-%m-%d %H:%M:%S"),
+            "size": os.path.getsize(os.path.join(history_dir, fname)),
+        }
+        for fname in sorted(os.listdir(history_dir), reverse=True)
+    ]
 
 
 def restore_backup(project: str, rel_path: str, backup_name: str) -> str:
