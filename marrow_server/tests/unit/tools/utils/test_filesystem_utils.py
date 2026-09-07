@@ -3,6 +3,7 @@ import os
 import pytest
 
 from tools.utils.filesystem_utils import (
+    create_artifact_backup,
     validate_artifact_path,
     validate_project_path,
 )
@@ -52,3 +53,33 @@ def test_validate_project_path_emptyProject_raisesValueError(tmp_path, monkeypat
 
     with pytest.raises(ValueError, match="Invalid project path"):
         validate_project_path("")
+
+
+def test_create_artifact_backup_existingFile_copiesIntoPerItemHistoryFolder(tmp_path, monkeypatch):
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
+    art_dir = tmp_path / "test_proj" / "artifacts" / "docs"
+    art_dir.mkdir(parents=True)
+    src_file = art_dir / "spec.md"
+    src_file.write_text("content")
+
+    create_artifact_backup("test_proj", "docs/spec.md")
+
+    history_dir = tmp_path / "test_proj" / ".history" / "artifacts" / "docs" / "spec.md"
+    backups = list(history_dir.glob("*.md"))
+    assert len(backups) == 1
+    assert backups[0].read_text() == "content"
+    # NEW convention (TD4000220): filename is bare {timestamp}.ext -- the
+    # per-item folder supplies identity, not the filename prefix.
+    assert "spec" not in backups[0].stem
+
+
+def test_create_artifact_backup_missingSourceFile_noOpsSilently(tmp_path, monkeypatch):
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
+    art_dir = tmp_path / "test_proj" / "artifacts"
+    art_dir.mkdir(parents=True)
+
+    create_artifact_backup("test_proj", "docs/missing.md")
+
+    history_root = tmp_path / "test_proj" / ".history"
+    assert not history_root.exists()
+

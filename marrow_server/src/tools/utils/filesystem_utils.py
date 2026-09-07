@@ -39,22 +39,18 @@ def validate_artifact_path(project: str, rel_path: str) -> str:
 
 
 def create_artifact_backup(project: str, rel_path: str):
-    """Creates a copy of the artifact in the hidden .history folder before modification."""
+    """Creates a timestamped snapshot in the item's own .history folder before modification."""
     try:
-        prj_path = validate_project_path(project)
         full_src = validate_artifact_path(project, rel_path)
-
         if not os.path.exists(full_src):
             return
 
-        history_root = os.path.join(prj_path, ".history", "artifacts")
-        rel_dir = os.path.dirname(rel_path)
-        target_dir = os.path.join(history_root, rel_dir)
-        os.makedirs(target_dir, exist_ok=True)
+        history_dir = path_resolver.get_history_raw_dir(project, rel_path, "artifacts")
+        os.makedirs(history_dir, exist_ok=True)
 
+        _, ext = os.path.splitext(os.path.basename(rel_path))
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        name, ext = os.path.splitext(os.path.basename(rel_path))
-        target_path = os.path.join(target_dir, f"{name}_{timestamp}{ext}")
+        target_path = os.path.join(history_dir, f"{timestamp}{ext}")
 
         shutil.copy2(full_src, target_path)
     except Exception as e:
