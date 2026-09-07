@@ -144,14 +144,22 @@ def restore_backup(project: str, rel_path: str, backup_name: str) -> str:
     if not os.path.normpath(src).startswith(os.path.normpath(item_history_dir) + os.sep):
         raise ValueError("Invalid backup source")
 
-    dest = validate_artifact_path(project, rel_path)
-
     if not os.path.exists(src):
         raise FileNotFoundError(f"Backup {backup_name} not found.")
+
+    dest = validate_artifact_path(project, rel_path)
+
+    # Read the backup content before creating the pre-restore snapshot.
+    # This prevents a same-second timestamp collision from overwriting the backup
+    # we are about to restore (both would land in the same per-item history folder).
+    with open(src, "rb") as f:
+        backup_content = f.read()
 
     # Back up the CURRENT state before restoring (so the rollback itself can be undone)
     create_artifact_backup(project, rel_path)
 
-    # Copy the backup file back to its original location
-    shutil.copy2(src, dest)
+    # Write the backup content to its original location
+    with open(dest, "wb") as f:
+        f.write(backup_content)
+
     return f"Artifact {rel_path} successfully restored from {backup_name}."
