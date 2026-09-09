@@ -1,9 +1,9 @@
 [![Marrow MCP server](https://glama.ai/mcp/servers/desikai-lab/Marrow/badges/score.svg)](https://glama.ai/mcp/servers/desikai-lab/Marrow)
 # Marrow
 
-> **A persistent, multi-project intelligence backend for AI coding agents.**
+> Give your AI coding agents memory that survives between sessions.
 
-Marrow gives AI agents structured, long-lived memory over your codebase and projects — served over the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). It exposes a unified API surface covering task management, versioned document storage, semantic code navigation, session state, and a build pipeline.
+Marrow is an MCP server that solves agent amnesia: persistent task tracking, versioned docs, and semantic code search across every session — served over the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). Any agent, in any session, can plug in and pick up exactly where the last one left off.
 
 At its core, a background daemon watches your source files in real time, extracts structural skeletons using language-aware grammars, generates vector embeddings, and keeps a semantic index always in sync. The result: agents can navigate your code by *meaning*, not just by filename.
 
