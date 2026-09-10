@@ -81,3 +81,123 @@ class ProjectPath:
     def exists(self, accessor: Accessor | None = None) -> bool:
         accessor = accessor or _DEFAULT_ACCESSOR
         return accessor.exists(self.__absolute_path)
+
+    def copy(self, destination: "ProjectPath", accessor: Accessor | None = None) -> None:
+        accessor = accessor or _DEFAULT_ACCESSOR
+        failed = False
+        try:
+            accessor.copy(self.__absolute_path, destination.__absolute_path)
+        except Exception as ex:
+            log.error(
+                "ProjectPath.copy failed from %s to %s",
+                self.relative_path,
+                destination.relative_path,
+                exc_info=ex,
+            )
+            failed = True
+
+        if failed:
+            raise ProjectFileError(self.relative_path)
+
+    def move(self, destination: "ProjectPath", accessor: Accessor | None = None) -> None:
+        if not self.__writable:
+            log.error("Rejected move() on read-only ProjectPath: %s", self.relative_path)
+            raise ProjectFileError(self.relative_path)
+
+        accessor = accessor or _DEFAULT_ACCESSOR
+        failed = False
+        try:
+            accessor.move(self.__absolute_path, destination.__absolute_path)
+        except Exception as ex:
+            log.error(
+                "ProjectPath.move failed from %s to %s",
+                self.relative_path,
+                destination.relative_path,
+                exc_info=ex,
+            )
+            failed = True
+
+        if failed:
+            raise ProjectFileError(self.relative_path)
+
+    def delete(self, accessor: Accessor | None = None) -> None:
+        if not self.__writable:
+            log.error("Rejected delete() on read-only ProjectPath: %s", self.relative_path)
+            raise ProjectFileError(self.relative_path)
+
+        accessor = accessor or _DEFAULT_ACCESSOR
+        failed = False
+        try:
+            accessor.delete(self.__absolute_path)
+        except Exception as ex:
+            log.error("ProjectPath.delete failed for %s", self.relative_path, exc_info=ex)
+            failed = True
+
+        if failed:
+            raise ProjectFileError(self.relative_path)
+
+    def touch(self, accessor: Accessor | None = None) -> None:
+        if not self.__writable:
+            log.error("Rejected touch() on read-only ProjectPath: %s", self.relative_path)
+            raise ProjectFileError(self.relative_path)
+
+        accessor = accessor or _DEFAULT_ACCESSOR
+        failed = False
+        try:
+            accessor.touch(self.__absolute_path)
+        except Exception as ex:
+            log.error("ProjectPath.touch failed for %s", self.relative_path, exc_info=ex)
+            failed = True
+
+        if failed:
+            raise ProjectFileError(self.relative_path)
+
+    def read_lines(self, accessor: Accessor | None = None):
+        accessor = accessor or _DEFAULT_ACCESSOR
+        try:
+            yield from accessor.read_lines(
+                self.__absolute_path, encoding=self.__encoding, errors=self.__errors
+            )
+        except Exception as ex:
+            log.error("ProjectPath.read_lines failed for %s", self.relative_path, exc_info=ex)
+            raise ProjectFileError(self.relative_path) from None
+
+    # Async primitive twins (ADR-0045)
+    async def read_async(self, accessor: Accessor | None = None) -> str:
+        import asyncio
+
+        return await asyncio.to_thread(self.read, accessor)
+
+    async def write_async(self, content: str, accessor: Accessor | None = None) -> None:
+        import asyncio
+
+        await asyncio.to_thread(self.write, content, accessor)
+
+    async def exists_async(self, accessor: Accessor | None = None) -> bool:
+        import asyncio
+
+        return await asyncio.to_thread(self.exists, accessor)
+
+    async def copy_async(
+        self, destination: "ProjectPath", accessor: Accessor | None = None
+    ) -> None:
+        import asyncio
+
+        await asyncio.to_thread(self.copy, destination, accessor)
+
+    async def move_async(
+        self, destination: "ProjectPath", accessor: Accessor | None = None
+    ) -> None:
+        import asyncio
+
+        await asyncio.to_thread(self.move, destination, accessor)
+
+    async def delete_async(self, accessor: Accessor | None = None) -> None:
+        import asyncio
+
+        await asyncio.to_thread(self.delete, accessor)
+
+    async def touch_async(self, accessor: Accessor | None = None) -> None:
+        import asyncio
+
+        await asyncio.to_thread(self.touch, accessor)

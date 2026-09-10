@@ -119,3 +119,39 @@ def test_exists_delegates_to_accessor():
     fake = FakeMockAccessor()
     assert pp.exists(accessor=fake) is True
     assert fake.exists_called is True
+
+
+def test_copy_move_delete_touch_read_lines_and_async_twins(tmp_path):
+    import asyncio
+
+    src_file = tmp_path / "src.txt"
+    dest_file = tmp_path / "dest.txt"
+    touch_file = tmp_path / "touch.txt"
+
+    src_pp = ProjectPath("src.txt", str(src_file))
+    dest_pp = ProjectPath("dest.txt", str(dest_file))
+    touch_pp = ProjectPath("touch.txt", str(touch_file))
+
+    # write & read_lines
+    src_pp.write("line1\nline2\n")
+    lines = list(src_pp.read_lines())
+    assert lines == ["line1\n", "line2\n"]
+
+    # copy
+    src_pp.copy(dest_pp)
+    assert dest_pp.exists()
+    assert dest_pp.read() == "line1\nline2\n"
+
+    # delete
+    dest_pp.delete()
+    assert not dest_pp.exists()
+
+    # touch
+    touch_pp.touch()
+    assert touch_pp.exists()
+
+    # async twins
+    asyncio.run(src_pp.move_async(dest_pp))
+    assert not src_file.exists()
+    assert asyncio.run(dest_pp.exists_async())
+    assert asyncio.run(dest_pp.read_async()) == "line1\nline2\n"
