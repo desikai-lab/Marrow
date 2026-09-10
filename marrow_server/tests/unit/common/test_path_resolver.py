@@ -102,3 +102,11 @@ def test_get_history_raw_dir_different_namespaces_do_not_collide():
     tasks_dir = get_history_raw_dir("MyProject", "TD4000217.md", "tasks")
     assert artifacts_dir != tasks_dir
 
+
+def test_namespaceConstants_haveExpectedValues():
+    from common import path_resolver
+    assert path_resolver.NAMESPACE_ARTIFACTS == "artifacts"
+    assert path_resolver.NAMESPACE_TASKS == "tasks"
+    assert path_resolver.HISTORY_TIMESTAMP_FORMAT == "%Y%m%d_%H%M%S"
+
+

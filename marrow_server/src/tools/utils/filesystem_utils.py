@@ -45,11 +45,13 @@ def create_artifact_backup(project: str, rel_path: str):
         if not os.path.exists(full_src):
             return
 
-        history_dir = path_resolver.get_history_raw_dir(project, rel_path, "artifacts")
+        history_dir = path_resolver.get_history_raw_dir(
+            project, rel_path, path_resolver.NAMESPACE_ARTIFACTS
+        )
         os.makedirs(history_dir, exist_ok=True)
 
         _, ext = os.path.splitext(os.path.basename(rel_path))
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime(path_resolver.HISTORY_TIMESTAMP_FORMAT)
         target_path = os.path.join(history_dir, f"{timestamp}{ext}")
 
         shutil.copy2(full_src, target_path)
@@ -101,7 +103,7 @@ def recycle_file(project: str, rel_path: str) -> str:
     if not os.path.exists(real_src):
         return f"File {rel_path} not found."
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime(path_resolver.HISTORY_TIMESTAMP_FORMAT)
     name, ext = os.path.splitext(os.path.basename(real_src))
     target_path = path_resolver.get_raw_path(
         project, f"{name}_{timestamp}{ext}", ResourceKind.RECYCLE_BIN
@@ -114,7 +116,9 @@ def recycle_file(project: str, rel_path: str) -> str:
 
 def get_artifact_history(project: str, rel_path: str) -> list[dict[str, Any]]:
     """Returns a list of available backups for the artifact."""
-    history_dir = path_resolver.get_history_raw_dir(project, rel_path, "artifacts")
+    history_dir = path_resolver.get_history_raw_dir(
+        project, rel_path, path_resolver.NAMESPACE_ARTIFACTS
+    )
     if not os.path.isdir(history_dir):
         return []
 
@@ -134,7 +138,9 @@ def restore_backup(project: str, rel_path: str, backup_name: str) -> str:
     """Restores an artifact from a backup."""
     try:
         src = path_resolver.get_raw_path(
-            project, os.path.join("artifacts", rel_path, backup_name), ResourceKind.HISTORY
+            project,
+            os.path.join(path_resolver.NAMESPACE_ARTIFACTS, rel_path, backup_name),
+            ResourceKind.HISTORY,
         )
     except ProjectFileError:
         raise ValueError("Invalid backup source") from None
@@ -142,7 +148,9 @@ def restore_backup(project: str, rel_path: str, backup_name: str) -> str:
     # Secondary guard: src must be strictly inside the per-item history folder.
     # get_raw_path only prevents escaping .history/ entirely; a crafted backup_name
     # like "../../../other" can still resolve to a sibling path inside .history/.
-    item_history_dir = path_resolver.get_history_raw_dir(project, rel_path, "artifacts")
+    item_history_dir = path_resolver.get_history_raw_dir(
+        project, rel_path, path_resolver.NAMESPACE_ARTIFACTS
+    )
     if not os.path.normpath(src).startswith(os.path.normpath(item_history_dir) + os.sep):
         raise ValueError("Invalid backup source")
 

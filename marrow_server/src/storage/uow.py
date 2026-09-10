@@ -7,11 +7,10 @@ from typing import Any
 
 from common import path_resolver
 from domain.validators.status_change import StatusChangeValidator
-from utils.exceptions import DomainProtectionError, TaskNotFoundError
-
 from storage.blobs import read_blob, write_blob
 from storage.entities import TaskRecord
 from storage.repositories import ArtifactChunkRepository, ArtifactRepository, TaskRepository
+from utils.exceptions import DomainProtectionError, TaskNotFoundError
 
 VALID_TRANSITIONS = {
     "open": ["paused", "closed", "analysis", "blocked"],
@@ -72,10 +71,10 @@ class UnitOfWork:
 
         # Create a Backup for Rollback (per-item timestamped history)
         history_dir = path_resolver.get_history_raw_dir(
-            self.project_root, current_record.file_path, "tasks"
+            self.project_root, current_record.file_path, path_resolver.NAMESPACE_TASKS
         )
         os.makedirs(history_dir, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime(path_resolver.HISTORY_TIMESTAMP_FORMAT)
         backup_path = os.path.join(history_dir, f"{timestamp}.md")
 
         if os.path.exists(file_path):

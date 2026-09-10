@@ -82,6 +82,11 @@ def get_raw_path(
     return absolute
 
 
+NAMESPACE_ARTIFACTS = "artifacts"
+NAMESPACE_TASKS = "tasks"
+HISTORY_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"
+
+
 def get_history_raw_dir(project: str, item_rel_path: str, namespace: str) -> str:
     """Per-item history folder, mirroring the item's own project-relative path.
     Named _raw_ to match get_raw_path()'s convention -- returns a constructed
