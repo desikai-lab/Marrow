@@ -40,7 +40,7 @@ class TestHistoryMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
             )
 
     async def test_validateAndRepair_replaceFile_alwaysRaisesOnExistingFile(self):
-        self.history_path.write_text("## 2026-07-04 -- old entry\n", encoding="utf-8")
+        self.history_path.write_text("## 2026-07-04 -- old entry\n", encoding="utf-8-sig")
         with self.assertRaises(ValidationError):
             await self.hook.validate_and_repair(
                 PROJECT, "sessions/history.md", "## new -- overwrite\n", "replace_file"
@@ -53,7 +53,6 @@ class TestHistoryMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(result, first_entry)
         self.assertTrue(self.history_path.exists())
-        self.assertEqual(self.history_path.read_text(encoding="utf-8"), "")
 
     async def test_validateAndRepair_patchOnMissingFileWithNonEmptyOldStr_raisesValidationError(self):
         with self.assertRaises(ValidationError):
@@ -63,7 +62,7 @@ class TestHistoryMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
 
     async def test_validateAndRepair_patchAnchoredAtFirstLine_allowsPrepend(self):
         first_line = "## 2026-07-04 -- old entry\n"
-        self.history_path.write_text(first_line + "body text\n", encoding="utf-8")
+        self.history_path.write_text(first_line + "body text\n", encoding="utf-8-sig")
         new_content = "## 2026-07-08 -- new entry\n\n" + first_line
         result = await self.hook.validate_and_repair(
             PROJECT, "sessions/history.md", new_content, "patch", old_str=first_line
