@@ -11,9 +11,11 @@ import tools.utils.history_integrity  # noqa: F401 -- import for registration si
 import tools.utils.session_integrity  # noqa: F401 -- import for registration side-effect
 from tools.artifact_pipeline import save_project_artifacts_logic
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
+from common.path_resolver import ResourceKind, get_dir_path
 from tools.utils.filesystem_utils import (
     get_artifact_history,
     recycle_file,
+    resolve_artifact_project_path,
     restore_backup,
     validate_artifact_path,
     validate_project_path,
@@ -30,13 +32,15 @@ def read_artifact_logic(
     **kwargs,
 ) -> str:
     """Universal artifact read via the Strategy pattern."""
-    target_path = validate_artifact_path(project, rel_path)
+    if not validate_artifact_path(project, rel_path):
+        raise ArtifactNotFoundError(f"Artifact {rel_path} not found.")
 
-    if not os.path.exists(target_path) or not os.path.isfile(target_path):
+    project_path = resolve_artifact_project_path(project, rel_path)
+    if not project_path.exists():
         raise ArtifactNotFoundError(f"Artifact {rel_path} not found.")
 
     strategy = ArtifactStrategyFactory.get_read_strategy(mode)
-    return strategy.read(target_path, direction=direction, **kwargs)
+    return strategy.read(project_path, direction=direction, **kwargs)
 
 
 def list_artifacts_logic(
@@ -44,28 +48,22 @@ def list_artifacts_logic(
 ) -> list[dict[str, str]]:
     """Lists artifacts in a folder. Returns objects with {'name', 'type'}.
     Uses the shared directory listing utility."""
-    from tools.utils.filesystem_utils import list_directory_contents
-
-    target_dir = validate_artifact_path(project, rel_dir)
-    return list_directory_contents(target_dir, recursive=recursive)
-
-
-def _read_text(path: str) -> str:
-    with open(path, encoding="utf-8", errors="replace") as f:
-        return f.read()
+    project_dir = get_dir_path(project, rel_dir, ResourceKind.ARTIFACTS)
+    return project_dir.list(recursive=recursive)
 
 
 async def move_project_artifact_logic(project: str, src_path: str, dest_path: str) -> str:
     """Moves or renames an artifact."""
-    from tools.utils.filesystem_utils import safe_move_file
-
-    real_src = validate_artifact_path(project, src_path)
-    real_dest = validate_artifact_path(project, dest_path)
-
-    if not os.path.exists(real_src):
+    if not validate_artifact_path(project, src_path) or not validate_artifact_path(project, dest_path):
         return f"Source file {src_path} not found."
 
-    safe_move_file(real_src, real_dest)
+    src_pp = resolve_artifact_project_path(project, src_path)
+    dest_pp = resolve_artifact_project_path(project, dest_path)
+
+    if not await src_pp.exists_async():
+        return f"Source file {src_path} not found."
+
+    await src_pp.move_async(dest_pp)
 
     # Phase 3: Sync index
     sync_warning = ""
@@ -78,7 +76,7 @@ async def move_project_artifact_logic(project: str, src_path: str, dest_path: st
         if chunks_updated == 0:
             # Fallback: old path had no chunk rows (e.g. pre-fix stale state,
             # or artifact was never chunked). Re-embed from the new location.
-            content = await asyncio.to_thread(_read_text, real_dest)
+            content = await dest_pp.read_async()
             ext = os.path.splitext(dest_path)[1].lower()
             await uow.chunks.upsert_chunks(dest_path, content, datetime.now().isoformat(), ext=ext)
             logger.info(
@@ -201,16 +199,19 @@ def get_project_artifact_outline_logic(project: str, rel_path: str) -> str:
     if not rel_path.lower().endswith(".md") and rel_path.lower() != "readme.md":
         raise ValueError("This tool only supports .md files.")
 
-    target_path = validate_artifact_path(project, rel_path)
-
-    if not os.path.exists(target_path):
+    if not validate_artifact_path(project, rel_path):
         raise FileNotFoundError(f"File {rel_path} not found.")
 
-    outline = []
-    with open(target_path, encoding="utf-8", errors="replace") as f:
-        for line in f:
-            if line.strip().startswith("#"):
-                outline.append(line.strip())
+    project_path = resolve_artifact_project_path(project, rel_path)
+    if not project_path.exists():
+        raise FileNotFoundError(f"File {rel_path} not found.")
+
+    content = project_path.read()
+    outline = [
+        line.strip()
+        for line in content.splitlines()
+        if line.strip().startswith("#")
+    ]
 
     if not outline:
         return "No Markdown headings found in the file."
