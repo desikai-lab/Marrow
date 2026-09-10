@@ -156,3 +156,10 @@ def test_copy_move_delete_touch_read_lines_and_async_twins(tmp_path):
     assert not src_file.exists()
     assert asyncio.run(dest_pp.exists_async())
     assert asyncio.run(dest_pp.read_async()) == "line1\nline2\n"
+
+
+# Task 16 Step 1 — regression-safety test (pre-existing behaviour; must stay green)
+def test_read_missingFile_raisesProjectFileErrorNotBareOSError(tmp_path):
+    pp = ProjectPath("missing.md", str(tmp_path / "missing.md"))
+    with pytest.raises(ProjectFileError):
+        pp.read()
