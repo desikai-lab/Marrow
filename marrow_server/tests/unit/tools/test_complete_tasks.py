@@ -252,9 +252,9 @@ class TestRollbackOnLanceDbFailure:
             with pytest.raises(RuntimeError, match="LanceDB failure"):
                 asyncio.run(uow.move_tasks_batch_atomically([key], new_status="closed"))
 
-        # Backup should have been written to .history/
-        bak = tmp_project / ".history" / key / f"{key}.md.bak"
-        assert bak.exists(), "Backup must be created before the LanceDB write"
+        # Backup should have been written to .history/tasks/.db/blobs/active/TD001.md/
+        bak_dir = tmp_project / ".history" / "tasks" / ".db" / "blobs" / "active" / f"{key}.md"
+        assert bak_dir.exists() and len(list(bak_dir.glob("*.md"))) > 0, "Backup must be created before the LanceDB write"
 
 
 class TestAutoUnblockClearsBlockedBy:
