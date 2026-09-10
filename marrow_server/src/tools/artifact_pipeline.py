@@ -15,6 +15,7 @@ from tools.utils.artifact_strategies import (
 from tools.utils.cleaner import ContentCleaner
 from tools.utils.filesystem_utils import (
     create_artifact_backup,
+    resolve_artifact_project_path,
     validate_artifact_path,
     validate_project_path,
 )
@@ -61,7 +62,8 @@ class ValidationHandler(BaseHandler):
                     )
 
                 # Minimal path validation
-                validate_artifact_path(ctx.project, path)
+                if not validate_artifact_path(ctx.project, path):
+                    raise ValueError(f"Invalid artifact path: {path}")
                 # Validate that a strategy exists for this mode
                 ArtifactStrategyFactory.get_save_strategy(mode)
             except Exception as e:
@@ -97,18 +99,13 @@ class PersistHandler(BaseHandler):
     async def handle(self, ctx: PipelineContext):
         for path, group in ctx.grouped_updates.items():
             try:
-                abs_path = validate_artifact_path(ctx.project, path)
+                project_path = resolve_artifact_project_path(ctx.project, path)
 
                 # Read file once
                 current_content = ""
-                file_exists = os.path.exists(abs_path)
+                file_exists = await project_path.exists_async()
                 if file_exists:
-
-                    def read_file():
-                        with open(abs_path, encoding="utf-8-sig", errors="replace") as f:
-                            return f.read()
-
-                    current_content = await asyncio.to_thread(read_file)
+                    current_content = await project_path.read_async()
 
                 # Backup once per file (only if the file already existed)
                 if file_exists:
@@ -161,13 +158,7 @@ class PersistHandler(BaseHandler):
 
                 # Write final result ONCE, but only if any updates succeeded
                 if applied_successfully:
-
-                    def write_file(content):
-                        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
-                        with open(abs_path, "w", encoding="utf-8-sig", newline="") as f:
-                            f.write(content)
-
-                    await asyncio.to_thread(write_file, current_content)
+                    await project_path.write_async(current_content)
 
                     # Update message for successful operations
                     for idx in applied_successfully:

@@ -4,7 +4,11 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, Field, ValidationError
 
-from tools.utils.filesystem_utils import validate_artifact_path, validate_project_path
+from tools.utils.filesystem_utils import (
+    resolve_artifact_project_path,
+    validate_artifact_path,
+    validate_project_path,
+)
 
 
 class BuildResult(BaseModel):
@@ -115,19 +119,18 @@ def resolve_dynamic_version(project: str, config: VersionConfig) -> str:
     import re
 
     # Validate the source file path (may be an artifact or any file inside the project)
-    # Try as an artifact first
-    try:
-        source_path = validate_artifact_path(project, config.source)
-    except Exception:
-        # If not an artifact, resolve relative to the project root
+    if validate_artifact_path(project, config.source):
+        source_pp = resolve_artifact_project_path(project, config.source)
+        if not source_pp.exists():
+            raise FileNotFoundError(f"Source file for versioning not found: {config.source}")
+        content = source_pp.read()
+    else:
         prj_path = validate_project_path(project)
-        source_path = os.path.join(prj_path, config.source)
-
-    if not os.path.exists(source_path):
-        raise FileNotFoundError(f"Source file for versioning not found: {source_path}")
-
-    with open(source_path, encoding="utf-8") as f:
-        content = f.read()
+        raw_path = os.path.join(prj_path, config.source)
+        if not os.path.exists(raw_path):
+            raise FileNotFoundError(f"Source file for versioning not found: {raw_path}")
+        with open(raw_path, encoding="utf-8") as f:
+            content = f.read()
 
     match = re.search(config.regex, content)
     if not match:

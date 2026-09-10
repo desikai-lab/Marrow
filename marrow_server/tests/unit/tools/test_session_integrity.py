@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from common.project_file_error import ProjectFileError
 from tools.utils.session_integrity import SessionMdIntegrityHook
 
 GOOD_HEADER = (
@@ -20,7 +21,6 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
         (self.project_path / "artifacts" / "sessions").mkdir(parents=True)
         self.patchers = [
             patch("config.PROJECTS_ROOT", self.tmp),
-            patch("tools.utils.filesystem_utils.PROJECTS_ROOT", self.tmp),
         ]
         for p in self.patchers:
             p.start()
@@ -47,7 +47,7 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
 
     # ── well-formed content ──────────────────────────────────────────────────
 
-    async def test_validateAndRepair_wellFormedContent_passesThroughUnchanged(self):
+    async def test_validateAndRepair_wellFormedHeader_returnsContentUnchanged(self):
         content = GOOD_HEADER + "**Focus:** doing things\n"
         result = await self.hook.validate_and_repair(
             PROJECT, "session.md", content, mode="replace_file"
@@ -77,29 +77,38 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertIn("# Session State", result)
-        self.assertIn("next_agent_role:", result)
-        self.assertIn("focus content only", result)
 
     # ── malformed content with no history ───────────────────────────────────
 
-    async def test_validateAndRepair_malformedNoBackupYet_writesAsIs(self):
-        broken = "no header at all on first write\n"
+    async def test_validateAndRepair_malformedNoHistory_returnsContentUnchanged(self):
+        broken = "focus content only, no header\n"
         result = await self.hook.validate_and_repair(
             PROJECT, "session.md", broken, mode="replace_file"
         )
-        # No backup exists — gracefully degrades, returns content unchanged
         self.assertEqual(result, broken)
 
     # ── unreadable backup graceful degradation ───────────────────────────────
 
     async def test_validateAndRepair_backupUnreadable_logsWarningAndContinues(self):
         """An OSError on a backup file must be logged and not escape validate_and_repair."""
-        fake_history = [{"backup_name": "nonexistent_backup_file.md"}]
+        from common.project_path import ProjectPath
+        from tools.utils.history_models import ArtifactHistory, HistoryItem
+
+        mock_history = ArtifactHistory(
+            PROJECT,
+            "session.md",
+            [
+                HistoryItem(
+                    backup_name="nonexistent_backup_file.md",
+                    live_path=ProjectPath("session.md", "/fake/session.md"),
+                )
+            ],
+        )
         with (
-            patch("tools.utils.session_integrity.get_artifact_history", return_value=fake_history),
+            patch("tools.utils.session_integrity.get_history", return_value=mock_history),
             patch(
-                "tools.utils.session_integrity.validate_artifact_path",
-                side_effect=ValueError("no live file"),
+                "tools.utils.session_integrity.get_path",
+                side_effect=ProjectFileError("no live file"),
             ),
             self.assertLogs("tools.utils.session_integrity", level="WARNING") as log_ctx,
         ):

@@ -90,7 +90,7 @@ def apply_read_filters(
 # --- BASE STRATEGIES ---
 class ReadStrategy(ABC):
     @abstractmethod
-    def read(self, path: str, **kwargs) -> str:
+    def read(self, project_path, **kwargs) -> str:
         pass
 
     @abstractmethod
@@ -150,14 +150,17 @@ class FullReadStrategy(ReadStrategy):
     def validate(self, **kwargs):
         pass
 
-    def read(self, path: str, **kwargs) -> str:
+    def read(self, project_path, **kwargs) -> str:
         line_numbers = kwargs.get("line_numbers", False)
-
-        if os.path.getsize(path) > 1024 * 1024 and not kwargs.get("force", False):
-            raise ValueError("File too large (>1MB). Use mode='paged' or mode='lines'.")
-
-        with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
-            text = f.read()
+        if isinstance(project_path, str):
+            if os.path.getsize(project_path) > 1024 * 1024 and not kwargs.get("force", False):
+                raise ValueError("File too large (>1MB). Use mode='paged' or mode='lines'.")
+            with open(project_path, encoding="utf-8-sig", errors="replace", newline="") as f:
+                text = f.read()
+        else:
+            text = project_path.read()
+            if len(text.encode("utf-8")) > 1024 * 1024 and not kwargs.get("force", False):
+                raise ValueError("File too large (>1MB). Use mode='paged' or mode='lines'.")
 
         # max_chars, skip_chars, direction intentionally ignored — 'full' always returns 0..EOF.
         return apply_read_filters(text, None, 0, line_numbers, direction="begin")
@@ -167,21 +170,33 @@ class PagedReadStrategy(ReadStrategy):
     def validate(self, **kwargs):
         pass
 
-    def read(self, path: str, **kwargs) -> str:
+    def read(self, project_path, **kwargs) -> str:
         max_chars = kwargs.get("max_chars", 10000)
         skip_chars = kwargs.get("skip_chars", 0)
         line_numbers = kwargs.get("line_numbers", False)
         direction = kwargs.get("direction", "begin")
 
-        if (
-            os.path.getsize(path) > 1024 * 1024
-            and not skip_chars
-            and not kwargs.get("force", False)
-        ):
-            raise ValueError("File too large (>1MB). Use pagination (skip_chars) or 'lines' mode.")
-
-        with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
-            text = f.read()
+        if isinstance(project_path, str):
+            if (
+                os.path.getsize(project_path) > 1024 * 1024
+                and not skip_chars
+                and not kwargs.get("force", False)
+            ):
+                raise ValueError(
+                    "File too large (>1MB). Use pagination (skip_chars) or 'lines' mode."
+                )
+            with open(project_path, encoding="utf-8-sig", errors="replace", newline="") as f:
+                text = f.read()
+        else:
+            text = project_path.read()
+            if (
+                len(text.encode("utf-8")) > 1024 * 1024
+                and not skip_chars
+                and not kwargs.get("force", False)
+            ):
+                raise ValueError(
+                    "File too large (>1MB). Use pagination (skip_chars) or 'lines' mode."
+                )
 
         return apply_read_filters(text, max_chars, skip_chars, line_numbers, direction=direction)
 
@@ -191,16 +206,21 @@ class SectionReadStrategy(ReadStrategy):
         if not kwargs.get("section_name"):
             raise ValueError("Mode 'section' (read) requires 'section_name'.")
 
-    def read(self, path: str, **kwargs) -> str:
+    def read(self, project_path, **kwargs) -> str:
         self.validate(**kwargs)
         section_name = kwargs.get("section_name")
 
-        with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
-            content = f.read()
+        if isinstance(project_path, str):
+            with open(project_path, encoding="utf-8-sig", errors="replace", newline="") as f:
+                content = f.read()
+            rel_name = os.path.basename(project_path)
+        else:
+            content = project_path.read()
+            rel_name = project_path.relative_path
 
         section_text, start_pos, _ = extract_markdown_section(content, section_name)
         if section_text is None:
-            raise ValueError(f"Section '{section_name}' not found in {os.path.basename(path)}.")
+            raise ValueError(f"Section '{section_name}' not found in {rel_name}.")
 
         # Determine the start line of the section relative to the beginning of the file
         start_line = content[:start_pos].count("\n") + 1
@@ -219,20 +239,26 @@ class LinesReadStrategy(ReadStrategy):
         if "start_line" not in kwargs and "end_line" not in kwargs:
             raise ValueError("Mode 'lines' (read) requires 'start_line' or 'end_line'.")
 
-    def read(self, path: str, **kwargs) -> str:
+    def read(self, project_path, **kwargs) -> str:
         self.validate(**kwargs)
         start_line = kwargs.get("start_line", 1)
         end_line = kwargs.get("end_line")
 
         lines = []
-        with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
-            for i, line in enumerate(f, 1):
-                if i >= start_line:
-                    lines.append(
-                        line.rstrip("\n")
-                    )  # strip trailing \n for correct apply_read_filters behaviour
-                if end_line and i >= end_line:
-                    break
+        if isinstance(project_path, str):
+            with open(project_path, encoding="utf-8-sig", errors="replace", newline="") as f:
+                for i, line in enumerate(f, 1):
+                    if i >= start_line:
+                        lines.append(line.rstrip("\n"))
+                    if end_line and i >= end_line:
+                        break
+        else:
+            with project_path.read_lines() as f:
+                for i, line in enumerate(f, 1):
+                    if i >= start_line:
+                        lines.append(line.rstrip("\n"))
+                    if end_line and i >= end_line:
+                        break
 
         text = "\n".join(lines)
         return apply_read_filters(

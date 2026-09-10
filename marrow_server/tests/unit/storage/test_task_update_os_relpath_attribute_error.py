@@ -20,8 +20,9 @@ import pytest
 
 
 @pytest.fixture
-def tmp_project(tmp_path):
+def tmp_project(tmp_path, monkeypatch):
     """Creates a minimal project root with a pre-seeded blob for task TEST-001."""
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
     project_root = tmp_path / "project"
     blob_dir = project_root / ".db" / "blobs" / "active"
     blob_dir.mkdir(parents=True)

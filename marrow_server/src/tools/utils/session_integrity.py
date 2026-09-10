@@ -1,14 +1,11 @@
 import logging
-import os
 import re
 from datetime import date
 
+from common.path_resolver import NAMESPACE_ARTIFACTS, ResourceKind, get_history, get_path
+from common.project_file_error import ProjectFileError
+
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry, IntegrityHook
-from tools.utils.filesystem_utils import (
-    get_artifact_history,
-    validate_artifact_path,
-    validate_project_path,
-)
 
 logger = logging.getLogger(__name__)
 SESSION_MD_HEADER_PREFIXES = (
@@ -60,16 +57,11 @@ class SessionMdIntegrityHook(IntegrityHook):
         Never raises -- any failure is logged and swallowed (REQ-03).
         """
         try:
-            target_path = validate_artifact_path(project, rel_path)
-        except ValueError:
-            return
-        if not os.path.exists(target_path):
-            return  # REQ-04: first-ever write
-
-        try:
-            with open(target_path, encoding="utf-8-sig", errors="replace", newline="") as f:
-                old_content = f.read()
-        except OSError:
+            pp = get_path(project, rel_path, ResourceKind.ARTIFACTS)
+            if not pp.exists():
+                return
+            old_content = pp.read()
+        except ProjectFileError:
             return
 
         if not old_content:
@@ -87,11 +79,13 @@ class SessionMdIntegrityHook(IntegrityHook):
         try:
             from services.artifact_command_service import save_project_artifacts_logic
 
-            history_path = validate_artifact_path(project, "sessions/history.md")
             existing_first_line = ""
-            if os.path.exists(history_path):
-                with open(history_path, encoding="utf-8-sig", errors="replace", newline="") as f:
-                    existing_first_line = f.read()
+            try:
+                hist_pp = get_path(project, "sessions/history.md", ResourceKind.ARTIFACTS)
+                if hist_pp.exists():
+                    existing_first_line = hist_pp.read()
+            except ProjectFileError:
+                pass
 
             await save_project_artifacts_logic(
                 project,
@@ -206,15 +200,11 @@ class SessionMdIntegrityHook(IntegrityHook):
 
     def _extract_from_live_file(self, project: str, rel_path: str) -> str | None:
         try:
-            target_path = validate_artifact_path(project, rel_path)
-        except ValueError:
-            return None
-        if not os.path.exists(target_path):
-            return None
-        try:
-            with open(target_path, encoding="utf-8-sig", errors="replace") as f:
-                live_content = f.read()
-        except OSError as e:
+            pp = get_path(project, rel_path, ResourceKind.ARTIFACTS)
+            if not pp.exists():
+                return None
+            live_content = pp.read()
+        except ProjectFileError as e:
             logger.warning(
                 "Could not read live file '%s' during session.md repair: %s", rel_path, e
             )
@@ -230,17 +220,18 @@ class SessionMdIntegrityHook(IntegrityHook):
         return None
 
     def _extract_from_history(self, project: str, rel_path: str) -> str | None:
-        history = get_artifact_history(project, rel_path)
-        prj_path = validate_project_path(project)
-        rel_dir = os.path.dirname(rel_path)
-        for h in history:
-            backup_path = os.path.join(prj_path, ".history", "artifacts", rel_dir, h["backup_name"])
+        history = get_history(project, rel_path, NAMESPACE_ARTIFACTS)
+        for item in history.items:
             try:
-                with open(backup_path, encoding="utf-8-sig", errors="replace") as f:
-                    backup_content = f.read()
-            except OSError as e:
+                backup_pp = history.backup_path(item)
+            except ProjectFileError:
+                logger.warning("Backup path '%s' outside item history dir", item.backup_name)
+                continue
+            try:
+                backup_content = backup_pp.read()
+            except ProjectFileError as e:
                 logger.warning(
-                    "Could not read backup '%s' during session.md repair: %s", h["backup_name"], e
+                    "Could not read backup '%s' during session.md repair: %s", item.backup_name, e
                 )
                 continue
             if "# Session State" in backup_content and "next_agent_role:" in backup_content:

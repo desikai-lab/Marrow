@@ -147,7 +147,6 @@ class TestGetSessionContextRegression(unittest.TestCase):
         os.makedirs(self.project_dir)
         self.patchers = [
             patch("config.PROJECTS_ROOT", self.tmp),
-            patch("tools.utils.filesystem_utils.PROJECTS_ROOT", self.tmp),
         ]
         for p in self.patchers:
             p.start()

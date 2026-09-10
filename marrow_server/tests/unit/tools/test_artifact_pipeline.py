@@ -19,7 +19,6 @@ class TestArtifactPipelineUnknownFields(unittest.IsolatedAsyncioTestCase):
         )
         self.patchers = [
             patch("config.PROJECTS_ROOT", self.tmp),
-            patch("tools.utils.filesystem_utils.PROJECTS_ROOT", self.tmp),
         ]
         for p in self.patchers:
             p.start()
@@ -58,6 +57,20 @@ class TestArtifactPipelineUnknownFields(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["status"], "success")
         self.assertNotIn("warning", results[0])
+
+    async def test_saveProjectArtifacts_traversalPath_returnsError(self):
+        updates = [
+            {
+                "path": "../secret.txt",
+                "mode": "replace_file",
+                "content": "Traversal attempt",
+                "_explicit_fields": {"path", "mode", "content"},
+            }
+        ]
+        results = await save_project_artifacts_logic(PROJECT, updates)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["status"], "error")
+
 
 
 if __name__ == "__main__":

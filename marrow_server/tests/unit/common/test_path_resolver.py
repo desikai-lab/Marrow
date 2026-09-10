@@ -1,0 +1,135 @@
+import os
+from unittest.mock import patch
+
+import pytest
+
+from common.path_resolver import (
+    ResourceKind,
+    get_artifacts_path,
+    get_blob_path,
+    get_history_raw_dir,
+    get_raw_path,
+    get_source_path,
+)
+from common.project_file_error import ProjectFileError
+from tools.utils.project_settings import ProjectSettings
+
+
+def test_get_artifacts_path_valid_project_matches_project_root_artifacts_join():
+    pp = get_artifacts_path("MyProject", "docs/spec.md")
+    assert pp.relative_path == "docs/spec.md"
+    assert "artifacts" in os.path.normpath(pp._ProjectPath__absolute_path)
+    assert pp.exists() is False
+
+
+def test_get_blob_path_done_status_includes_year_subfolder():
+    pp = get_blob_path("MyProject", "TD100", "done", year="2026")
+    assert pp.relative_path == os.path.join("done", "2026", "TD100.md")
+
+
+def test_get_blob_path_active_status_no_year_subfolder():
+    pp = get_blob_path("MyProject", "TD100", "active")
+    assert pp.relative_path == os.path.join("active", "TD100.md")
+
+
+def test_get_blob_path_paused_status_no_year_subfolder():
+    pp = get_blob_path("MyProject", "TD100", "paused")
+    assert pp.relative_path == os.path.join("paused", "TD100.md")
+
+
+def test_get_source_path_valid_settings_matches_source_root(tmp_path):
+    mock_settings = ProjectSettings(source_root=tmp_path / "src", source_tools_available=True)
+    with patch("tools.utils.project_settings.load_project_settings", return_value=mock_settings):
+        pp = get_source_path("MyProject", "main.py")
+        assert pp.relative_path == "main.py"
+        assert os.path.normpath(pp._ProjectPath__absolute_path) == os.path.normpath(
+            str(tmp_path / "src" / "main.py")
+        )
+        with pytest.raises(ProjectFileError):
+            pp.write("test")
+
+
+def test_get_source_path_missing_settings_raises_project_file_error():
+    mock_settings = ProjectSettings(source_root=None, source_tools_available=False)
+    with patch("tools.utils.project_settings.load_project_settings", return_value=mock_settings):
+        with pytest.raises(ProjectFileError):
+            get_source_path("MyProject", "main.py")
+
+
+def test_get_raw_path_root_kind_returns_project_root_string():
+    raw = get_raw_path("MyProject", "", kind=ResourceKind.ROOT)
+    assert isinstance(raw, str)
+    assert raw.endswith("MyProject")
+
+
+def test_get_raw_path_artifacts_kind_returns_artifacts_root_string():
+    raw = get_raw_path("MyProject", "", kind=ResourceKind.ARTIFACTS)
+    assert isinstance(raw, str)
+    assert raw.endswith("artifacts")
+
+
+def test_get_path_project_name_with_traversal_sanitizes_project_name():
+    pp = get_artifacts_path("../etc", "doc.md")
+    assert "etc" in pp._ProjectPath__absolute_path
+    assert ".." not in pp._ProjectPath__absolute_path
+
+
+def test_get_path_relative_path_with_traversal_raises_project_file_error():
+    with pytest.raises(ProjectFileError):
+        get_artifacts_path("MyProject", "../../etc/passwd")
+
+
+def test_get_raw_path_history_kind_returns_bare_history_root_string():
+    raw = get_raw_path("MyProject", "", kind=ResourceKind.HISTORY)
+    assert isinstance(raw, str)
+    assert raw.endswith(".history")
+
+
+def test_get_raw_path_recycle_bin_kind_returns_recycle_bin_root_string():
+    raw = get_raw_path("MyProject", "", kind=ResourceKind.RECYCLE_BIN)
+    assert isinstance(raw, str)
+    assert raw.endswith(".recycle_bin")
+
+
+def test_get_history_raw_dir_mirrors_item_path_under_namespace():
+    raw = get_history_raw_dir("MyProject", "docs/spec.md", "artifacts")
+    assert isinstance(raw, str)
+    assert raw.endswith(os.path.join(".history", "artifacts", "docs", "spec.md"))
+
+
+def test_get_history_raw_dir_different_namespaces_do_not_collide():
+    artifacts_dir = get_history_raw_dir("MyProject", "TD4000217.md", "artifacts")
+    tasks_dir = get_history_raw_dir("MyProject", "TD4000217.md", "tasks")
+    assert artifacts_dir != tasks_dir
+
+
+def test_namespaceConstants_haveExpectedValues():
+    from common import path_resolver
+    assert path_resolver.NAMESPACE_ARTIFACTS == "artifacts"
+    assert path_resolver.NAMESPACE_TASKS == "tasks"
+    assert path_resolver.HISTORY_TIMESTAMP_FORMAT == "%Y%m%d_%H%M%S"
+
+
+def test_get_history_returnsArtifactHistoryModel(tmp_path, monkeypatch):
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
+    project = "p1"
+    rel_path = "docs/spec.md"
+    hist_dir = tmp_path / project / ".history" / "artifacts" / rel_path
+    hist_dir.mkdir(parents=True)
+    (hist_dir / "20260101_120000.md").write_text("v1", encoding="utf-8")
+
+    from common import path_resolver
+    history = path_resolver.get_history(project, rel_path, "artifacts")
+    assert history.project == project
+    assert history.rel_path == rel_path
+    assert len(history.items) == 1
+    assert history.items[0].backup_name == "20260101_120000.md"
+    assert history.latest() == history.items[0]
+    assert history.find("20260101_120000.md") == history.items[0]
+    assert history.find("nonexistent.md") is None
+
+    backup_pp = history.backup_path(history.items[0])
+    assert backup_pp.exists()
+
+
+

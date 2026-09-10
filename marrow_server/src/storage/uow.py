@@ -1,10 +1,21 @@
 import asyncio
+import json
 import os
 import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from common import path_resolver
+from common.path_resolver import (
+    HISTORY_TIMESTAMP_FORMAT,
+    NAMESPACE_TASKS,
+    ResourceKind,
+    get_path,
+    get_raw_path,
+)
+from common.project_file_error import ProjectFileError
+from common.project_path import ProjectPath
 from domain.validators.status_change import StatusChangeValidator
 from utils.exceptions import DomainProtectionError, TaskNotFoundError
 
@@ -69,10 +80,13 @@ class UnitOfWork:
                 "project": current_record.project,
             }
 
-        # Create a Backup for Rollback
-        history_dir = Path(self.project_root) / ".history" / task_key
-        history_dir.mkdir(parents=True, exist_ok=True)
-        backup_path = history_dir / f"{task_key}.md.bak"
+        # Create a Backup for Rollback (per-item timestamped history)
+        history_dir = path_resolver.get_history_raw_dir(
+            self.project_root, current_record.file_path, path_resolver.NAMESPACE_TASKS
+        )
+        os.makedirs(history_dir, exist_ok=True)
+        timestamp = datetime.now().strftime(path_resolver.HISTORY_TIMESTAMP_FORMAT)
+        backup_path = os.path.join(history_dir, f"{timestamp}.md")
 
         if os.path.exists(file_path):
             await asyncio.to_thread(shutil.copy2, file_path, backup_path)
@@ -151,103 +165,29 @@ class UnitOfWork:
         """Batch status move: single lock, bulk LanceDB upsert, single auto-unblock pass."""
         from storage.db import TableLockContext
 
-        # key → original absolute path (for rollback)
-        original_paths: dict[str, str] = {}
-
         async with TableLockContext(self.tasks.table.name):
-            # Phase A — Validate all (fail-fast)
-            validated = []  # list of (record, full_data, abs_file_path)
-            for key in task_keys:
-                record = await self.tasks.get_by_key(key)
-                if not record:
-                    raise TaskNotFoundError(f"Task '{key}' not found")
-                abs_path = os.path.join(self.project_root, record.file_path)
-                full_data = await asyncio.to_thread(read_blob, abs_path)
-                StatusChangeValidator(
-                    full_data, {"status": new_status, "resolution": resolution}
-                ).validate()
-                validated.append((record, full_data, abs_path))
-                original_paths[key] = abs_path
-
-            # Phase B — Backup + write new blobs
-            prepared = []  # list of (old_abs_path, new_record)
-            now = datetime.now().isoformat()
-            for record, full_data, abs_path in validated:
-                # backup
-                history_dir = Path(self.project_root) / ".history" / record.key
-                history_dir.mkdir(parents=True, exist_ok=True)
-                backup_path = history_dir / f"{record.key}.md.bak"
-                await asyncio.to_thread(shutil.copy2, abs_path, backup_path)
-                # build updated data
-                updated_data = {**full_data, "status": new_status, "updated": now}
-                if resolution:
-                    updated_data["resolution"] = resolution
-                updated_data["key"] = record.key
-                updated_data["id"] = record.id
-                updated_data["project"] = record.project
-                # write new blob
-                new_blob_path = await asyncio.to_thread(write_blob, self.project_root, updated_data)
-                new_record = TaskRecord(
-                    id=record.id,
-                    key=record.key,
-                    title=updated_data.get("title", ""),
-                    type=updated_data.get("type", "F"),
-                    status=updated_data.get("status", new_status),
-                    priority=updated_data.get("priority", "medium"),
-                    file_path=str(Path(new_blob_path).relative_to(self.project_root)).replace(
-                        "\\", "/"
-                    ),
-                    updated=now,
-                    project=record.project,
-                    problem=updated_data.get("problem"),
-                    solution=updated_data.get("solution"),
-                    blocked_by=updated_data.get("blocked_by", []),
-                    where=updated_data.get("where", []),
-                    comments=updated_data.get("comments"),
-                    resolution=updated_data.get("resolution"),
-                )
-                prepared.append((str(Path(abs_path).absolute()), new_record))
-
+            validated = await self._validate_and_load_tasks(task_keys, new_status, resolution)
+            original_paths = {record.key: orig_pp for record, _, orig_pp in validated}
+            prepared, backup_paths = await self._backup_and_prepare_updates(
+                validated, new_status, resolution
+            )
             try:
-                # Phase C — Bulk LanceDB upsert
-                ids = [r.id for _, r in prepared]
-                id_list = ", ".join(str(i) for i in ids)
-                await asyncio.to_thread(self.tasks.table.delete, f"id IN ({id_list})")
-                await asyncio.to_thread(
-                    self.tasks.table.add, [r.to_index_row() for _, r in prepared]
-                )
-
-                # Phase D — Delete old blobs
-                for old_abs_path, _ in prepared:
-                    if os.path.exists(old_abs_path):
-                        await asyncio.to_thread(os.remove, old_abs_path)
-
+                await self._commit_index_and_cleanup(prepared, original_paths)
             except Exception:
-                # Rollback: restore backed-up blobs for all prepared entries
-                for _, new_rec in prepared:
-                    new_abs = os.path.join(self.project_root, new_rec.file_path)
-                    key = new_rec.key
-                    bak = Path(self.project_root) / ".history" / key / f"{key}.md.bak"
-                    orig = original_paths.get(key)
-                    if bak.exists() and orig:
-                        await asyncio.to_thread(shutil.copy2, str(bak), orig)
-                    if os.path.exists(new_abs) and new_abs != orig:
-                        try:
-                            await asyncio.to_thread(os.remove, new_abs)
-                        except OSError:
-                            pass
+                await self._rollback(prepared, original_paths, backup_paths)
                 raise
 
             # Phase E — Auto-unblock pass
             completed_keys: set[str] = set(task_keys)
             unblocked = []
             active_tasks = await self.tasks.search(status="open")
+            now = datetime.now().isoformat()
             for t in active_tasks:
                 if not t.blocked_by:
                     continue
                 remaining = [b for b in t.blocked_by if b not in completed_keys]
                 if len(remaining) != len(t.blocked_by):
-                    t_abs = os.path.join(self.project_root, t.file_path)
+                    t_abs = get_raw_path(self.project_root, t.file_path, ResourceKind.ROOT)
                     t_data = await asyncio.to_thread(read_blob, t_abs)
                     t_data["blocked_by"] = remaining
                     t_data["updated"] = now
@@ -255,7 +195,133 @@ class UnitOfWork:
                     t.blocked_by = remaining
                     t.file_path = str(new_t_blob.relative_to(self.project_root)).replace("\\", "/")
                     await self.tasks.upsert(t)
-                    await asyncio.to_thread(os.remove, t_abs)
+                    if os.path.exists(t_abs):
+                        await asyncio.to_thread(os.remove, t_abs)
                     unblocked.append(t.key)
 
             return {"completed": list(task_keys), "unblocked": unblocked}
+
+    async def _validate_and_load_tasks(
+        self,
+        task_keys: list[str],
+        new_status: str,
+        resolution: str | None,
+    ) -> list[tuple[TaskRecord, dict, ProjectPath]]:
+        """Phase A -- fail-fast validation of every task before any write happens."""
+        validated = []
+        for key in task_keys:
+            record = await self.tasks.get_by_key(key)
+            if not record:
+                raise TaskNotFoundError(f"Task '{key}' not found")
+            orig_pp = get_path(self.project_root, record.file_path, ResourceKind.ROOT)
+            abs_path = get_raw_path(self.project_root, record.file_path, ResourceKind.ROOT)
+            full_data = await asyncio.to_thread(read_blob, abs_path)
+            StatusChangeValidator(
+                full_data, {"status": new_status, "resolution": resolution}
+            ).validate()
+            validated.append((record, full_data, orig_pp))
+        return validated
+
+    async def _backup_and_prepare_updates(
+        self,
+        validated: list[tuple[TaskRecord, dict, ProjectPath]],
+        new_status: str,
+        resolution: str | None,
+    ) -> tuple[list[tuple[str, TaskRecord]], dict[str, ProjectPath]]:
+        """Phase B driver -- backs up each original and writes its replacement blob."""
+        prepared = []
+        backup_paths: dict[str, ProjectPath] = {}
+        now = datetime.now().isoformat()
+        for record, full_data, orig_pp in validated:
+            backup_paths[record.key] = await self._backup_original(record, orig_pp)
+            new_record = await self._write_updated_blob(
+                record, full_data, new_status, resolution, now
+            )
+            prepared.append((record.key, new_record))
+        return prepared, backup_paths
+
+    async def _backup_original(self, record: TaskRecord, orig_pp: ProjectPath) -> ProjectPath:
+        """Creates one timestamped backup of the current blob content via ProjectPath."""
+        timestamp = datetime.now().strftime(HISTORY_TIMESTAMP_FORMAT)
+        backup_rel = os.path.join(NAMESPACE_TASKS, record.file_path, f"{timestamp}.md")
+        backup_pp = get_path(self.project_root, backup_rel, ResourceKind.HISTORY)
+        if await orig_pp.exists_async():
+            await orig_pp.copy_async(backup_pp)
+        else:
+            abs_path = get_raw_path(self.project_root, record.file_path, ResourceKind.ROOT)
+            full_data = await asyncio.to_thread(read_blob, abs_path)
+            await backup_pp.write_async(json.dumps(full_data))
+        return backup_pp
+
+    async def _write_updated_blob(
+        self,
+        record: TaskRecord,
+        full_data: dict,
+        new_status: str,
+        resolution: str | None,
+        now: str,
+    ) -> TaskRecord:
+        """Builds the updated blob content, writes it, and returns the new TaskRecord."""
+        updated_data = {**full_data, "status": new_status, "updated": now}
+        if resolution:
+            updated_data["resolution"] = resolution
+        updated_data["key"] = record.key
+        updated_data["id"] = record.id
+        updated_data["project"] = record.project
+        new_blob_path = await asyncio.to_thread(write_blob, self.project_root, updated_data)
+        return TaskRecord(
+            id=record.id,
+            key=record.key,
+            title=updated_data.get("title", ""),
+            type=updated_data.get("type", "F"),
+            status=updated_data.get("status", new_status),
+            priority=updated_data.get("priority", "medium"),
+            file_path=str(Path(new_blob_path).relative_to(self.project_root)).replace("\\", "/"),
+            updated=now,
+            project=record.project,
+            problem=updated_data.get("problem"),
+            solution=updated_data.get("solution"),
+            blocked_by=updated_data.get("blocked_by", []),
+            where=updated_data.get("where", []),
+            comments=updated_data.get("comments"),
+            resolution=updated_data.get("resolution"),
+        )
+
+    async def _commit_index_and_cleanup(
+        self,
+        prepared: list[tuple[str, TaskRecord]],
+        original_paths: dict[str, ProjectPath],
+    ) -> None:
+        """Phase C -- commits the new index rows, then removes superseded originals."""
+        ids = [r.id for _, r in prepared]
+        id_list = ", ".join(str(i) for i in ids)
+        await asyncio.to_thread(self.tasks.table.delete, f"id IN ({id_list})")
+        await asyncio.to_thread(self.tasks.table.add, [r.to_index_row() for _, r in prepared])
+        for key, _ in prepared:
+            orig_pp = original_paths[key]
+            if await orig_pp.exists_async():
+                await orig_pp.delete_async()
+
+    async def _rollback(
+        self,
+        prepared: list[tuple[str, TaskRecord]],
+        original_paths: dict[str, ProjectPath],
+        backup_paths: dict[str, ProjectPath],
+    ) -> None:
+        """Restores each original blob from its timestamped backup and removes any new
+        blob already written, best-effort."""
+        for key, new_rec in prepared:
+            orig_pp = original_paths.get(key)
+            backup_pp = backup_paths.get(key)
+            new_pp = get_path(self.project_root, new_rec.file_path, ResourceKind.ROOT)
+
+            if backup_pp is not None and orig_pp is not None and await backup_pp.exists_async():
+                content = await backup_pp.read_async()
+                await orig_pp.write_async(content)
+
+            if orig_pp is None or new_pp.relative_path != orig_pp.relative_path:
+                if await new_pp.exists_async():
+                    try:
+                        await new_pp.delete_async()
+                    except ProjectFileError:
+                        pass

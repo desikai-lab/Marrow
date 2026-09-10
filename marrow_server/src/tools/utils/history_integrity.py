@@ -1,9 +1,7 @@
-import os
-
+from common.path_resolver import ResourceKind, get_path
 from utils.exceptions import ValidationError
 
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry, IntegrityHook
-from tools.utils.filesystem_utils import validate_artifact_path
 
 
 class HistoryMdIntegrityHook(IntegrityHook):
@@ -26,10 +24,10 @@ class HistoryMdIntegrityHook(IntegrityHook):
     async def validate_and_repair(
         self, project: str, rel_path: str, content: str, mode: str, **kwargs
     ) -> str:
-        target_path = validate_artifact_path(project, rel_path)
+        project_path = get_path(project, rel_path, ResourceKind.ARTIFACTS)
 
         if mode == "patch":
-            return self._validate_patch(target_path, rel_path, kwargs.get("old_str", ""), content)
+            return self._validate_patch(project_path, rel_path, kwargs.get("old_str", ""), content)
 
         if mode == "replace_file":
             raise ValidationError(
@@ -43,13 +41,9 @@ class HistoryMdIntegrityHook(IntegrityHook):
             "a new entry) is allowed."
         )
 
-    def _validate_patch(self, target_path: str, rel_path: str, old_str: str, content: str) -> str:
-        if not os.path.exists(target_path):
-            os.makedirs(os.path.dirname(target_path), exist_ok=True)
-            open(target_path, "w", encoding="utf-8-sig").close()
-
-        with open(target_path, encoding="utf-8-sig", errors="replace") as f:
-            existing = f.read()
+    def _validate_patch(self, project_path, rel_path: str, old_str: str, content: str) -> str:
+        project_path.touch()
+        existing = project_path.read()
 
         if existing == "":
             # Freshly created / genuinely empty file: nothing to anchor

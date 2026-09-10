@@ -16,7 +16,6 @@ class TestSaveArtifactLogicSessionMdValidation(unittest.IsolatedAsyncioTestCase)
         self.artifacts.mkdir(parents=True)
         self.patchers = [
             patch("config.PROJECTS_ROOT", self.tmp),
-            patch("tools.utils.filesystem_utils.PROJECTS_ROOT", self.tmp),
         ]
         for p in self.patchers:
             p.start()

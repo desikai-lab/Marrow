@@ -1,14 +1,19 @@
 import os
 import re
-import shutil
 from abc import ABC, abstractmethod
 
 # TODO: move to utils.
 # In the future, direct artifact calls may be extracted into a dedicated sandbox.
+from common.file_accessor import FileAccessor
+
 from tools.artifacts import get_project_artifact_outline_logic, read_artifact_logic
 from tools.builds import BuildManifest, SanitizeRule, StepConfig
 from tools.utils.cleaner_presets import PRESETS
-from tools.utils.filesystem_utils import validate_artifact_path, validate_project_path
+from tools.utils.filesystem_utils import (
+    resolve_artifact_project_path,
+    validate_artifact_path,
+    validate_project_path,
+)
 from tools.utils.markdown_utils import extract_markdown_section
 
 
@@ -226,12 +231,13 @@ class CopyFileProcessor(StepProcessor):
             # Ignored for single_file mode by design
             pass
         elif context.manifest.output.format == "directory":
-            src_path = validate_artifact_path(context.project, step.path)
+            if not validate_artifact_path(context.project, step.path):
+                raise FileNotFoundError(f"Artifact source not found: {step.path}")
+            src_pp = resolve_artifact_project_path(context.project, step.path)
             dest_file = step.filename or step.path
             dest_path = os.path.join(context.release_dir, dest_file)
 
-            os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-            shutil.copy2(src_path, dest_path)
+            FileAccessor().copy(src_pp.as_accessor_source(), dest_path)
 
 
 class Specification(ABC):
@@ -316,17 +322,18 @@ class ValidateProcessor(StepProcessor):
         if not step.path or not step.regex or step.expected is None:
             raise ValueError("Action 'validate' requires 'path', 'regex', and 'expected'")
 
-        try:
-            full_path = validate_artifact_path(context.project, step.path)
-        except Exception:
+        if validate_artifact_path(context.project, step.path):
+            source_pp = resolve_artifact_project_path(context.project, step.path)
+            if not source_pp.exists():
+                raise FileNotFoundError(f"Validation source file not found: {step.path}")
+            content = source_pp.read()
+        else:
             prj_path = validate_project_path(context.project)
             full_path = os.path.join(prj_path, step.path)
-
-        if not os.path.exists(full_path):
-            raise FileNotFoundError(f"Validation source file not found: {step.path}")
-
-        with open(full_path, encoding="utf-8") as f:
-            content = f.read()
+            if not os.path.exists(full_path):
+                raise FileNotFoundError(f"Validation source file not found: {step.path}")
+            with open(full_path, encoding="utf-8") as f:
+                content = f.read()
 
         if step.section_name:
             content, _, _ = extract_markdown_section(content, step.section_name)
