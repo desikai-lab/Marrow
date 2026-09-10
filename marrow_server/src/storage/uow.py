@@ -194,7 +194,8 @@ class UnitOfWork:
                     t.blocked_by = remaining
                     t.file_path = str(new_t_blob.relative_to(self.project_root)).replace("\\", "/")
                     await self.tasks.upsert(t)
-                    await asyncio.to_thread(os.remove, t_abs)
+                    if os.path.exists(t_abs):
+                        await asyncio.to_thread(os.remove, t_abs)
                     unblocked.append(t.key)
 
             return {"completed": list(task_keys), "unblocked": unblocked}
