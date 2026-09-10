@@ -10,6 +10,8 @@ from .project_path import ProjectPath
 if TYPE_CHECKING:
     from tools.utils.history_models import ArtifactHistory
 
+    from .project_dir import ProjectDir
+
 
 class ResourceKind(Enum):
     ARTIFACTS = "artifacts"
@@ -46,6 +48,19 @@ def get_path(
         absolute,
         writable=kind not in _READ_ONLY_KINDS,
         **_IO_OPTIONS.get(kind, {}),
+    )
+
+
+def get_dir_path(
+    project: str, relative_path: str = "", kind: ResourceKind = ResourceKind.ARTIFACTS
+) -> "ProjectDir":
+    from .project_dir import ProjectDir
+
+    absolute = _resolve(project, relative_path, kind)
+    if absolute is None:
+        raise ProjectFileError(relative_path)
+    return ProjectDir(
+        relative_path, absolute, writable=kind not in _READ_ONLY_KINDS, kind=kind.value
     )
 
 

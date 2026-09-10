@@ -17,6 +17,8 @@ class Accessor(Protocol):
     def read_lines(
         self, absolute_path: str, encoding: str = "utf-8", errors: str = "strict"
     ) -> Iterator[str]: ...
+    def listdir(self, absolute_path: str) -> list[str]: ...
+    def isdir(self, absolute_path: str) -> bool: ...
 
 
 class FileAccessor:
@@ -64,3 +66,11 @@ class FileAccessor:
     ) -> Iterator[str]:
         with open(absolute_path, encoding=encoding, errors=errors) as f:
             yield from f
+
+    @staticmethod
+    def listdir(absolute_path: str) -> list[str]:
+        return os.listdir(absolute_path)
+
+    @staticmethod
+    def isdir(absolute_path: str) -> bool:
+        return os.path.isdir(absolute_path)
