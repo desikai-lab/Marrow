@@ -150,9 +150,14 @@ def restore_backup(project: str, rel_path: str, backup_name: str) -> str:
     history = get_history(project, rel_path, NAMESPACE_ARTIFACTS)
     item = history.find(backup_name)
     if item is None:
+        from tools.utils.history_models import HistoryItem
+
+        dummy_item = HistoryItem(
+            backup_name=backup_name,
+            live_path=resolve_artifact_project_path(project, rel_path),
+        )
         try:
-            bad_item = history._HistoryItem(backup_name, datetime.now())
-            history.backup_path(bad_item)
+            history.backup_path(dummy_item)
         except ProjectFileError:
             raise ValueError("Invalid backup source") from None
         raise FileNotFoundError(f"Backup {backup_name} not found.")
@@ -167,11 +172,8 @@ def restore_backup(project: str, rel_path: str, backup_name: str) -> str:
 
     dest_pp = resolve_artifact_project_path(project, rel_path)
 
-    # Read content from backup before creating pre-restore backup to avoid same-timestamp collision
-    backup_content = backup_pp.read()
-
     create_artifact_backup(project, rel_path)
 
-    dest_pp.write(backup_content)
+    backup_pp.copy(dest_pp)
 
     return f"Artifact {rel_path} successfully restored from {backup_name}."
