@@ -448,12 +448,10 @@ def register_all_tools(mcp: FastMCP) -> None:
         project: Annotated[str, Field(description="Project name")],
         path: Annotated[str, Field(description="Path to delete")],
     ) -> str | dict[str, Any]:
-        """[ARTIFACT TOOLS] Permanently deletes a single artifact file from the project's
-        artifact storage. The deletion is immediate and not automatically reversible.
+        """[ARTIFACT TOOLS] Deletes a single artifact file by moving it to the
+        recycle bin. The file is preserved in the recycle bin and can be restored
+        using restore_project_artifact if needed.
 
-        Before deleting, consider calling list_artifact_history to check whether a
-        recoverable backup version exists — restore_project_artifact can recover a prior
-        version if the file was previously saved with history enabled.
         Do NOT use to move or rename a file — call move_project_artifact instead.
 
         Returns: confirmation string with the deleted file path.
