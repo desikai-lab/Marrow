@@ -1,9 +1,9 @@
-import asyncio
 import logging
 import os
 from datetime import datetime
 from typing import Any, Literal
 
+from common.path_resolver import ResourceKind, get_dir_path
 from storage.uow import UnitOfWork
 from utils.exceptions import ArtifactNotFoundError
 
@@ -11,7 +11,6 @@ import tools.utils.history_integrity  # noqa: F401 -- import for registration si
 import tools.utils.session_integrity  # noqa: F401 -- import for registration side-effect
 from tools.artifact_pipeline import save_project_artifacts_logic
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
-from common.path_resolver import ResourceKind, get_dir_path
 from tools.utils.filesystem_utils import (
     get_artifact_history,
     recycle_file,
@@ -54,7 +53,9 @@ def list_artifacts_logic(
 
 async def move_project_artifact_logic(project: str, src_path: str, dest_path: str) -> str:
     """Moves or renames an artifact."""
-    if not validate_artifact_path(project, src_path) or not validate_artifact_path(project, dest_path):
+    if not validate_artifact_path(project, src_path) or not validate_artifact_path(
+        project, dest_path
+    ):
         return f"Source file {src_path} not found."
 
     src_pp = resolve_artifact_project_path(project, src_path)
@@ -207,11 +208,7 @@ def get_project_artifact_outline_logic(project: str, rel_path: str) -> str:
         raise FileNotFoundError(f"File {rel_path} not found.")
 
     content = project_path.read()
-    outline = [
-        line.strip()
-        for line in content.splitlines()
-        if line.strip().startswith("#")
-    ]
+    outline = [line.strip() for line in content.splitlines() if line.strip().startswith("#")]
 
     if not outline:
         return "No Markdown headings found in the file."

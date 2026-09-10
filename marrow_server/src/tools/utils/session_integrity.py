@@ -1,10 +1,10 @@
 import logging
-import os
 import re
 from datetime import date
 
 from common.path_resolver import NAMESPACE_ARTIFACTS, ResourceKind, get_history, get_path
 from common.project_file_error import ProjectFileError
+
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry, IntegrityHook
 
 logger = logging.getLogger(__name__)

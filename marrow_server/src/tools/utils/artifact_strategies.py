@@ -182,7 +182,9 @@ class PagedReadStrategy(ReadStrategy):
                 and not skip_chars
                 and not kwargs.get("force", False)
             ):
-                raise ValueError("File too large (>1MB). Use pagination (skip_chars) or 'lines' mode.")
+                raise ValueError(
+                    "File too large (>1MB). Use pagination (skip_chars) or 'lines' mode."
+                )
             with open(project_path, encoding="utf-8-sig", errors="replace", newline="") as f:
                 text = f.read()
         else:
@@ -192,7 +194,9 @@ class PagedReadStrategy(ReadStrategy):
                 and not skip_chars
                 and not kwargs.get("force", False)
             ):
-                raise ValueError("File too large (>1MB). Use pagination (skip_chars) or 'lines' mode.")
+                raise ValueError(
+                    "File too large (>1MB). Use pagination (skip_chars) or 'lines' mode."
+                )
 
         return apply_read_filters(text, max_chars, skip_chars, line_numbers, direction=direction)
 

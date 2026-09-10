@@ -126,9 +126,7 @@ def recycle_file(project: str, rel_path: str) -> str:
 
 def get_artifact_history(project: str, rel_path: str) -> list[dict[str, Any]]:
     """Returns a list of available backups for the artifact."""
-    history_dir = path_resolver.get_history_raw_dir(
-        project, rel_path, NAMESPACE_ARTIFACTS
-    )
+    history_dir = path_resolver.get_history_raw_dir(project, rel_path, NAMESPACE_ARTIFACTS)
     if not os.path.isdir(history_dir):
         return []
 
@@ -173,7 +171,6 @@ def restore_backup(project: str, rel_path: str, backup_name: str) -> str:
     dest_pp = resolve_artifact_project_path(project, rel_path)
 
     # Copy backup bytes directly to avoid BOM re-encoding via text read/write
-    accessor = FileAccessor()
     backup_raw_path = backup_pp._ProjectPath__absolute_path
     dest_raw_path = dest_pp._ProjectPath__absolute_path
 

@@ -1,11 +1,11 @@
 import os
 import re
-import shutil
 from abc import ABC, abstractmethod
 
 # TODO: move to utils.
 # In the future, direct artifact calls may be extracted into a dedicated sandbox.
 from common.file_accessor import FileAccessor
+
 from tools.artifacts import get_project_artifact_outline_logic, read_artifact_logic
 from tools.builds import BuildManifest, SanitizeRule, StepConfig
 from tools.utils.cleaner_presets import PRESETS

@@ -17,10 +17,11 @@ from common.path_resolver import (
 from common.project_file_error import ProjectFileError
 from common.project_path import ProjectPath
 from domain.validators.status_change import StatusChangeValidator
+from utils.exceptions import DomainProtectionError, TaskNotFoundError
+
 from storage.blobs import read_blob, write_blob
 from storage.entities import TaskRecord
 from storage.repositories import ArtifactChunkRepository, ArtifactRepository, TaskRepository
-from utils.exceptions import DomainProtectionError, TaskNotFoundError
 
 VALID_TRANSITIONS = {
     "open": ["paused", "closed", "analysis", "blocked"],
@@ -201,7 +202,10 @@ class UnitOfWork:
             return {"completed": list(task_keys), "unblocked": unblocked}
 
     async def _validate_and_load_tasks(
-        self, task_keys: list[str], new_status: str, resolution: str | None,
+        self,
+        task_keys: list[str],
+        new_status: str,
+        resolution: str | None,
     ) -> list[tuple[TaskRecord, dict, ProjectPath]]:
         """Phase A -- fail-fast validation of every task before any write happens."""
         validated = []
@@ -219,8 +223,10 @@ class UnitOfWork:
         return validated
 
     async def _backup_and_prepare_updates(
-        self, validated: list[tuple[TaskRecord, dict, ProjectPath]],
-        new_status: str, resolution: str | None,
+        self,
+        validated: list[tuple[TaskRecord, dict, ProjectPath]],
+        new_status: str,
+        resolution: str | None,
     ) -> tuple[list[tuple[str, TaskRecord]], dict[str, ProjectPath]]:
         """Phase B driver -- backs up each original and writes its replacement blob."""
         prepared = []
@@ -228,7 +234,9 @@ class UnitOfWork:
         now = datetime.now().isoformat()
         for record, full_data, orig_pp in validated:
             backup_paths[record.key] = await self._backup_original(record, orig_pp)
-            new_record = await self._write_updated_blob(record, full_data, new_status, resolution, now)
+            new_record = await self._write_updated_blob(
+                record, full_data, new_status, resolution, now
+            )
             prepared.append((record.key, new_record))
         return prepared, backup_paths
 
@@ -246,8 +254,12 @@ class UnitOfWork:
         return backup_pp
 
     async def _write_updated_blob(
-        self, record: TaskRecord, full_data: dict, new_status: str,
-        resolution: str | None, now: str,
+        self,
+        record: TaskRecord,
+        full_data: dict,
+        new_status: str,
+        resolution: str | None,
+        now: str,
     ) -> TaskRecord:
         """Builds the updated blob content, writes it, and returns the new TaskRecord."""
         updated_data = {**full_data, "status": new_status, "updated": now}
@@ -276,7 +288,9 @@ class UnitOfWork:
         )
 
     async def _commit_index_and_cleanup(
-        self, prepared: list[tuple[str, TaskRecord]], original_paths: dict[str, ProjectPath],
+        self,
+        prepared: list[tuple[str, TaskRecord]],
+        original_paths: dict[str, ProjectPath],
     ) -> None:
         """Phase C -- commits the new index rows, then removes superseded originals."""
         ids = [r.id for _, r in prepared]
@@ -289,7 +303,9 @@ class UnitOfWork:
                 await orig_pp.delete_async()
 
     async def _rollback(
-        self, prepared: list[tuple[str, TaskRecord]], original_paths: dict[str, ProjectPath],
+        self,
+        prepared: list[tuple[str, TaskRecord]],
+        original_paths: dict[str, ProjectPath],
         backup_paths: dict[str, ProjectPath],
     ) -> None:
         """Restores each original blob from its timestamped backup and removes any new
@@ -309,4 +325,3 @@ class UnitOfWork:
                         await new_pp.delete_async()
                     except ProjectFileError:
                         pass
-
