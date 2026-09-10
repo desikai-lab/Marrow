@@ -158,7 +158,7 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
             "Execution in progress."
         )
 
-        with patch("tools.artifact_pipeline.save_project_artifacts_logic") as mock_save:
+        with patch("services.artifact_command_service.save_project_artifacts_logic") as mock_save:
             mock_save.return_value = []
             await self.hook.validate_and_repair(
                 PROJECT, "session.md", new_session, mode="replace_file"
