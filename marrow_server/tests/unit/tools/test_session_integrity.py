@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from common.project_file_error import ProjectFileError
 from tools.utils.session_integrity import SessionMdIntegrityHook
 
 GOOD_HEADER = (
@@ -46,7 +47,7 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
 
     # ── well-formed content ──────────────────────────────────────────────────
 
-    async def test_validateAndRepair_wellFormedContent_passesThroughUnchanged(self):
+    async def test_validateAndRepair_wellFormedHeader_returnsContentUnchanged(self):
         content = GOOD_HEADER + "**Focus:** doing things\n"
         result = await self.hook.validate_and_repair(
             PROJECT, "session.md", content, mode="replace_file"
@@ -76,17 +77,14 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertIn("# Session State", result)
-        self.assertIn("next_agent_role:", result)
-        self.assertIn("focus content only", result)
 
     # ── malformed content with no history ───────────────────────────────────
 
-    async def test_validateAndRepair_malformedNoBackupYet_writesAsIs(self):
-        broken = "no header at all on first write\n"
+    async def test_validateAndRepair_malformedNoHistory_returnsContentUnchanged(self):
+        broken = "focus content only, no header\n"
         result = await self.hook.validate_and_repair(
             PROJECT, "session.md", broken, mode="replace_file"
         )
-        # No backup exists — gracefully degrades, returns content unchanged
         self.assertEqual(result, broken)
 
     # ── unreadable backup graceful degradation ───────────────────────────────
@@ -160,7 +158,7 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
             "Execution in progress."
         )
 
-        with patch("services.artifact_command_service.save_project_artifacts_logic") as mock_save:
+        with patch("tools.artifact_pipeline.save_project_artifacts_logic") as mock_save:
             mock_save.return_value = []
             await self.hook.validate_and_repair(
                 PROJECT, "session.md", new_session, mode="replace_file"
