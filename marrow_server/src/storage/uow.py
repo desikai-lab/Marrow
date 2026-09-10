@@ -235,7 +235,12 @@ class UnitOfWork:
         timestamp = datetime.now().strftime(HISTORY_TIMESTAMP_FORMAT)
         backup_rel = os.path.join(NAMESPACE_TASKS, record.file_path, f"{timestamp}.md")
         backup_pp = get_path(self.project_root, backup_rel, ResourceKind.HISTORY)
-        await orig_pp.copy_async(backup_pp)
+        if await orig_pp.exists_async():
+            await orig_pp.copy_async(backup_pp)
+        else:
+            abs_path = get_raw_path(self.project_root, record.file_path, ResourceKind.ROOT)
+            full_data = await asyncio.to_thread(read_blob, abs_path)
+            await backup_pp.write_async(json.dumps(full_data))
         return backup_pp
 
     async def _write_updated_blob(

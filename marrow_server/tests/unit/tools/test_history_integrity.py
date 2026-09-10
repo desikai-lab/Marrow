@@ -22,7 +22,7 @@ class TestHistoryMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
         for p in self.patchers:
             p.start()
 
-        self.history_path = self.project_path / "artifacts" / "docs" / "sessions" / "history.md"
+        self.history_path = self.project_path / "artifacts" / "sessions" / "history.md"
         self.history_path.parent.mkdir(parents=True, exist_ok=True)
 
     def tearDown(self):
