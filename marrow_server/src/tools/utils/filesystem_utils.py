@@ -8,6 +8,7 @@ from typing import Any
 from common import path_resolver
 from common.path_resolver import ResourceKind
 from common.project_file_error import ProjectFileError
+from common.project_path import ProjectPath
 
 _file_lock = threading.Lock()
 
@@ -25,36 +26,40 @@ def validate_project_path(project: str) -> str:
         raise ValueError("Invalid project path") from None
 
 
-def validate_artifact_path(project: str, rel_path: str) -> str:
-    """Validates the artifact path and ensures it is inside the project's artifacts/ folder."""
-    if rel_path.lower() == "readme.md":
-        try:
-            return path_resolver.get_raw_path(project, "README.md", ResourceKind.ROOT)
-        except ProjectFileError:
-            raise ValueError("Path traversal attempt") from None
+def validate_artifact_path(project: str, rel_path: str) -> bool:
+    """Validates the artifact path and ensures it is inside the project's artifacts/ folder (or root README.md).
+    Returns True if valid, False if traversal or invalid."""
+    kind = ResourceKind.ROOT if rel_path.lower() == "readme.md" else ResourceKind.ARTIFACTS
+    target_rel = "README.md" if rel_path.lower() == "readme.md" else rel_path
     try:
-        return path_resolver.get_raw_path(project, rel_path, ResourceKind.ARTIFACTS)
+        path_resolver.get_path(project, target_rel, kind)
+        return True
     except ProjectFileError:
-        raise ValueError("Path traversal attempt") from None
+        return False
+
+
+def resolve_artifact_project_path(project: str, rel_path: str) -> ProjectPath:
+    """Resolves an artifact path to a ProjectPath primitive. Raises ProjectFileError if invalid."""
+    kind = ResourceKind.ROOT if rel_path.lower() == "readme.md" else ResourceKind.ARTIFACTS
+    target_rel = "README.md" if rel_path.lower() == "readme.md" else rel_path
+    return path_resolver.get_path(project, target_rel, kind)
 
 
 def create_artifact_backup(project: str, rel_path: str):
     """Creates a timestamped snapshot in the item's own .history folder before modification."""
     try:
-        full_src = validate_artifact_path(project, rel_path)
-        if not os.path.exists(full_src):
+        if not validate_artifact_path(project, rel_path):
             return
-
-        history_dir = path_resolver.get_history_raw_dir(
-            project, rel_path, path_resolver.NAMESPACE_ARTIFACTS
-        )
-        os.makedirs(history_dir, exist_ok=True)
+        src_pp = resolve_artifact_project_path(project, rel_path)
+        if not src_pp.exists():
+            return
 
         _, ext = os.path.splitext(os.path.basename(rel_path))
         timestamp = datetime.now().strftime(path_resolver.HISTORY_TIMESTAMP_FORMAT)
-        target_path = os.path.join(history_dir, f"{timestamp}{ext}")
+        backup_rel = os.path.join(path_resolver.NAMESPACE_ARTIFACTS, rel_path, f"{timestamp}{ext}")
+        backup_pp = path_resolver.get_path(project, backup_rel, ResourceKind.HISTORY)
 
-        shutil.copy2(full_src, target_path)
+        src_pp.copy(backup_pp)
     except Exception as e:
         print(f"Backup error for {rel_path}: {e}", file=sys.stderr)
 
@@ -99,18 +104,17 @@ def safe_move_file(src: str, dest: str):
 
 def recycle_file(project: str, rel_path: str) -> str:
     """Moves a file to the project recycle bin with a timestamp."""
-    real_src = validate_artifact_path(project, rel_path)
-    if not os.path.exists(real_src):
+    if not validate_artifact_path(project, rel_path):
+        return f"File {rel_path} not found."
+    src_pp = resolve_artifact_project_path(project, rel_path)
+    if not src_pp.exists():
         return f"File {rel_path} not found."
 
     timestamp = datetime.now().strftime(path_resolver.HISTORY_TIMESTAMP_FORMAT)
-    name, ext = os.path.splitext(os.path.basename(real_src))
-    target_path = path_resolver.get_raw_path(
-        project, f"{name}_{timestamp}{ext}", ResourceKind.RECYCLE_BIN
-    )
-    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+    name, ext = os.path.splitext(os.path.basename(rel_path))
+    dest_pp = path_resolver.get_path(project, f"{name}_{timestamp}{ext}", ResourceKind.RECYCLE_BIN)
 
-    shutil.move(real_src, target_path)
+    src_pp.move(dest_pp)
     return f"File {rel_path} moved to recycle bin."
 
 
@@ -136,40 +140,41 @@ def get_artifact_history(project: str, rel_path: str) -> list[dict[str, Any]]:
 
 def restore_backup(project: str, rel_path: str, backup_name: str) -> str:
     """Restores an artifact from a backup."""
+    # Validate path resolution / containment first
     try:
-        src = path_resolver.get_raw_path(
+        raw_src = path_resolver.get_raw_path(
             project,
             os.path.join(path_resolver.NAMESPACE_ARTIFACTS, rel_path, backup_name),
             ResourceKind.HISTORY,
         )
+        item_history_dir = path_resolver.get_history_raw_dir(
+            project, rel_path, path_resolver.NAMESPACE_ARTIFACTS
+        )
+        if not os.path.normpath(raw_src).startswith(os.path.normpath(item_history_dir) + os.sep):
+            raise ValueError("Invalid backup source")
     except ProjectFileError:
         raise ValueError("Invalid backup source") from None
 
-    # Secondary guard: src must be strictly inside the per-item history folder.
-    # get_raw_path only prevents escaping .history/ entirely; a crafted backup_name
-    # like "../../../other" can still resolve to a sibling path inside .history/.
-    item_history_dir = path_resolver.get_history_raw_dir(
-        project, rel_path, path_resolver.NAMESPACE_ARTIFACTS
-    )
-    if not os.path.normpath(src).startswith(os.path.normpath(item_history_dir) + os.sep):
-        raise ValueError("Invalid backup source")
-
-    if not os.path.exists(src):
+    history = path_resolver.get_history(project, rel_path, path_resolver.NAMESPACE_ARTIFACTS)
+    item = history.find(backup_name)
+    if item is None:
         raise FileNotFoundError(f"Backup {backup_name} not found.")
 
-    dest = validate_artifact_path(project, rel_path)
+    backup_pp = history.backup_path(item)
+    if not backup_pp.exists():
+        raise FileNotFoundError(f"Backup {backup_name} not found.")
 
-    # Read the backup content before creating the pre-restore snapshot.
+    dest_pp = resolve_artifact_project_path(project, rel_path)
+
+    # Read raw backup content into memory before creating the pre-restore snapshot.
     # This prevents a same-second timestamp collision from overwriting the backup
-    # we are about to restore (both would land in the same per-item history folder).
-    with open(src, "rb") as f:
+    # we are about to restore (both land in the same per-item history folder).
+    with open(backup_pp._ProjectPath__absolute_path, "rb") as f:
         backup_content = f.read()
 
-    # Back up the CURRENT state before restoring (so the rollback itself can be undone)
     create_artifact_backup(project, rel_path)
 
-    # Write the backup content to its original location
-    with open(dest, "wb") as f:
+    with open(dest_pp._ProjectPath__absolute_path, "wb") as f:
         f.write(backup_content)
 
     return f"Artifact {rel_path} successfully restored from {backup_name}."
