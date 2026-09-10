@@ -3,12 +3,9 @@ import os
 import re
 from datetime import date
 
-from common.path_resolver import NAMESPACE_ARTIFACTS, get_history
+from common.path_resolver import NAMESPACE_ARTIFACTS, ResourceKind, get_history, get_path
 from common.project_file_error import ProjectFileError
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry, IntegrityHook
-from tools.utils.filesystem_utils import (
-    validate_artifact_path,
-)
 
 logger = logging.getLogger(__name__)
 SESSION_MD_HEADER_PREFIXES = (
@@ -60,16 +57,11 @@ class SessionMdIntegrityHook(IntegrityHook):
         Never raises -- any failure is logged and swallowed (REQ-03).
         """
         try:
-            target_path = validate_artifact_path(project, rel_path)
-        except ValueError:
-            return
-        if not os.path.exists(target_path):
-            return  # REQ-04: first-ever write
-
-        try:
-            with open(target_path, encoding="utf-8-sig", errors="replace", newline="") as f:
-                old_content = f.read()
-        except OSError:
+            pp = get_path(project, rel_path, ResourceKind.ARTIFACTS)
+            if not pp.exists():
+                return
+            old_content = pp.read()
+        except ProjectFileError:
             return
 
         if not old_content:
@@ -87,11 +79,13 @@ class SessionMdIntegrityHook(IntegrityHook):
         try:
             from services.artifact_command_service import save_project_artifacts_logic
 
-            history_path = validate_artifact_path(project, "sessions/history.md")
             existing_first_line = ""
-            if os.path.exists(history_path):
-                with open(history_path, encoding="utf-8-sig", errors="replace", newline="") as f:
-                    existing_first_line = f.read()
+            try:
+                hist_pp = get_path(project, "sessions/history.md", ResourceKind.ARTIFACTS)
+                if hist_pp.exists():
+                    existing_first_line = hist_pp.read()
+            except ProjectFileError:
+                pass
 
             await save_project_artifacts_logic(
                 project,
@@ -206,15 +200,11 @@ class SessionMdIntegrityHook(IntegrityHook):
 
     def _extract_from_live_file(self, project: str, rel_path: str) -> str | None:
         try:
-            target_path = validate_artifact_path(project, rel_path)
-        except ValueError:
-            return None
-        if not os.path.exists(target_path):
-            return None
-        try:
-            with open(target_path, encoding="utf-8-sig", errors="replace") as f:
-                live_content = f.read()
-        except OSError as e:
+            pp = get_path(project, rel_path, ResourceKind.ARTIFACTS)
+            if not pp.exists():
+                return None
+            live_content = pp.read()
+        except ProjectFileError as e:
             logger.warning(
                 "Could not read live file '%s' during session.md repair: %s", rel_path, e
             )

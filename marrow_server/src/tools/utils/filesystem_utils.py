@@ -172,12 +172,18 @@ def restore_backup(project: str, rel_path: str, backup_name: str) -> str:
 
     dest_pp = resolve_artifact_project_path(project, rel_path)
 
-    # Read raw backup content before creating pre-restore backup to prevent same-second collision
+    # Copy backup bytes directly to avoid BOM re-encoding via text read/write
     accessor = FileAccessor()
-    raw_content = accessor.read(backup_pp._ProjectPath__absolute_path)
+    backup_raw_path = backup_pp._ProjectPath__absolute_path
+    dest_raw_path = dest_pp._ProjectPath__absolute_path
+
+    # Read raw bytes before creating pre-restore backup to prevent same-second timestamp collision
+    with open(backup_raw_path, "rb") as f:
+        backup_bytes = f.read()
 
     create_artifact_backup(project, rel_path)
 
-    dest_pp.write(raw_content)
+    with open(dest_raw_path, "wb") as f:
+        f.write(backup_bytes)
 
     return f"Artifact {rel_path} successfully restored from {backup_name}."
