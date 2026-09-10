@@ -109,8 +109,8 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
         with (
             patch("tools.utils.session_integrity.get_history", return_value=mock_history),
             patch(
-                "tools.utils.session_integrity.validate_artifact_path",
-                side_effect=ValueError("no live file"),
+                "tools.utils.session_integrity.get_path",
+                side_effect=ProjectFileError("no live file"),
             ),
             self.assertLogs("tools.utils.session_integrity", level="WARNING") as log_ctx,
         ):
