@@ -235,8 +235,7 @@ class UnitOfWork:
         timestamp = datetime.now().strftime(HISTORY_TIMESTAMP_FORMAT)
         backup_rel = os.path.join(NAMESPACE_TASKS, record.file_path, f"{timestamp}.md")
         backup_pp = get_path(self.project_root, backup_rel, ResourceKind.HISTORY)
-        content = await orig_pp.read_async()
-        await backup_pp.write_async(content)
+        await orig_pp.copy_async(backup_pp)
         return backup_pp
 
     async def _write_updated_blob(

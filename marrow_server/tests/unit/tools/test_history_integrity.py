@@ -23,6 +23,7 @@ class TestHistoryMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
             p.start()
 
         self.history_path = self.project_path / "artifacts" / "docs" / "sessions" / "history.md"
+        self.history_path.parent.mkdir(parents=True, exist_ok=True)
 
     def tearDown(self):
         for p in self.patchers:
@@ -35,20 +36,20 @@ class TestHistoryMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
     async def test_validateAndRepair_replaceFile_alwaysRaisesEvenOnMissingFile(self):
         with self.assertRaises(ValidationError):
             await self.hook.validate_and_repair(
-                PROJECT, "docs/sessions/history.md", "## new -- content\n", "replace_file"
+                PROJECT, "sessions/history.md", "## new -- content\n", "replace_file"
             )
 
     async def test_validateAndRepair_replaceFile_alwaysRaisesOnExistingFile(self):
         self.history_path.write_text("## 2026-07-04 -- old entry\n", encoding="utf-8")
         with self.assertRaises(ValidationError):
             await self.hook.validate_and_repair(
-                PROJECT, "docs/sessions/history.md", "## new -- overwrite\n", "replace_file"
+                PROJECT, "sessions/history.md", "## new -- overwrite\n", "replace_file"
             )
 
     async def test_validateAndRepair_patchOnMissingFileWithEmptyOldStr_createsFileAndWritesContent(self):
         first_entry = "## 2026-07-08 -- first entry ever\n"
         result = await self.hook.validate_and_repair(
-            PROJECT, "docs/sessions/history.md", first_entry, "patch", old_str=""
+            PROJECT, "sessions/history.md", first_entry, "patch", old_str=""
         )
         self.assertEqual(result, first_entry)
         self.assertTrue(self.history_path.exists())
@@ -57,7 +58,7 @@ class TestHistoryMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
     async def test_validateAndRepair_patchOnMissingFileWithNonEmptyOldStr_raisesValidationError(self):
         with self.assertRaises(ValidationError):
             await self.hook.validate_and_repair(
-                PROJECT, "docs/sessions/history.md", "content\n", "patch", old_str="some old line\n"
+                PROJECT, "sessions/history.md", "content\n", "patch", old_str="some old line\n"
             )
 
     async def test_validateAndRepair_patchAnchoredAtFirstLine_allowsPrepend(self):
@@ -65,7 +66,7 @@ class TestHistoryMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
         self.history_path.write_text(first_line + "body text\n", encoding="utf-8")
         new_content = "## 2026-07-08 -- new entry\n\n" + first_line
         result = await self.hook.validate_and_repair(
-            PROJECT, "docs/sessions/history.md", new_content, "patch", old_str=first_line
+            PROJECT, "sessions/history.md", new_content, "patch", old_str=first_line
         )
         self.assertEqual(result, new_content)
 
