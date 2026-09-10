@@ -6,7 +6,13 @@ from datetime import datetime
 from typing import Any
 
 from common import path_resolver
-from common.path_resolver import ResourceKind
+from common.file_accessor import FileAccessor
+from common.path_resolver import (
+    HISTORY_TIMESTAMP_FORMAT,
+    NAMESPACE_ARTIFACTS,
+    ResourceKind,
+    get_history,
+)
 from common.project_file_error import ProjectFileError
 from common.project_path import ProjectPath
 
@@ -55,8 +61,8 @@ def create_artifact_backup(project: str, rel_path: str):
             return
 
         _, ext = os.path.splitext(os.path.basename(rel_path))
-        timestamp = datetime.now().strftime(path_resolver.HISTORY_TIMESTAMP_FORMAT)
-        backup_rel = os.path.join(path_resolver.NAMESPACE_ARTIFACTS, rel_path, f"{timestamp}{ext}")
+        timestamp = datetime.now().strftime(HISTORY_TIMESTAMP_FORMAT)
+        backup_rel = os.path.join(NAMESPACE_ARTIFACTS, rel_path, f"{timestamp}{ext}")
         backup_pp = path_resolver.get_path(project, backup_rel, ResourceKind.HISTORY)
 
         src_pp.copy(backup_pp)
@@ -110,7 +116,7 @@ def recycle_file(project: str, rel_path: str) -> str:
     if not src_pp.exists():
         return f"File {rel_path} not found."
 
-    timestamp = datetime.now().strftime(path_resolver.HISTORY_TIMESTAMP_FORMAT)
+    timestamp = datetime.now().strftime(HISTORY_TIMESTAMP_FORMAT)
     name, ext = os.path.splitext(os.path.basename(rel_path))
     dest_pp = path_resolver.get_path(project, f"{name}_{timestamp}{ext}", ResourceKind.RECYCLE_BIN)
 
@@ -121,11 +127,12 @@ def recycle_file(project: str, rel_path: str) -> str:
 def get_artifact_history(project: str, rel_path: str) -> list[dict[str, Any]]:
     """Returns a list of available backups for the artifact."""
     history_dir = path_resolver.get_history_raw_dir(
-        project, rel_path, path_resolver.NAMESPACE_ARTIFACTS
+        project, rel_path, NAMESPACE_ARTIFACTS
     )
     if not os.path.isdir(history_dir):
         return []
 
+    accessor = FileAccessor()
     return [
         {
             "backup_name": fname,
@@ -134,47 +141,29 @@ def get_artifact_history(project: str, rel_path: str) -> list[dict[str, Any]]:
             ).strftime("%Y-%m-%d %H:%M:%S"),
             "size": os.path.getsize(os.path.join(history_dir, fname)),
         }
-        for fname in sorted(os.listdir(history_dir), reverse=True)
+        for fname in sorted(accessor.listdir(history_dir), reverse=True)
     ]
 
 
 def restore_backup(project: str, rel_path: str, backup_name: str) -> str:
     """Restores an artifact from a backup."""
-    # Validate path resolution / containment first
-    try:
-        raw_src = path_resolver.get_raw_path(
-            project,
-            os.path.join(path_resolver.NAMESPACE_ARTIFACTS, rel_path, backup_name),
-            ResourceKind.HISTORY,
-        )
-        item_history_dir = path_resolver.get_history_raw_dir(
-            project, rel_path, path_resolver.NAMESPACE_ARTIFACTS
-        )
-        if not os.path.normpath(raw_src).startswith(os.path.normpath(item_history_dir) + os.sep):
-            raise ValueError("Invalid backup source")
-    except ProjectFileError:
-        raise ValueError("Invalid backup source") from None
-
-    history = path_resolver.get_history(project, rel_path, path_resolver.NAMESPACE_ARTIFACTS)
+    history = get_history(project, rel_path, NAMESPACE_ARTIFACTS)
     item = history.find(backup_name)
     if item is None:
         raise FileNotFoundError(f"Backup {backup_name} not found.")
 
-    backup_pp = history.backup_path(item)
+    try:
+        backup_pp = history.backup_path(item)
+    except ProjectFileError:
+        raise ValueError("Invalid backup source") from None
+
     if not backup_pp.exists():
         raise FileNotFoundError(f"Backup {backup_name} not found.")
 
     dest_pp = resolve_artifact_project_path(project, rel_path)
 
-    # Read raw backup content into memory before creating the pre-restore snapshot.
-    # This prevents a same-second timestamp collision from overwriting the backup
-    # we are about to restore (both land in the same per-item history folder).
-    with open(backup_pp._ProjectPath__absolute_path, "rb") as f:
-        backup_content = f.read()
-
     create_artifact_backup(project, rel_path)
 
-    with open(dest_pp._ProjectPath__absolute_path, "wb") as f:
-        f.write(backup_content)
+    backup_pp.copy(dest_pp)
 
     return f"Artifact {rel_path} successfully restored from {backup_name}."
