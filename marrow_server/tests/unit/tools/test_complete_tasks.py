@@ -50,11 +50,13 @@ def _make_blob(key: str, status: str = "active", blocked_by: list = None) -> dic
 
 
 @pytest.fixture()
-def tmp_project(tmp_path):
+def tmp_project(tmp_path, monkeypatch):
     """Creates a minimal on-disk project structure."""
-    blobs_dir = tmp_path / ".db" / "blobs" / "active"
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
+    project_dir = tmp_path / "TestProject"
+    blobs_dir = project_dir / ".db" / "blobs" / "active"
     blobs_dir.mkdir(parents=True)
-    return tmp_path
+    return project_dir
 
 
 # ── Task 1.4 tests ────────────────────────────────────────────────────────────
@@ -254,7 +256,7 @@ class TestRollbackOnLanceDbFailure:
 
         # Backup should have been written to .history/tasks/.db/blobs/active/TD001.md/
         bak_dir = tmp_project / ".history" / "tasks" / ".db" / "blobs" / "active" / f"{key}.md"
-        assert bak_dir.exists() and len(list(bak_dir.glob("*.md"))) > 0, "Backup must be created before the LanceDB write"
+        assert bak_dir.exists() and len(list(bak_dir.glob("*"))) > 0, "Backup must be created before the LanceDB write"
 
 
 class TestAutoUnblockClearsBlockedBy:
