@@ -5,7 +5,13 @@ from typing import Protocol
 
 
 class Accessor(Protocol):
-    def read(self, absolute_path: str, encoding: str = "utf-8", errors: str = "strict") -> str: ...
+    def read(
+        self,
+        absolute_path: str,
+        encoding: str = "utf-8",
+        errors: str = "strict",
+        newline: str | None = None,
+    ) -> str: ...
     def write(
         self, absolute_path: str, content: str, encoding: str = "utf-8", newline: str | None = None
     ) -> None: ...
@@ -23,8 +29,13 @@ class Accessor(Protocol):
 
 class FileAccessor:
     @staticmethod
-    def read(absolute_path: str, encoding: str = "utf-8", errors: str = "strict") -> str:
-        with open(absolute_path, encoding=encoding, errors=errors) as f:
+    def read(
+        absolute_path: str,
+        encoding: str = "utf-8",
+        errors: str = "strict",
+        newline: str | None = None,
+    ) -> str:
+        with open(absolute_path, encoding=encoding, errors=errors, newline=newline) as f:
             return f.read()
 
     @staticmethod

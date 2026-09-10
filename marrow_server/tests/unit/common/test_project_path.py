@@ -102,6 +102,7 @@ def test_read_write_artifacts_encoding_triple_round_trips_utf8_sig_no_newline_tr
         encoding="utf-8-sig",
         errors="replace",
         write_newline="",
+        read_newline="",
     )
     content = "Hello \u2764\r\nLine 2\r\n"
     pp.write(content)
@@ -111,7 +112,7 @@ def test_read_write_artifacts_encoding_triple_round_trips_utf8_sig_no_newline_tr
     # UTF-8 SIG starts with UTF-8 BOM \xef\xbb\xbf and preserves raw \r\n on disk
     assert raw_bytes.startswith(b"\xef\xbb\xbf")
     assert b"\r\n" in raw_bytes
-    assert pp.read() == "Hello \u2764\nLine 2\n"
+    assert pp.read() == "Hello \u2764\r\nLine 2\r\n"
 
 
 def test_exists_delegates_to_accessor():

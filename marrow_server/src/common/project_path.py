@@ -24,6 +24,7 @@ class ProjectPath:
         "__encoding",
         "__errors",
         "__write_newline",
+        "__read_newline",
     )
 
     def __init__(
@@ -35,6 +36,7 @@ class ProjectPath:
         encoding: str = "utf-8",
         errors: str = "strict",
         write_newline: str | None = None,
+        read_newline: str | None = None,
     ):
         self.relative_path = relative_path
         self.__absolute_path = absolute_path
@@ -42,13 +44,17 @@ class ProjectPath:
         self.__encoding = encoding
         self.__errors = errors
         self.__write_newline = write_newline
+        self.__read_newline = read_newline
 
     def read(self, accessor: Accessor | None = None) -> str:
         accessor = accessor or _DEFAULT_ACCESSOR
         failed = False
         try:
             return accessor.read(
-                self.__absolute_path, encoding=self.__encoding, errors=self.__errors
+                self.__absolute_path,
+                encoding=self.__encoding,
+                errors=self.__errors,
+                newline=self.__read_newline,
             )
         except Exception as ex:
             log.error("ProjectPath.read failed for %s", self.relative_path, exc_info=ex)

@@ -33,7 +33,9 @@ _FIXED_SUBPATH: dict[ResourceKind, str] = {
 }
 
 _IO_OPTIONS: dict[ResourceKind, dict] = {
-    ResourceKind.ARTIFACTS: dict(encoding="utf-8-sig", errors="replace", write_newline=""),
+    ResourceKind.ARTIFACTS: dict(
+        encoding="utf-8-sig", errors="replace", write_newline="", read_newline=""
+    ),
 }
 
 
