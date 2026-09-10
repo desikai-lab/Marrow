@@ -44,7 +44,11 @@ class ProjectPath:
         self.__encoding = encoding
         self.__errors = errors
         self.__write_newline = write_newline
-        self.__read_newline = read_newline
+    def as_accessor_source(self) -> str:
+        """Returns the absolute path for use ONLY as the source argument to a bare
+        Accessor call when the destination is a non-project resource (e.g. a build
+        output directory) that cannot itself be represented as a ProjectPath."""
+        return self.__absolute_path
 
     def read(self, accessor: Accessor | None = None) -> str:
         accessor = accessor or _DEFAULT_ACCESSOR
