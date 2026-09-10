@@ -1,10 +1,14 @@
 import os
 from enum import Enum
+from typing import TYPE_CHECKING
 
 import config
 
 from .project_file_error import ProjectFileError
 from .project_path import ProjectPath
+
+if TYPE_CHECKING:
+    from tools.utils.history_models import ArtifactHistory
 
 
 class ResourceKind(Enum):
@@ -97,6 +101,16 @@ def get_history_raw_dir(project: str, item_rel_path: str, namespace: str) -> str
       -> .history/tasks/active/TD4000220.md/{timestamp}.md
     """
     return get_raw_path(project, os.path.join(namespace, item_rel_path), ResourceKind.HISTORY)
+
+
+def get_history(project: str, item_rel_path: str, namespace: str) -> "ArtifactHistory":
+    from tools.utils.filesystem_utils import get_artifact_history
+    from tools.utils.history_models import ArtifactHistory, HistoryItem
+
+    raw_items = get_artifact_history(project, item_rel_path)
+    live_pp = get_path(project, item_rel_path, ResourceKind.ARTIFACTS)
+    items = [HistoryItem(backup_name=item["backup_name"], live_path=live_pp) for item in raw_items]
+    return ArtifactHistory(project, item_rel_path, items)
 
 
 def _project_root(project: str) -> str | None:

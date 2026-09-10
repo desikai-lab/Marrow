@@ -3,11 +3,10 @@ import os
 import re
 from datetime import date
 
-from common.path_resolver import ResourceKind, get_history_raw_dir, get_raw_path
-
+from common.path_resolver import NAMESPACE_ARTIFACTS, get_history
+from common.project_file_error import ProjectFileError
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry, IntegrityHook
 from tools.utils.filesystem_utils import (
-    get_artifact_history,
     validate_artifact_path,
 )
 
@@ -231,25 +230,18 @@ class SessionMdIntegrityHook(IntegrityHook):
         return None
 
     def _extract_from_history(self, project: str, rel_path: str) -> str | None:
-        history = get_artifact_history(project, rel_path)
-        history_dir = get_history_raw_dir(project, rel_path, "artifacts")
-        for h in history:
+        history = get_history(project, rel_path, NAMESPACE_ARTIFACTS)
+        for item in history.items:
             try:
-                backup_path = get_raw_path(project, h["backup_name"], ResourceKind.HISTORY)
-            except ValueError:
-                logger.warning("Invalid backup name '%s' in artifact history", h["backup_name"])
-                continue
-            if not backup_path.startswith(history_dir + os.sep) and backup_path != history_dir:
-                logger.warning(
-                    "Backup path '%s' outside item history dir '%s'", backup_path, history_dir
-                )
+                backup_pp = history.backup_path(item)
+            except ProjectFileError:
+                logger.warning("Backup path '%s' outside item history dir", item.backup_name)
                 continue
             try:
-                with open(backup_path, encoding="utf-8-sig", errors="replace") as f:
-                    backup_content = f.read()
-            except OSError as e:
+                backup_content = backup_pp.read()
+            except ProjectFileError as e:
                 logger.warning(
-                    "Could not read backup '%s' during session.md repair: %s", h["backup_name"], e
+                    "Could not read backup '%s' during session.md repair: %s", item.backup_name, e
                 )
                 continue
             if "# Session State" in backup_content and "next_agent_role:" in backup_content:

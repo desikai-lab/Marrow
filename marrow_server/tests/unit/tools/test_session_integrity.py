@@ -93,9 +93,21 @@ class TestSessionMdIntegrityHook(unittest.IsolatedAsyncioTestCase):
 
     async def test_validateAndRepair_backupUnreadable_logsWarningAndContinues(self):
         """An OSError on a backup file must be logged and not escape validate_and_repair."""
-        fake_history = [{"backup_name": "nonexistent_backup_file.md"}]
+        from common.project_path import ProjectPath
+        from tools.utils.history_models import ArtifactHistory, HistoryItem
+
+        mock_history = ArtifactHistory(
+            PROJECT,
+            "session.md",
+            [
+                HistoryItem(
+                    backup_name="nonexistent_backup_file.md",
+                    live_path=ProjectPath("session.md", "/fake/session.md"),
+                )
+            ],
+        )
         with (
-            patch("tools.utils.session_integrity.get_artifact_history", return_value=fake_history),
+            patch("tools.utils.session_integrity.get_history", return_value=mock_history),
             patch(
                 "tools.utils.session_integrity.validate_artifact_path",
                 side_effect=ValueError("no live file"),

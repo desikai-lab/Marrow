@@ -110,3 +110,26 @@ def test_namespaceConstants_haveExpectedValues():
     assert path_resolver.HISTORY_TIMESTAMP_FORMAT == "%Y%m%d_%H%M%S"
 
 
+def test_get_history_returnsArtifactHistoryModel(tmp_path, monkeypatch):
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
+    project = "p1"
+    rel_path = "docs/spec.md"
+    hist_dir = tmp_path / project / ".history" / "artifacts" / rel_path
+    hist_dir.mkdir(parents=True)
+    (hist_dir / "20260101_120000.md").write_text("v1", encoding="utf-8")
+
+    from common import path_resolver
+    history = path_resolver.get_history(project, rel_path, "artifacts")
+    assert history.project == project
+    assert history.rel_path == rel_path
+    assert len(history.items) == 1
+    assert history.items[0].backup_name == "20260101_120000.md"
+    assert history.latest() == history.items[0]
+    assert history.find("20260101_120000.md") == history.items[0]
+    assert history.find("nonexistent.md") is None
+
+    backup_pp = history.backup_path(history.items[0])
+    assert backup_pp.exists()
+
+
+
