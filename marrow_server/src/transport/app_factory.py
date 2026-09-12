@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from mcp_core import mcp
 from storage.db import index_rebuild_worker
-
 from transport.middleware import (
     DebugLoggingMiddleware,
     FixHostHeaderMiddleware,
@@ -98,6 +98,15 @@ async def maintenance_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(app):
+    try:
+        from migrator.runner import run_migrations_all_projects
+
+        run_migrations_all_projects()
+    except Exception as e:
+        _logging.getLogger("marrow.migrator").error(
+            "[Migrator] Startup migration pass failed: %s", e
+        )
+
     # Launch background index rebuild workers (PERF-02)
     tasks = [
         asyncio.create_task(index_rebuild_worker("code_skeleton_index", debounce_s=20)),

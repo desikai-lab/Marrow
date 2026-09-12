@@ -1,3 +1,4 @@
+from .apply_migrations import ApplyMigrationsCommand
 from .build import BuildCommand
 from .diag_index import DiagIndexCommand
 from .health import HealthCommand
@@ -13,6 +14,7 @@ from .skills_update import SkillsUpdateCommand
 
 COMMANDS = [
     MigrateCommand(),
+    ApplyMigrationsCommand(),
     HealthCommand(),
     ReindexCommand(),
     ReindexChunksCommand(),
