@@ -4,6 +4,7 @@ import shutil
 
 from common import path_resolver
 from common.path_resolver import NAMESPACE_ARTIFACTS, NAMESPACE_TASKS, ResourceKind
+
 from migrator.base import Migration, MigrationStepReport
 
 # Matches path_resolver.HISTORY_TIMESTAMP_FORMAT ("%Y%m%d_%H%M%S") appended as a filename suffix.
@@ -16,12 +17,16 @@ class V1ToV2HistoryFolderScheme(Migration):
     to_version = 2
 
     def apply(self, project_root: str, dry_run: bool = False) -> MigrationStepReport:
-        report = MigrationStepReport(subsystem=self.subsystem, from_version=self.from_version, to_version=self.to_version)
+        report = MigrationStepReport(
+            subsystem=self.subsystem, from_version=self.from_version, to_version=self.to_version
+        )
         for namespace in (NAMESPACE_ARTIFACTS, NAMESPACE_TASKS):
             self._migrate_namespace(project_root, namespace, dry_run, report)
         return report
 
-    def _migrate_namespace(self, project_root: str, namespace: str, dry_run: bool, report: MigrationStepReport) -> None:
+    def _migrate_namespace(
+        self, project_root: str, namespace: str, dry_run: bool, report: MigrationStepReport
+    ) -> None:
         namespace_root = path_resolver.get_raw_path(project_root, namespace, ResourceKind.HISTORY)
         if not os.path.isdir(namespace_root):
             return
@@ -33,7 +38,9 @@ class V1ToV2HistoryFolderScheme(Migration):
                     continue
                 self._migrate_one_file(dirpath, fname, match, dry_run, report)
 
-    def _migrate_one_file(self, dirpath: str, fname: str, match: re.Match, dry_run: bool, report: MigrationStepReport) -> None:
+    def _migrate_one_file(
+        self, dirpath: str, fname: str, match: re.Match, dry_run: bool, report: MigrationStepReport
+    ) -> None:
         name, timestamp, ext = match.groups()
         src = os.path.join(dirpath, fname)
         dest_dir = os.path.join(dirpath, f"{name}{ext}")

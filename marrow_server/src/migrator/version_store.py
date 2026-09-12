@@ -2,7 +2,6 @@ import os
 from dataclasses import dataclass, field
 
 import yaml
-
 from common import path_resolver
 from common.path_resolver import ResourceKind
 from common.project_file_error import ProjectFileError
@@ -23,7 +22,9 @@ def get_subsystem_version(meta: ProjectMeta, subsystem: str) -> int:
 
 def load_project_meta(project: str) -> ProjectMeta:
     try:
-        raw_path = path_resolver.get_raw_path(project, PROJECT_META_FILENAME, ResourceKind.MARROW_META)
+        raw_path = path_resolver.get_raw_path(
+            project, PROJECT_META_FILENAME, ResourceKind.MARROW_META
+        )
     except ProjectFileError:
         return ProjectMeta()
 

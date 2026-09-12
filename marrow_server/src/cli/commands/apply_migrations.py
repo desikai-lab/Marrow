@@ -1,8 +1,9 @@
 import argparse
 import sys
 
-from cli.commands.base import BaseCommand
 from migrator.runner import run_migrations_all_projects, run_migrations_for_project
+
+from cli.commands.base import BaseCommand
 
 
 class ApplyMigrationsCommand(BaseCommand):
@@ -15,7 +16,9 @@ class ApplyMigrationsCommand(BaseCommand):
         return "Run pending schema migrations (ADR-0046) for one project or all projects."
 
     def register_args(self, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("--project", required=False, help="Project name (omit to run for all projects)")
+        parser.add_argument(
+            "--project", required=False, help="Project name (omit to run for all projects)"
+        )
         parser.add_argument("--dry-run", action="store_true", help="Only show planned changes")
 
     def execute(self, args: argparse.Namespace) -> None:
@@ -26,9 +29,13 @@ class ApplyMigrationsCommand(BaseCommand):
                 reports = run_migrations_all_projects(dry_run=args.dry_run)
 
             for report in reports:
-                print(f"\n--- {report.project}: {report.starting_version} -> {report.ending_version} ---")
+                print(
+                    f"\n--- {report.project}: {report.starting_version} -> {report.ending_version} ---"
+                )
                 for step in report.steps:
-                    print(f"  step {step.from_version}->{step.to_version}: moved={step.moved} collisions={step.collisions} errors={len(step.errors)}")
+                    print(
+                        f"  step {step.from_version}->{step.to_version}: moved={step.moved} collisions={step.collisions} errors={len(step.errors)}"
+                    )
                 if report.errors:
                     print(f"  project-level errors: {report.errors}")
 

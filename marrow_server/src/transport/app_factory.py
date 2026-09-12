@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from mcp_core import mcp
 from storage.db import index_rebuild_worker
+
 from transport.middleware import (
     DebugLoggingMiddleware,
     FixHostHeaderMiddleware,
