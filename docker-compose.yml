@@ -18,6 +18,7 @@ services:
           marrow-admin project-init --project $$DEFAULT
         else
           echo '[Marrow] Projects found. Skipping init.'
+        marrow-admin apply-migrations
         fi
       "
     restart: "no"
