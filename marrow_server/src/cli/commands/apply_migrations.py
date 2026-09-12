@@ -13,7 +13,7 @@ class ApplyMigrationsCommand(BaseCommand):
 
     @property
     def help(self) -> str:
-        return "Run pending schema migrations (ADR-0046) for one project or all projects."
+        return "Run pending schema migrations for one project or all projects."
 
     def register_args(self, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
