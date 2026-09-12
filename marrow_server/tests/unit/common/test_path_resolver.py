@@ -132,4 +132,12 @@ def test_get_history_returnsArtifactHistoryModel(tmp_path, monkeypatch):
     assert backup_pp.exists()
 
 
+def test_get_raw_path_marrow_meta_kind_returns_marrow_root_string():
+    raw = get_raw_path("MyProject", "", kind=ResourceKind.MARROW_META)
+    assert isinstance(raw, str)
+    assert raw.endswith(".marrow")
+
+
+
+
 

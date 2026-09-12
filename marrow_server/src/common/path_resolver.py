@@ -21,6 +21,7 @@ class ResourceKind(Enum):
     ROOT = "root"
     HISTORY = "history"
     RECYCLE_BIN = "recycle_bin"
+    MARROW_META = "marrow_meta"
 
 
 _READ_ONLY_KINDS = frozenset({ResourceKind.SOURCE})
@@ -30,6 +31,7 @@ _FIXED_SUBPATH: dict[ResourceKind, str] = {
     ResourceKind.TASKS_BLOB: os.path.join(".db", "blobs"),
     ResourceKind.HISTORY: ".history",
     ResourceKind.RECYCLE_BIN: ".recycle_bin",
+    ResourceKind.MARROW_META: ".marrow",
 }
 
 _IO_OPTIONS: dict[ResourceKind, dict] = {
@@ -95,8 +97,10 @@ def get_raw_path(
     ALLOWLISTED CALLERS ONLY (enforced by implementation_plan_migrations.md Step 15's lint rule):
       services/skeleton_query_service.py, storage/migrate.py, cli/commands/diag_index.py,
       cli/commands/reindex.py, cli/commands/reindex_chunks.py, tools/projects.py,
-      cli/commands/repair_blobs.py, tools/utils/filesystem_utils.py, storage/uow.py
-      (full 9-file allowlist — see implementation_plan_migrations.md Steps 6, 12, and 15)."""
+      cli/commands/repair_blobs.py, tools/utils/filesystem_utils.py, storage/uow.py,
+      migrator/version_store.py, migrator/migrations/local_storage_layout/v1_to_v2_history_folder_scheme.py,
+      migrator/runner.py
+      (12-file allowlist -- see Step 4 of TD4000224's implementation plan, Task 1)."""
     absolute = _resolve(project, relative_path, kind)
     if absolute is None:
         raise ProjectFileError(relative_path)
