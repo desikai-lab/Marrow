@@ -1,0 +1,3 @@
+schema_versions:
+  local_storage_layout: 2
+plugins: {}
