@@ -45,8 +45,26 @@ def list_artifacts_logic(
 ) -> list[dict[str, str]]:
     """Lists artifacts in a folder. Returns objects with {'name', 'type'}.
     Uses the shared directory listing utility."""
+    from common.project_dir import ProjectDir
+
+    results: list[dict[str, str]] = []
+
+    def _collect(directory: ProjectDir) -> None:
+        if not directory.exists():
+            return
+        for entry in directory.list_entries():
+            child_dir = directory.get_child_dir(entry)
+            if child_dir.exists():  # isdir check (uses accessor.isdir internally)
+                results.append({"name": child_dir.relative_path, "type": "dir"})
+                if recursive:
+                    _collect(child_dir)
+            else:
+                child_path = directory.get_child_path(entry)
+                results.append({"name": child_path.relative_path, "type": "file"})
+
     project_dir = get_dir_path(project, rel_dir, ResourceKind.ARTIFACTS)
-    return project_dir.list(recursive=recursive)
+    _collect(project_dir)
+    return results
 
 
 async def move_project_artifact_logic(project: str, src_path: str, dest_path: str) -> str:
