@@ -1,13 +1,14 @@
 import logging
 from pathlib import Path
 
-from tools.utils.project_settings import get_source_root
 from utils.exceptions import (
     ArtifactNotFoundError,
     InvalidPathError,
     SourceFileError,
     ValidationError,
 )
+
+from tools.utils.project_settings import get_source_root
 
 logger = logging.getLogger(__name__)
 

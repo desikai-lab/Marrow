@@ -31,4 +31,3 @@ class PipelineDispatcher:
         if _canonical(path) == "session.md":
             return self._session_pipeline
         return self._default_pipeline
-

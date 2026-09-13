@@ -4,9 +4,11 @@ import os
 from datetime import datetime
 from typing import Any
 
+from common.project_path import ProjectPath
+
 # legacy reference removed
 from config import VECT_DEBOUNCE_SECONDS
-from common.project_path import ProjectPath
+
 from tools.pipeline_base import PersistPipeline
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry
 from tools.utils.artifact_strategies import (

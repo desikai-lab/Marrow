@@ -6,6 +6,7 @@ from datetime import date
 from common.path_resolver import NAMESPACE_ARTIFACTS, ResourceKind, get_history, get_path
 from common.project_file_error import ProjectFileError
 from common.project_path import ProjectPath
+
 from tools.pipeline_base import PersistPipeline
 from tools.utils.artifact_strategies import ArtifactStrategyFactory, find_unknown_fields
 from tools.utils.filesystem_utils import create_artifact_backup, resolve_artifact_project_path

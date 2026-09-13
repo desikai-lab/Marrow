@@ -70,7 +70,6 @@ def create_artifact_backup(project: str, project_path: ProjectPath) -> None:
         print(f"Backup error for {project_path.relative_path}: {e}", file=sys.stderr)
 
 
-
 def list_directory_contents(
     path: str, recursive: bool = False, base_path: str = None
 ) -> list[dict[str, str]]:
