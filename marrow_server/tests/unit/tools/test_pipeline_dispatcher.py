@@ -23,3 +23,23 @@ class TestPipelineDispatcher(unittest.TestCase):
         first = self.dispatcher.get_pipeline("session.md")
         second = self.dispatcher.get_pipeline("session.md")
         self.assertIs(first, second)
+
+
+class TestGetPipelinePathVariants(unittest.TestCase):
+    def setUp(self):
+        self.dispatcher = PipelineDispatcher()
+
+    def test_getPipeline_upperCaseSessionMd_returnsSessionPipeline(self):
+        self.assertIsInstance(self.dispatcher.get_pipeline("Session.md"), SessionPipeline)
+
+    def test_getPipeline_leadingSlashSessionMd_returnsSessionPipeline(self):
+        self.assertIsInstance(self.dispatcher.get_pipeline("/session.md"), SessionPipeline)
+
+    def test_getPipeline_dotSlashSessionMd_returnsSessionPipeline(self):
+        self.assertIsInstance(self.dispatcher.get_pipeline("./session.md"), SessionPipeline)
+
+    def test_getPipeline_repeatedDotSlashSessionMd_returnsSessionPipeline(self):
+        self.assertIsInstance(self.dispatcher.get_pipeline(".//session.md"), SessionPipeline)
+
+    def test_getPipeline_unrelatedPathWithLeadingSlash_returnsDefaultPipeline(self):
+        self.assertIsInstance(self.dispatcher.get_pipeline("/docs/spec.md"), DefaultPipeline)
