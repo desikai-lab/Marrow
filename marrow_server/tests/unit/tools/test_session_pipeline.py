@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, patch
 from tools.artifact_pipeline import PipelineContext
 from tools.session_pipeline import SessionPipeline
 
+from tools.utils.filesystem_utils import resolve_artifact_project_path
+
 GOOD_HEADER = (
     "## SESSION STATE\n**Current Task:** F1 — desc\n**next_agent_role:** Planning Agent\n\n"
 )
@@ -216,7 +218,10 @@ class TestSessionPipelineRun(unittest.IsolatedAsyncioTestCase):
             ],
         )
         group = [(0, ctx.updates[0])]
-        final_content, applied = await self.sp._apply_updates(ctx, "session.md", group, GOOD_HEADER)
+        project_path = resolve_artifact_project_path(PROJECT, "session.md")
+        final_content, applied = await self.sp._apply_updates(
+            ctx, project_path, group, GOOD_HEADER
+        )
         self.assertEqual(applied, [])
         self.assertEqual(ctx.results[0]["status"], "error")
 
