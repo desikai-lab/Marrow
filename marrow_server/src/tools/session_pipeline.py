@@ -45,7 +45,7 @@ class SessionPipeline(PersistPipeline):
         old_content = await self._read_old_content(ctx.project, project_path)
 
         final_content, applied_successfully = await self._apply_updates(
-            ctx, path, group, old_content
+            ctx, project_path, group, old_content
         )
         if not applied_successfully:
             return
@@ -81,13 +81,14 @@ class SessionPipeline(PersistPipeline):
         return old_content
 
     async def _apply_updates(
-        self, ctx, path: str, group: list[tuple], old_content: str
+        self, ctx, project_path: ProjectPath, group: list[tuple], old_content: str
     ) -> tuple[str, list[int]]:
         """Step 2: apply every update in this request in-memory, in GroupingHandler's
         existing order -- produces final_content, the fully-resolved result of the
         WHOLE request, never an intermediate state."""
         current_content = old_content
         applied_successfully: list[int] = []
+        rel_path = project_path.relative_path
         for original_idx, update in group:
             try:
                 mode = update["mode"]
@@ -101,7 +102,7 @@ class SessionPipeline(PersistPipeline):
 
                 warning = find_unknown_fields(strategy, explicit_fields)
                 result_entry = {
-                    "path": path,
+                    "path": rel_path,
                     "status": "success",
                     "message": f"Applied {mode} to memory successfully.",
                 }
@@ -110,7 +111,11 @@ class SessionPipeline(PersistPipeline):
                 ctx.results[original_idx] = result_entry
                 applied_successfully.append(original_idx)
             except Exception as e:
-                ctx.results[original_idx] = {"path": path, "status": "error", "message": str(e)}
+                ctx.results[original_idx] = {
+                    "path": rel_path,
+                    "status": "error",
+                    "message": str(e),
+                }
         return current_content, applied_successfully
 
     def _validate_and_repair(self, project: str, final_content: str) -> str:

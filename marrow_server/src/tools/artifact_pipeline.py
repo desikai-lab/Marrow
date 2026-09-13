@@ -36,7 +36,7 @@ class DefaultPipeline(PersistPipeline):
             project_path = resolve_artifact_project_path(ctx.project, path)
             current_content = await self._read_old_content(ctx.project, project_path)
             final_content, applied_successfully = await self._apply_updates(
-                ctx, path, group, current_content
+                ctx, project_path, group, current_content
             )
             if applied_successfully:
                 await self._save_content(project_path, final_content)
@@ -64,12 +64,13 @@ class DefaultPipeline(PersistPipeline):
         return current_content
 
     async def _apply_updates(
-        self, ctx, path: str, group: list[tuple], current_content: str
+        self, ctx, project_path: ProjectPath, group: list[tuple], current_content: str
     ) -> tuple[str, list[int]]:
         """Apply every update in the group in-memory, in GroupingHandler's existing
         order, running the per-path ArtifactIntegrityRegistry hook (e.g.
         HistoryMdIntegrityHook for sessions/history.md) before each transform."""
         applied_successfully: list[int] = []
+        rel_path = project_path.relative_path
         for original_idx, update in group:
             try:
                 mode = update["mode"]
@@ -80,17 +81,17 @@ class DefaultPipeline(PersistPipeline):
                     explicit_fields = set(params.keys())
                 new_val = params.pop("content", "")
 
-                hook = ArtifactIntegrityRegistry.get_hook(path)
+                hook = ArtifactIntegrityRegistry.get_hook(rel_path)
                 if hook:
                     hook_params = {k: v for k, v in params.items() if k != "mode"}
                     new_val = await hook.validate_and_repair(
-                        ctx.project, path, new_val, mode, **hook_params
+                        ctx.project, rel_path, new_val, mode, **hook_params
                     )
 
                 current_content = strategy.transform(current_content, new_val, **params)
                 warning = find_unknown_fields(strategy, explicit_fields)
                 result_entry: dict[str, Any] = {
-                    "path": path,
+                    "path": rel_path,
                     "status": "success",
                     "message": f"Applied {mode} to memory successfully.",
                 }
@@ -99,7 +100,7 @@ class DefaultPipeline(PersistPipeline):
                 ctx.results[original_idx] = result_entry
                 applied_successfully.append(original_idx)
             except Exception as e:
-                ctx.results[original_idx] = {"path": path, "status": "error", "message": str(e)}
+                ctx.results[original_idx] = {"path": rel_path, "status": "error", "message": str(e)}
         return current_content, applied_successfully
 
     async def _save_content(self, project_path: ProjectPath, content: str) -> None:

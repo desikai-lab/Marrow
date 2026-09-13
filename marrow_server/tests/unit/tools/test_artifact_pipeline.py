@@ -1,7 +1,9 @@
 import unittest
+from unittest.mock import patch
 
 from tools.artifact_pipeline import DefaultPipeline, PipelineContext
 from tools.pipeline_base import PersistPipeline
+from tools.utils.filesystem_utils import resolve_artifact_project_path
 
 
 class TestPersistPipelineInterface(unittest.TestCase):
@@ -26,8 +28,9 @@ class TestDefaultPipelineApplyUpdates(unittest.IsolatedAsyncioTestCase):
             ],
         )
         group = [(0, ctx.updates[0])]
+        project_path = resolve_artifact_project_path("TestProject", "docs/spec.md")
         final_content, applied = await self.dp._apply_updates(
-            ctx, "docs/spec.md", group, "existing content"
+            ctx, project_path, group, "existing content"
         )
         self.assertEqual(applied, [])
         self.assertEqual(ctx.results[0]["status"], "error")
@@ -40,12 +43,42 @@ class TestDefaultPipelineApplyUpdates(unittest.IsolatedAsyncioTestCase):
             ],
         )
         group = [(0, ctx.updates[0])]
+        project_path = resolve_artifact_project_path("TestProject", "docs/spec.md")
         final_content, applied = await self.dp._apply_updates(
-            ctx, "docs/spec.md", group, "old content"
+            ctx, project_path, group, "old content"
         )
         self.assertEqual(applied, [0])
         self.assertEqual(final_content, "new content")
         self.assertEqual(ctx.results[0]["status"], "success")
+
+    async def test_applyUpdates_success_resultPathIsRelativePathNotRawArg(self):
+        ctx = PipelineContext(
+            "TestProject",
+            [
+                {"path": "Docs/Spec.md", "mode": "replace_file", "content": "x"},
+            ],
+        )
+        project_path = resolve_artifact_project_path("TestProject", "Docs/Spec.md")
+        group = [(0, ctx.updates[0])]
+        await self.dp._apply_updates(ctx, project_path, group, "old")
+        self.assertEqual(ctx.results[0]["path"], project_path.relative_path)
+
+    async def test_run_resolveFails_resultReportsRawPathNotCrash(self):
+        dp = DefaultPipeline()
+        ctx = PipelineContext(
+            "TestProject",
+            [
+                {"path": "../escape.md", "mode": "replace_file", "content": "x"},
+            ],
+        )
+        group = [(0, ctx.updates[0])]
+        with patch(
+            "tools.artifact_pipeline.resolve_artifact_project_path",
+            side_effect=ValueError("bad path"),
+        ):
+            await dp.run(ctx, "../escape.md", group)
+        self.assertEqual(ctx.results[0]["status"], "error")
+        self.assertEqual(ctx.results[0]["path"], "../escape.md")  # raw fallback, not a crash
 
 
 class TestDefaultPipelineSignatureGuards(unittest.TestCase):
