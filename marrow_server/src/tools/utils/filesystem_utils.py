@@ -46,8 +46,9 @@ def validate_artifact_path(project: str, rel_path: str) -> bool:
 
 def resolve_artifact_project_path(project: str, rel_path: str) -> ProjectPath:
     """Resolves an artifact path to a ProjectPath primitive. Raises ProjectFileError if invalid."""
-    kind = ResourceKind.ROOT if rel_path.lower() == "readme.md" else ResourceKind.ARTIFACTS
-    target_rel = "README.md" if rel_path.lower() == "readme.md" else rel_path
+    clean_path = rel_path.lstrip("/")
+    kind = ResourceKind.ROOT if clean_path.lower() == "readme.md" else ResourceKind.ARTIFACTS
+    target_rel = "README.md" if clean_path.lower() == "readme.md" else clean_path
     return path_resolver.get_path(project, target_rel, kind)
 
 

@@ -45,6 +45,6 @@ async def test_read_project_artifacts_logic_upperCaseAndSlashVariants_returnsNor
     assert len(results) == 2
     assert results[0]["path"] == "Integration/Casing_Test.md"
     assert results[0]["content"] == "Normalized read test."
-    assert results[1]["path"] == "/integration/casing_test.md"
+    assert results[1]["path"] == "integration/casing_test.md"
     assert results[1]["content"] == "Normalized read test."
 
