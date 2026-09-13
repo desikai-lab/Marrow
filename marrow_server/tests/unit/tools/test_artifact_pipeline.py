@@ -46,3 +46,10 @@ class TestDefaultPipelineApplyUpdates(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(applied, [0])
         self.assertEqual(final_content, "new content")
         self.assertEqual(ctx.results[0]["status"], "success")
+
+
+class TestDefaultPipelineSignatureGuards(unittest.TestCase):
+    def test_readOldContent_signature_hasNoPathParameter(self):
+        import inspect
+        sig = inspect.signature(DefaultPipeline._read_old_content)
+        self.assertNotIn("path", sig.parameters)

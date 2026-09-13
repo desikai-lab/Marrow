@@ -51,23 +51,23 @@ def resolve_artifact_project_path(project: str, rel_path: str) -> ProjectPath:
     return path_resolver.get_path(project, target_rel, kind)
 
 
-def create_artifact_backup(project: str, rel_path: str):
-    """Creates a timestamped snapshot in the item's own .history folder before modification."""
+def create_artifact_backup(project: str, project_path: ProjectPath) -> None:
+    """Creates a timestamped snapshot in the item's own .history folder before
+    modification. Takes an already-resolved ProjectPath -- callers that only
+    have a raw rel_path string should resolve it first via
+    resolve_artifact_project_path, same as every current call site already does."""
     try:
-        if not validate_artifact_path(project, rel_path):
+        if not project_path.exists():
             return
-        src_pp = resolve_artifact_project_path(project, rel_path)
-        if not src_pp.exists():
-            return
-
+        rel_path = project_path.relative_path
         _, ext = os.path.splitext(os.path.basename(rel_path))
         timestamp = datetime.now().strftime(HISTORY_TIMESTAMP_FORMAT)
         backup_rel = os.path.join(NAMESPACE_ARTIFACTS, rel_path, f"{timestamp}{ext}")
         backup_pp = path_resolver.get_path(project, backup_rel, ResourceKind.HISTORY)
-
-        src_pp.copy(backup_pp)
+        project_path.copy(backup_pp)
     except Exception as e:
-        print(f"Backup error for {rel_path}: {e}", file=sys.stderr)
+        print(f"Backup error for {project_path.relative_path}: {e}", file=sys.stderr)
+
 
 
 def list_directory_contents(
@@ -178,7 +178,7 @@ def restore_backup(project: str, rel_path: str, backup_name: str) -> str:
     with open(backup_raw_path, "rb") as f:
         backup_bytes = f.read()
 
-    create_artifact_backup(project, rel_path)
+    create_artifact_backup(project, dest_pp)
 
     with open(dest_raw_path, "wb") as f:
         f.write(backup_bytes)

@@ -5,6 +5,7 @@ from datetime import date
 
 from common.path_resolver import NAMESPACE_ARTIFACTS, ResourceKind, get_history, get_path
 from common.project_file_error import ProjectFileError
+from common.project_path import ProjectPath
 from tools.pipeline_base import PersistPipeline
 from tools.utils.artifact_strategies import ArtifactStrategyFactory, find_unknown_fields
 from tools.utils.filesystem_utils import create_artifact_backup, resolve_artifact_project_path
@@ -41,7 +42,7 @@ class SessionPipeline(PersistPipeline):
     async def run(self, ctx, path: str, group: list[tuple]) -> None:
         """Orchestrator only -- mirrors architecture.md §2.2's five numbered steps."""
         project_path = resolve_artifact_project_path(ctx.project, path)
-        old_content = await self._read_old_content(ctx.project, path, project_path)
+        old_content = await self._read_old_content(ctx.project, project_path)
 
         final_content, applied_successfully = await self._apply_updates(
             ctx, path, group, old_content
@@ -60,7 +61,7 @@ class SessionPipeline(PersistPipeline):
                     or ctx.results[original_idx].get("status") != "error"
                 ):
                     ctx.results[original_idx] = {
-                        "path": path,
+                        "path": project_path.relative_path,
                         "status": "error",
                         "message": f"File save failed: {str(e)}",
                     }
@@ -71,12 +72,12 @@ class SessionPipeline(PersistPipeline):
 
         await self._decide_and_append_history(ctx.project, old_content, final_content)
 
-    async def _read_old_content(self, project: str, path: str, project_path) -> str:
+    async def _read_old_content(self, project: str, project_path: ProjectPath) -> str:
         """Step 1: read the live on-disk session.md once, before this request."""
         if not await project_path.exists_async():
             return ""
         old_content = await project_path.read_async()
-        await asyncio.to_thread(create_artifact_backup, project, path)
+        await asyncio.to_thread(create_artifact_backup, project, project_path)
         return old_content
 
     async def _apply_updates(
@@ -122,7 +123,7 @@ class SessionPipeline(PersistPipeline):
         header_block = self._extract_header_block(project, "session.md")
         return header_block + final_content if header_block else final_content
 
-    async def _save_content(self, project_path, content: str) -> None:
+    async def _save_content(self, project_path: ProjectPath, content: str) -> None:
         """Step 4: the actual write. If this raises, step 5 never runs (caller's job)."""
         await project_path.write_async(content)
 

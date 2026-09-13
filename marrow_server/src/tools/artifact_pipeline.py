@@ -6,6 +6,7 @@ from typing import Any
 
 # legacy reference removed
 from config import VECT_DEBOUNCE_SECONDS
+from common.project_path import ProjectPath
 from tools.pipeline_base import PersistPipeline
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry
 from tools.utils.artifact_strategies import (
@@ -33,7 +34,7 @@ class DefaultPipeline(PersistPipeline):
     async def run(self, ctx, path: str, group: list[tuple]) -> None:
         try:
             project_path = resolve_artifact_project_path(ctx.project, path)
-            current_content = await self._read_old_content(ctx.project, path, project_path)
+            current_content = await self._read_old_content(ctx.project, project_path)
             final_content, applied_successfully = await self._apply_updates(
                 ctx, path, group, current_content
             )
@@ -53,13 +54,13 @@ class DefaultPipeline(PersistPipeline):
                         "message": f"File save failed: {str(e)}",
                     }
 
-    async def _read_old_content(self, project: str, path: str, project_path) -> str:
+    async def _read_old_content(self, project: str, project_path: ProjectPath) -> str:
         """Read the live on-disk content once (empty string if the file doesn't
         exist yet) and take the pre-write backup if it does."""
         if not await project_path.exists_async():
             return ""
         current_content = await project_path.read_async()
-        await asyncio.to_thread(create_artifact_backup, project, path)
+        await asyncio.to_thread(create_artifact_backup, project, project_path)
         return current_content
 
     async def _apply_updates(
@@ -101,7 +102,7 @@ class DefaultPipeline(PersistPipeline):
                 ctx.results[original_idx] = {"path": path, "status": "error", "message": str(e)}
         return current_content, applied_successfully
 
-    async def _save_content(self, project_path, content: str) -> None:
+    async def _save_content(self, project_path: ProjectPath, content: str) -> None:
         """The actual write. Raises on failure -- run()'s broad except then marks
         every update in the group as errored, matching today's behavior exactly."""
         await project_path.write_async(content)

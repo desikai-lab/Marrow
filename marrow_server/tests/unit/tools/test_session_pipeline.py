@@ -323,3 +323,10 @@ class TestBuildHistoryEntry(unittest.TestCase):
             entry = self.sp._build_history_entry(old_content, "execution", "discovery")
         self.assertIsNotNone(entry)
         self.assertTrue(any("falling back to whole-body handover" in msg for msg in cm.output))
+
+
+class TestSessionPipelineSignatureGuards(unittest.TestCase):
+    def test_readOldContent_signature_hasNoPathParameter(self):
+        import inspect
+        sig = inspect.signature(SessionPipeline._read_old_content)
+        self.assertNotIn("path", sig.parameters)
