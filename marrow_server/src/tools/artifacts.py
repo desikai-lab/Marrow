@@ -244,15 +244,16 @@ def restore_project_artifact_logic(project: str, rel_path: str, backup_name: str
 def read_project_artifacts_logic(project: str, reads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     results = []
     for req in reads:
-        path = req.get("path")
-        if not path:
+        raw_path = req.get("path")
+        if not raw_path:
             results.append({"error": "Request is missing 'path'"})
             continue
 
         try:
+            project_path = resolve_artifact_project_path(project, raw_path)
             content = read_artifact_logic(
                 project=project,
-                rel_path=path,
+                rel_path=project_path.relative_path,
                 mode=req.get("mode", "full"),
                 direction=req.get("direction", "begin"),
                 section_name=req.get("section_name"),
@@ -262,8 +263,8 @@ def read_project_artifacts_logic(project: str, reads: list[dict[str, Any]]) -> l
                 skip_chars=req.get("skip_chars", 0),
                 line_numbers=req.get("line_numbers", False),
             )
-            results.append({"path": path, "content": content})
+            results.append({"path": project_path.relative_path, "content": content})
         except Exception as e:
-            results.append({"path": path, "error": str(e)})
+            results.append({"path": raw_path, "error": str(e)})
 
     return results
