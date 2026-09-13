@@ -335,3 +335,65 @@ class TestSessionPipelineSignatureGuards(unittest.TestCase):
         import inspect
         sig = inspect.signature(SessionPipeline._read_old_content)
         self.assertNotIn("path", sig.parameters)
+
+
+class TestSessionPipelineBackupTiming(unittest.IsolatedAsyncioTestCase):
+    async def test_run_allUpdatesFailToApply_noBackupTaken(self):
+        sp = SessionPipeline()
+        ctx = PipelineContext(
+            "TestProject",
+            [
+                {
+                    "path": "session.md",
+                    "mode": "patch",
+                    "old_str": "not present anywhere",
+                    "content": "x",
+                },
+            ],
+        )
+        group = [(0, ctx.updates[0])]
+        with (
+            patch("tools.session_pipeline.create_artifact_backup") as mock_backup,
+            patch(
+                "common.project_path.ProjectPath.exists_async", return_value=True
+            ),
+            patch(
+                "common.project_path.ProjectPath.read_async",
+                return_value="## SESSION STATE\n**next_agent_role:** Planning Agent\n",
+            ),
+        ):
+            await sp.run(ctx, "session.md", group)
+        mock_backup.assert_not_called()
+
+    async def test_run_saveContentRaises_backupWasTakenBeforeFailedWrite(self):
+        sp = SessionPipeline()
+        ctx = PipelineContext(
+            "TestProject",
+            [
+                {
+                    "path": "session.md",
+                    "mode": "replace_file",
+                    "content": "## SESSION STATE\n**next_agent_role:** Execution Agent\n",
+                },
+            ],
+        )
+        group = [(0, ctx.updates[0])]
+        with (
+            patch("tools.session_pipeline.create_artifact_backup") as mock_backup,
+            patch(
+                "common.project_path.ProjectPath.exists_async", return_value=True
+            ),
+            patch(
+                "common.project_path.ProjectPath.read_async",
+                return_value="## SESSION STATE\n**next_agent_role:** Planning Agent\n",
+            ),
+            patch(
+                "common.project_path.ProjectPath.write_async",
+                side_effect=OSError("disk full"),
+            ),
+        ):
+            await sp.run(ctx, "session.md", group)
+        # Accepted residual: backup DOES fire here, since we were genuinely
+        # committed to writing -- this locks in that documented trade-off.
+        mock_backup.assert_called_once()
+        self.assertEqual(ctx.results[0]["status"], "error")

@@ -39,6 +39,9 @@ class DefaultPipeline(PersistPipeline):
                 ctx, project_path, group, current_content
             )
             if applied_successfully:
+                # Backup moves here: right before the write we're now committed
+                # to, gated on applied_successfully being non-empty (Finding #8).
+                await asyncio.to_thread(create_artifact_backup, ctx.project, project_path)
                 await self._save_content(project_path, final_content)
                 for idx in applied_successfully:
                     ctx.results[idx]["message"] += " File saved."
@@ -56,12 +59,11 @@ class DefaultPipeline(PersistPipeline):
 
     async def _read_old_content(self, project: str, project_path: ProjectPath) -> str:
         """Read the live on-disk content once (empty string if the file doesn't
-        exist yet) and take the pre-write backup if it does."""
+        exist yet). No side effect here -- the backup moves to run(), gated on a
+        genuine, validated intent to overwrite (Finding #8)."""
         if not await project_path.exists_async():
             return ""
-        current_content = await project_path.read_async()
-        await asyncio.to_thread(create_artifact_backup, project, project_path)
-        return current_content
+        return await project_path.read_async()
 
     async def _apply_updates(
         self, ctx, project_path: ProjectPath, group: list[tuple], current_content: str

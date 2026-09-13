@@ -53,6 +53,9 @@ class SessionPipeline(PersistPipeline):
         final_content = self._validate_and_repair(ctx.project, final_content)
 
         try:
+            # Backup moves here: right before the write we're now committed to,
+            # gated on applied_successfully being non-empty (Finding #8).
+            await asyncio.to_thread(create_artifact_backup, ctx.project, project_path)
             await self._save_content(project_path, final_content)
         except Exception as e:
             for original_idx, _ in group:
@@ -73,12 +76,12 @@ class SessionPipeline(PersistPipeline):
         await self._decide_and_append_history(ctx.project, old_content, final_content)
 
     async def _read_old_content(self, project: str, project_path: ProjectPath) -> str:
-        """Step 1: read the live on-disk session.md once, before this request."""
+        """Step 1: read the live on-disk session.md once, before this request.
+        No side effect here -- the backup moves to run(), gated on a genuine,
+        validated intent to overwrite (Finding #8)."""
         if not await project_path.exists_async():
             return ""
-        old_content = await project_path.read_async()
-        await asyncio.to_thread(create_artifact_backup, project, project_path)
-        return old_content
+        return await project_path.read_async()
 
     async def _apply_updates(
         self, ctx, project_path: ProjectPath, group: list[tuple], old_content: str

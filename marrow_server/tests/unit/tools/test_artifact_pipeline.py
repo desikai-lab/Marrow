@@ -86,3 +86,65 @@ class TestDefaultPipelineSignatureGuards(unittest.TestCase):
         import inspect
         sig = inspect.signature(DefaultPipeline._read_old_content)
         self.assertNotIn("path", sig.parameters)
+
+
+class TestDefaultPipelineBackupTiming(unittest.IsolatedAsyncioTestCase):
+    async def test_run_allUpdatesFailToApply_noBackupTaken(self):
+        dp = DefaultPipeline()
+        ctx = PipelineContext(
+            "TestProject",
+            [
+                {
+                    "path": "docs/spec.md",
+                    "mode": "patch",
+                    "old_str": "not present anywhere",
+                    "content": "x",
+                },
+            ],
+        )
+        group = [(0, ctx.updates[0])]
+        with (
+            patch("tools.artifact_pipeline.create_artifact_backup") as mock_backup,
+            patch(
+                "common.project_path.ProjectPath.exists_async", return_value=True
+            ),
+            patch(
+                "common.project_path.ProjectPath.read_async",
+                return_value="existing content",
+            ),
+        ):
+            await dp.run(ctx, "docs/spec.md", group)
+        mock_backup.assert_not_called()
+
+    async def test_run_saveContentRaises_backupWasTakenBeforeFailedWrite(self):
+        dp = DefaultPipeline()
+        ctx = PipelineContext(
+            "TestProject",
+            [
+                {
+                    "path": "docs/spec.md",
+                    "mode": "replace_file",
+                    "content": "new content",
+                },
+            ],
+        )
+        group = [(0, ctx.updates[0])]
+        with (
+            patch("tools.artifact_pipeline.create_artifact_backup") as mock_backup,
+            patch(
+                "common.project_path.ProjectPath.exists_async", return_value=True
+            ),
+            patch(
+                "common.project_path.ProjectPath.read_async",
+                return_value="old content",
+            ),
+            patch(
+                "common.project_path.ProjectPath.write_async",
+                side_effect=OSError("disk full"),
+            ),
+        ):
+            await dp.run(ctx, "docs/spec.md", group)
+        # Accepted residual: backup DOES fire here, since we were genuinely
+        # committed to writing -- this locks in that documented trade-off.
+        mock_backup.assert_called_once()
+        self.assertEqual(ctx.results[0]["status"], "error")
