@@ -16,7 +16,6 @@ class TestSaveArtifactHistoryIntegration(unittest.IsolatedAsyncioTestCase):
         (self.project_path / "artifacts" / "sessions").mkdir(parents=True)
         self.patchers = [
             patch("config.PROJECTS_ROOT", self.tmp),
-            patch("tools.utils.filesystem_utils.PROJECTS_ROOT", self.tmp),
         ]
         for p in self.patchers:
             p.start()

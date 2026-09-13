@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from typing import Literal
 
 from domain.validators.section_exists import SectionNotExistsValidator
-
 from tools.utils.markdown_utils import (
     clean_section_name,
     extract_markdown_section,

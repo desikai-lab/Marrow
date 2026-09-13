@@ -1,4 +1,6 @@
 import os
+from unittest.mock import patch
+
 import pytest
 
 from config import PROJECTS_ROOT
@@ -11,7 +13,7 @@ def _write_initial_file(tmp_project: str, rel_path: str, content: str):
     """Writes an initial state to a project file to prep it for hook/persister testing."""
     full_path = os.path.join(PROJECTS_ROOT, tmp_project, "artifacts", rel_path)
     os.makedirs(os.path.dirname(full_path), exist_ok=True)
-    with open(full_path, "w", encoding="utf-8-sig") as f:
+    with open(full_path, "w", newline="", encoding="utf-8-sig") as f:
         f.write(content)
 
 
@@ -19,7 +21,7 @@ def _read_project_file(tmp_project: str, rel_path: str) -> str:
     """Direct disk read, bypassing any MCP read path -- verifies what was
     actually persisted, not what a read tool reports."""
     full_path = os.path.join(PROJECTS_ROOT, tmp_project, "artifacts", rel_path)
-    with open(full_path, encoding="utf-8-sig", errors="replace") as f:
+    with open(full_path, newline="", encoding="utf-8-sig", errors="replace") as f:
         return f.read()
 
 
@@ -28,7 +30,7 @@ def _read_history_head(tmp_project: str) -> str:
     full_path = os.path.join(PROJECTS_ROOT, tmp_project, "artifacts", "sessions/history.md")
     if not os.path.exists(full_path):
         return ""
-    with open(full_path, encoding="utf-8-sig", errors="replace") as f:
+    with open(full_path, newline="", encoding="utf-8-sig", errors="replace") as f:
         return f.read()
 
 
@@ -45,7 +47,9 @@ async def test_saveProjectArtifacts_replaceFileOnHistoryMd_rejectedWithValidatio
 
 
 async def test_saveProjectArtifacts_replaceFileOnSessionMd_repairsMissingHeader(tmp_project):
-    _write_initial_file(tmp_project, "session.md", "# Session State\n**next_agent_role:** discovery\n")
+    _write_initial_file(
+        tmp_project, "session.md", "# Session State\n**next_agent_role:** discovery\n"
+    )
     updates = [
         {
             "path": "session.md",
@@ -56,12 +60,14 @@ async def test_saveProjectArtifacts_replaceFileOnSessionMd_repairsMissingHeader(
     results = await save_project_artifacts_logic(tmp_project, updates)
     assert results[0].status == "success"
     persisted = _read_project_file(tmp_project, "session.md")
-    assert "# Session State" in persisted
+    assert "# Session State" in persisted or "SESSION STATE" in persisted
     assert "next_agent_role:" in persisted
 
 
 async def test_saveProjectArtifacts_patchOnHistoryMd_succeedsAndPrepends(tmp_project):
-    _write_initial_file(tmp_project, "sessions/history.md", "# Session History\nInitial historical log.\n")
+    _write_initial_file(
+        tmp_project, "sessions/history.md", "# Session History\nInitial historical log.\n"
+    )
     current_head = _read_history_head(tmp_project)
     new_entry = "## Prepend-Test Entry A\n"
     updates = [
@@ -73,7 +79,7 @@ async def test_saveProjectArtifacts_patchOnHistoryMd_succeedsAndPrepends(tmp_pro
         }
     ]
     results = await save_project_artifacts_logic(tmp_project, updates)
-    assert results[0].status == "success"
+    assert results[0].status == "success", f"Failed message: {results[0].message}"
     persisted = _read_project_file(tmp_project, "sessions/history.md")
     assert persisted.startswith(new_entry)
 
@@ -92,8 +98,12 @@ async def test_saveProjectArtifacts_unguardedPath_unaffectedByHookLookup(tmp_pro
     assert "Unguarded" in persisted
 
 
-async def test_saveProjectArtifacts_mixedModeBatchOnHistoryMd_secondPatchValidatesAgainstStaleDisk(tmp_project):
-    _write_initial_file(tmp_project, "sessions/history.md", "# Session History\nInitial historical log.\n")
+async def test_saveProjectArtifacts_mixedModeBatchOnHistoryMd_secondPatchValidatesAgainstStaleDisk(
+    tmp_project,
+):
+    _write_initial_file(
+        tmp_project, "sessions/history.md", "# Session History\nInitial historical log.\n"
+    )
     current_head = _read_history_head(tmp_project)
     entry_c = "## Batch-Test Entry C\n"
     entry_d = "## Batch-Test Entry D\n"
@@ -115,10 +125,125 @@ async def test_saveProjectArtifacts_mixedModeBatchOnHistoryMd_secondPatchValidat
     assert results[0].status == "success"
     if results[1].status != "success":
         pytest.xfail(
-        "Known limitation, out of scope for B4000198/B4000199 (see B4000192 "
-        "implementation_plan.md Pre-Plan Audit): HistoryMdIntegrityHook re-reads "
-        "the target file from disk on every call, so a second 'patch' update to the "
-        "same guarded path within one batch validates against stale disk content, "
-        f"not the first update's in-memory result. Observed: {results[1].status} - "
-        f"{results[1].message}"
+            "Known limitation, out of scope for B4000198/B4000199 (see B4000192 "
+            "implementation_plan.md Pre-Plan Audit): HistoryMdIntegrityHook re-reads "
+            "the target file from disk on every call, so a second 'patch' update to the "
+            "same guarded path within one batch validates against stale disk content, "
+            f"not the first update's in-memory result. Observed: {results[1].status} - "
+            f"{results[1].message}"
         )
+
+
+async def test_saveProjectArtifacts_replaceSectionOnSessionMd_stillTriggersHistoryAppend(
+    tmp_project,
+):
+    _write_initial_file(
+        tmp_project,
+        "session.md",
+        "## SESSION STATE\n**Current Task:** X\n**next_agent_role:** Planning Agent\n\n"
+        "### Handover Note\nDone with planning.\n",
+    )
+    updates = [
+        {
+            "path": "session.md",
+            "mode": "replace_section",
+            "section_name": "SESSION STATE",
+            "content": "**Current Task:** X\n**next_agent_role:** Execution Agent\n",
+        }
+    ]
+    results = await save_project_artifacts_logic(tmp_project, updates)
+    assert results[0].status == "success"
+    history = _read_history_head(tmp_project)
+    assert "**next_agent_role:** Planning Agent" in history
+
+
+async def test_saveProjectArtifacts_duplicateNextAgentRoleLineInHandover_extractsRealBlockValue(
+    tmp_project,
+):
+    _write_initial_file(
+        tmp_project,
+        "session.md",
+        "## SESSION STATE\n**Current Task:** X\n**next_agent_role:** Planning Agent\n\n"
+        "### Handover Note\nQuoted for context: **next_agent_role:** Execution Agent (stale).\n",
+    )
+    updates = [
+        {
+            "path": "session.md",
+            "mode": "replace_file",
+            "content": "## SESSION STATE\n**Current Task:** X\n**next_agent_role:** Discovery Agent\n",
+        }
+    ]
+    results = await save_project_artifacts_logic(tmp_project, updates)
+    assert results[0].status == "success"
+    history = _read_history_head(tmp_project)
+    assert "**next_agent_role:** Planning Agent" in history
+
+
+async def test_saveProjectArtifacts_legacyH1SessionHeader_stillRecognizedAsValid(tmp_project):
+    _write_initial_file(
+        tmp_project, "session.md", "# Session State\n**next_agent_role:** discovery\n"
+    )
+    updates = [
+        {
+            "path": "session.md",
+            "mode": "replace_file",
+            "content": "**Current Task:** X\nno header here",
+        }
+    ]
+    results = await save_project_artifacts_logic(tmp_project, updates)
+    assert results[0].status == "success"
+    persisted = _read_project_file(tmp_project, "session.md")
+    assert "SESSION STATE" in persisted or "Session State" in persisted
+
+
+async def test_saveProjectArtifacts_appendSectionAndDeleteSectionOnSessionMd_bothTriggerHistoryCheck(
+    tmp_project,
+):
+    _write_initial_file(
+        tmp_project,
+        "session.md",
+        "## SESSION STATE\n**Current Task:** X\n**next_agent_role:** Planning Agent\n\n"
+        "### Handover Note\nReady for execution.\n\n## Scratch\nold notes\n",
+    )
+    updates = [{"path": "session.md", "mode": "delete_section", "section_name": "Scratch"}]
+    results = await save_project_artifacts_logic(tmp_project, updates)
+    assert results[0].status == "success"
+    history_before = _read_history_head(tmp_project)
+
+    updates2 = [
+        {
+            "path": "session.md",
+            "mode": "replace_section",
+            "section_name": "SESSION STATE",
+            "content": "**Current Task:** X\n**next_agent_role:** Execution Agent\n",
+        }
+    ]
+    results2 = await save_project_artifacts_logic(tmp_project, updates2)
+    assert results2[0].status == "success"
+    history_after = _read_history_head(tmp_project)
+    assert history_after != history_before
+
+
+async def test_saveProjectArtifacts_historySaveContentIOFailure_producesNoHistoryEntryAndErrorResult(
+    tmp_project,
+):
+    _write_initial_file(
+        tmp_project,
+        "session.md",
+        "## SESSION STATE\n**Current Task:** X\n**next_agent_role:** Planning Agent\n",
+    )
+    history_before = _read_history_head(tmp_project)
+    updates = [
+        {
+            "path": "session.md",
+            "mode": "replace_file",
+            "content": "## SESSION STATE\n**Current Task:** X\n**next_agent_role:** Execution Agent\n",
+        }
+    ]
+    with patch(
+        "common.project_path.ProjectPath.write_async",
+        side_effect=OSError("simulated disk failure"),
+    ):
+        results = await save_project_artifacts_logic(tmp_project, updates)
+    assert results[0].status == "error"
+    assert _read_history_head(tmp_project) == history_before

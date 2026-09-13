@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+
 from tools.utils.template_renderer import TemplateRenderer
 
 

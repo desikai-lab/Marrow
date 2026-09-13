@@ -6,7 +6,7 @@ from typing import Any
 
 # legacy reference removed
 from config import VECT_DEBOUNCE_SECONDS
-
+from tools.pipeline_base import PersistPipeline
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry
 from tools.utils.artifact_strategies import (
     ArtifactStrategyFactory,
@@ -21,6 +21,90 @@ from tools.utils.filesystem_utils import (
 )
 
 logger = logging.getLogger("marrow.pipeline")
+
+
+class DefaultPipeline(PersistPipeline):
+    """Today's generic artifact-write flow, extracted out of PersistHandler.handle's
+    per-path loop body and split into named steps -- the same decomposition style
+    SessionPipeline.run uses (Task 2). ValidationHandler and GroupingHandler still
+    run upstream of this, unchanged. Has no file-specific knowledge: it does not
+    know session.md exists. `run()` is a short orchestrator only."""
+
+    async def run(self, ctx, path: str, group: list[tuple]) -> None:
+        try:
+            project_path = resolve_artifact_project_path(ctx.project, path)
+            current_content = await self._read_old_content(ctx.project, path, project_path)
+            final_content, applied_successfully = await self._apply_updates(
+                ctx, path, group, current_content
+            )
+            if applied_successfully:
+                await self._save_content(project_path, final_content)
+                for idx in applied_successfully:
+                    ctx.results[idx]["message"] += " File saved."
+        except Exception as e:
+            for original_idx, _ in group:
+                if (
+                    not ctx.results[original_idx]
+                    or ctx.results[original_idx].get("status") != "error"
+                ):
+                    ctx.results[original_idx] = {
+                        "path": path,
+                        "status": "error",
+                        "message": f"File save failed: {str(e)}",
+                    }
+
+    async def _read_old_content(self, project: str, path: str, project_path) -> str:
+        """Read the live on-disk content once (empty string if the file doesn't
+        exist yet) and take the pre-write backup if it does."""
+        if not await project_path.exists_async():
+            return ""
+        current_content = await project_path.read_async()
+        await asyncio.to_thread(create_artifact_backup, project, path)
+        return current_content
+
+    async def _apply_updates(
+        self, ctx, path: str, group: list[tuple], current_content: str
+    ) -> tuple[str, list[int]]:
+        """Apply every update in the group in-memory, in GroupingHandler's existing
+        order, running the per-path ArtifactIntegrityRegistry hook (e.g.
+        HistoryMdIntegrityHook for sessions/history.md) before each transform."""
+        applied_successfully: list[int] = []
+        for original_idx, update in group:
+            try:
+                mode = update["mode"]
+                strategy = ArtifactStrategyFactory.get_save_strategy(mode)
+                params = update.copy()
+                explicit_fields = params.pop("_explicit_fields", None)
+                if explicit_fields is None:
+                    explicit_fields = set(params.keys())
+                new_val = params.pop("content", "")
+
+                hook = ArtifactIntegrityRegistry.get_hook(path)
+                if hook:
+                    hook_params = {k: v for k, v in params.items() if k != "mode"}
+                    new_val = await hook.validate_and_repair(
+                        ctx.project, path, new_val, mode, **hook_params
+                    )
+
+                current_content = strategy.transform(current_content, new_val, **params)
+                warning = find_unknown_fields(strategy, explicit_fields)
+                result_entry: dict[str, Any] = {
+                    "path": path,
+                    "status": "success",
+                    "message": f"Applied {mode} to memory successfully.",
+                }
+                if warning is not None:
+                    result_entry["warning"] = warning
+                ctx.results[original_idx] = result_entry
+                applied_successfully.append(original_idx)
+            except Exception as e:
+                ctx.results[original_idx] = {"path": path, "status": "error", "message": str(e)}
+        return current_content, applied_successfully
+
+    async def _save_content(self, project_path, content: str) -> None:
+        """The actual write. Raises on failure -- run()'s broad except then marks
+        every update in the group as errored, matching today's behavior exactly."""
+        await project_path.write_async(content)
 
 
 class PipelineContext:
@@ -96,88 +180,16 @@ class GroupingHandler(BaseHandler):
 
 
 class PersistHandler(BaseHandler):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        from tools.pipeline_dispatcher import PipelineDispatcher
+
+        self._dispatcher = PipelineDispatcher()
+
     async def handle(self, ctx: PipelineContext):
         for path, group in ctx.grouped_updates.items():
-            try:
-                project_path = resolve_artifact_project_path(ctx.project, path)
-
-                # Read file once
-                current_content = ""
-                file_exists = await project_path.exists_async()
-                if file_exists:
-                    current_content = await project_path.read_async()
-
-                # Backup once per file (only if the file already existed)
-                if file_exists:
-                    await asyncio.to_thread(create_artifact_backup, ctx.project, path)
-
-                applied_successfully = []
-
-                # Apply all updates in the group to the in-memory content
-                for original_idx, update in group:
-                    try:
-                        mode = update["mode"]
-                        strategy = ArtifactStrategyFactory.get_save_strategy(mode)
-
-                        # Avoid duplicating 'content' in **kwargs
-                        params = update.copy()
-                        explicit_fields = params.pop("_explicit_fields", None)
-                        if explicit_fields is None:
-                            explicit_fields = set(params.keys())
-                        new_val = params.pop("content", "")
-
-                        # *** NEW INTEGRITY HOOK CHECK ***
-                        hook = ArtifactIntegrityRegistry.get_hook(path)
-                        if hook:
-                            hook_params = {k: v for k, v in params.items() if k != "mode"}
-                            new_val = await hook.validate_and_repair(
-                                ctx.project, path, new_val, mode, **hook_params
-                            )
-
-                        # Apply transformation to the entire content
-                        current_content = strategy.transform(current_content, new_val, **params)
-
-                        warning = find_unknown_fields(strategy, explicit_fields)
-
-                        result_entry: dict[str, Any] = {
-                            "path": path,
-                            "status": "success",
-                            "message": f"Applied {mode} to memory successfully.",
-                        }
-                        if warning is not None:
-                            result_entry["warning"] = warning
-
-                        ctx.results[original_idx] = result_entry
-                        applied_successfully.append(original_idx)
-                    except Exception as e:
-                        ctx.results[original_idx] = {
-                            "path": path,
-                            "status": "error",
-                            "message": str(e),
-                        }
-
-                # Write final result ONCE, but only if any updates succeeded
-                if applied_successfully:
-                    await project_path.write_async(current_content)
-
-                    # Update message for successful operations
-                    for idx in applied_successfully:
-                        ctx.results[idx]["message"] += " File saved."
-
-            except Exception as e:
-                # Global file error (e.g. Permission Denied)
-                for original_idx, _ in group:
-                    # If not already marked as error, mark it now
-                    if (
-                        not ctx.results[original_idx]
-                        or ctx.results[original_idx].get("status") != "error"
-                    ):
-                        ctx.results[original_idx] = {
-                            "path": path,
-                            "status": "error",
-                            "message": f"File save failed: {str(e)}",
-                        }
-
+            pipeline = self._dispatcher.get_pipeline(path)
+            await pipeline.run(ctx, path, group)
         return await super().handle(ctx)
 
 

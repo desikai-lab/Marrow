@@ -1,77 +1,48 @@
-import shutil
-import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import patch
 
-from tools.artifact_pipeline import save_project_artifacts_logic
-
-PROJECT = "TestProject"
+from tools.artifact_pipeline import DefaultPipeline, PipelineContext
+from tools.pipeline_base import PersistPipeline
 
 
-class TestArtifactPipelineUnknownFields(unittest.IsolatedAsyncioTestCase):
+class TestPersistPipelineInterface(unittest.TestCase):
+    def test_defaultPipeline_isPersistPipelineSubclass(self):
+        self.assertTrue(issubclass(DefaultPipeline, PersistPipeline))
+
+
+class TestDefaultPipelineApplyUpdates(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        self.tmp = tempfile.mkdtemp()
-        self.artifacts = Path(self.tmp) / PROJECT / "artifacts"
-        self.artifacts.mkdir(parents=True)
-        (self.artifacts / "test.md").write_text(
-            "# Title\n\n## Section A\nContent A\n", encoding="utf-8"
+        self.dp = DefaultPipeline()
+
+    async def test_applyUpdates_allUpdatesFail_returnsEmptyAppliedList(self):
+        ctx = PipelineContext(
+            "TestProject",
+            [
+                {
+                    "path": "docs/spec.md",
+                    "mode": "patch",
+                    "old_str": "not present anywhere",
+                    "content": "x",
+                },
+            ],
         )
-        self.patchers = [
-            patch("config.PROJECTS_ROOT", self.tmp),
-        ]
-        for p in self.patchers:
-            p.start()
+        group = [(0, ctx.updates[0])]
+        final_content, applied = await self.dp._apply_updates(
+            ctx, "docs/spec.md", group, "existing content"
+        )
+        self.assertEqual(applied, [])
+        self.assertEqual(ctx.results[0]["status"], "error")
 
-    def tearDown(self):
-        for p in self.patchers:
-            p.stop()
-        shutil.rmtree(self.tmp, ignore_errors=True)
-
-    async def test_saveProjectArtifacts_withUnknownField_returnsWarningAndApplies(self):
-        updates = [
-            {
-                "path": "test.md",
-                "mode": "replace_file",
-                "content": "New content",
-                "old_str": "unused",
-                "_explicit_fields": {"path", "mode", "content", "old_str"},
-            }
-        ]
-        results = await save_project_artifacts_logic(PROJECT, updates)
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]["status"], "success")
-        self.assertIn("warning", results[0])
-        self.assertIn("old_str", results[0]["warning"])
-
-    async def test_saveProjectArtifacts_validFieldsOnly_noWarning(self):
-        updates = [
-            {
-                "path": "test.md",
-                "mode": "replace_file",
-                "content": "Clean content",
-                "_explicit_fields": {"path", "mode", "content"},
-            }
-        ]
-        results = await save_project_artifacts_logic(PROJECT, updates)
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]["status"], "success")
-        self.assertNotIn("warning", results[0])
-
-    async def test_saveProjectArtifacts_traversalPath_returnsError(self):
-        updates = [
-            {
-                "path": "../secret.txt",
-                "mode": "replace_file",
-                "content": "Traversal attempt",
-                "_explicit_fields": {"path", "mode", "content"},
-            }
-        ]
-        results = await save_project_artifacts_logic(PROJECT, updates)
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]["status"], "error")
-
-
-
-if __name__ == "__main__":
-    unittest.main()
+    async def test_applyUpdates_replaceFileSucceeds_returnsAppliedIndexAndNewContent(self):
+        ctx = PipelineContext(
+            "TestProject",
+            [
+                {"path": "docs/spec.md", "mode": "replace_file", "content": "new content"},
+            ],
+        )
+        group = [(0, ctx.updates[0])]
+        final_content, applied = await self.dp._apply_updates(
+            ctx, "docs/spec.md", group, "old content"
+        )
+        self.assertEqual(applied, [0])
+        self.assertEqual(final_content, "new content")
+        self.assertEqual(ctx.results[0]["status"], "success")

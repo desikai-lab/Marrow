@@ -1,7 +1,6 @@
 from common.path_resolver import ResourceKind, get_path
-from utils.exceptions import ValidationError
-
 from tools.utils.artifact_integrity_hooks import ArtifactIntegrityRegistry, IntegrityHook
+from utils.exceptions import ValidationError
 
 
 class HistoryMdIntegrityHook(IntegrityHook):
