@@ -256,7 +256,9 @@ class TestRollbackOnLanceDbFailure:
 
         # Backup should have been written to .history/tasks/.db/blobs/active/TD001.md/
         bak_dir = tmp_project / ".history" / "tasks" / ".db" / "blobs" / "active" / f"{key}.md"
-        assert bak_dir.exists() and len(list(bak_dir.glob("*"))) > 0, "Backup must be created before the LanceDB write"
+        assert bak_dir.exists() and len(list(bak_dir.glob("*"))) > 0, (
+            "Backup must be created before the LanceDB write"
+        )
 
 
 class TestAutoUnblockClearsBlockedBy:

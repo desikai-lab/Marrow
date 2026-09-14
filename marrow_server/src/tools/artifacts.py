@@ -4,11 +4,11 @@ from datetime import datetime
 from typing import Any, Literal
 
 from common.path_resolver import ResourceKind, get_dir_path
+from common.project_path import ProjectPath
 from storage.uow import UnitOfWork
 from utils.exceptions import ArtifactNotFoundError
 
 import tools.utils.history_integrity  # noqa: F401 -- import for registration side-effect
-import tools.utils.session_integrity  # noqa: F401 -- import for registration side-effect
 from tools.artifact_pipeline import save_project_artifacts_logic
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
 from tools.utils.filesystem_utils import (
@@ -28,13 +28,15 @@ def read_artifact_logic(
     rel_path: str,
     mode: Literal["full", "section", "lines", "paged"] = "paged",
     direction: Literal["begin", "end"] = "begin",
+    project_path: ProjectPath | None = None,
     **kwargs,
 ) -> str:
     """Universal artifact read via the Strategy pattern."""
-    if not validate_artifact_path(project, rel_path):
-        raise ArtifactNotFoundError(f"Artifact {rel_path} not found.")
+    if project_path is None:
+        if not validate_artifact_path(project, rel_path):
+            raise ArtifactNotFoundError(f"Artifact {rel_path} not found.")
+        project_path = resolve_artifact_project_path(project, rel_path)
 
-    project_path = resolve_artifact_project_path(project, rel_path)
     if not project_path.exists():
         raise ArtifactNotFoundError(f"Artifact {rel_path} not found.")
 
@@ -47,8 +49,26 @@ def list_artifacts_logic(
 ) -> list[dict[str, str]]:
     """Lists artifacts in a folder. Returns objects with {'name', 'type'}.
     Uses the shared directory listing utility."""
+    from common.project_dir import ProjectDir
+
+    results: list[dict[str, str]] = []
+
+    def _collect(directory: ProjectDir) -> None:
+        if not directory.exists():
+            return
+        for entry in directory.list_entries():
+            child_dir = directory.get_child_dir(entry)
+            if child_dir.exists():  # isdir check (uses accessor.isdir internally)
+                results.append({"name": child_dir.relative_path, "type": "dir"})
+                if recursive:
+                    _collect(child_dir)
+            else:
+                child_path = directory.get_child_path(entry)
+                results.append({"name": child_path.relative_path, "type": "file"})
+
     project_dir = get_dir_path(project, rel_dir, ResourceKind.ARTIFACTS)
-    return project_dir.list(recursive=recursive)
+    _collect(project_dir)
+    return results
 
 
 async def move_project_artifact_logic(project: str, src_path: str, dest_path: str) -> str:
@@ -228,15 +248,17 @@ def restore_project_artifact_logic(project: str, rel_path: str, backup_name: str
 def read_project_artifacts_logic(project: str, reads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     results = []
     for req in reads:
-        path = req.get("path")
-        if not path:
+        raw_path = req.get("path")
+        if not raw_path:
             results.append({"error": "Request is missing 'path'"})
             continue
 
         try:
+            project_path = resolve_artifact_project_path(project, raw_path)
             content = read_artifact_logic(
                 project=project,
-                rel_path=path,
+                rel_path=raw_path,
+                project_path=project_path,
                 mode=req.get("mode", "full"),
                 direction=req.get("direction", "begin"),
                 section_name=req.get("section_name"),
@@ -246,8 +268,8 @@ def read_project_artifacts_logic(project: str, reads: list[dict[str, Any]]) -> l
                 skip_chars=req.get("skip_chars", 0),
                 line_numbers=req.get("line_numbers", False),
             )
-            results.append({"path": path, "content": content})
+            results.append({"path": project_path.relative_path, "content": content})
         except Exception as e:
-            results.append({"path": path, "error": str(e)})
+            results.append({"path": raw_path, "error": str(e)})
 
     return results

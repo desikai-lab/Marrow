@@ -29,3 +29,24 @@ async def test_read_project_artifacts_logic_nonexistent_path_returns_error_item(
     assert len(results) == 1
     item = results[0] if isinstance(results[0], dict) else results[0].model_dump()
     assert "error" in item or item.get("status") == "error"
+
+
+async def test_read_project_artifacts_logic_upperCaseAndSlashVariants_returnsNormalizedRelativePath(tmp_project):
+    path = "integration/casing_test.md"
+    await save_project_artifacts_logic(
+        tmp_project,
+        [{"path": path, "mode": "replace_file", "content": "Normalized read test."}],
+    )
+
+    results = read_project_artifacts_logic(
+        tmp_project,
+        [{"path": "Integration/Casing_Test.md"}, {"path": "/integration/casing_test.md"}],
+    )
+    assert len(results) == 2
+    assert "error" not in results[0], f"Reading results[0] returned error: {results[0].get('error')}"
+    assert "error" not in results[1], f"Reading results[1] returned error: {results[1].get('error')}"
+    assert results[0]["path"] == "integration/casing_test.md"
+    assert results[0]["content"] == "Normalized read test."
+    assert results[1]["path"] == "integration/casing_test.md"
+    assert results[1]["content"] == "Normalized read test."
+

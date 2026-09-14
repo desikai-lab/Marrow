@@ -45,29 +45,61 @@ def validate_artifact_path(project: str, rel_path: str) -> bool:
 
 
 def resolve_artifact_project_path(project: str, rel_path: str) -> ProjectPath:
-    """Resolves an artifact path to a ProjectPath primitive. Raises ProjectFileError if invalid."""
-    kind = ResourceKind.ROOT if rel_path.lower() == "readme.md" else ResourceKind.ARTIFACTS
-    target_rel = "README.md" if rel_path.lower() == "readme.md" else rel_path
-    return path_resolver.get_path(project, target_rel, kind)
+    """Resolves an artifact path to a ProjectPath primitive. Raises ProjectFileError if invalid.
+    If the exact case match does not exist on disk, attempts to resolve actual case-insensitive file path."""
+    clean_path = rel_path.lstrip("/")
+    kind = ResourceKind.ROOT if clean_path.lower() == "readme.md" else ResourceKind.ARTIFACTS
+    target_rel = "README.md" if clean_path.lower() == "readme.md" else clean_path
+    pp = path_resolver.get_path(project, target_rel, kind)
+    if not pp.exists():
+        # Case-insensitive resolution fallback across directory components
+        kind_path = path_resolver.get_path(project, "", kind)
+        kind_root_abs = kind_path.as_accessor_source()
+        parts = [p for p in clean_path.replace("\\", "/").split("/") if p]
+
+        current_abs = kind_root_abs
+        real_parts = []
+        all_matched = True
+        for part in parts:
+            part_lower = part.lower()
+            matched_entry = None
+            if os.path.exists(current_abs) and os.path.isdir(current_abs):
+                try:
+                    for entry in os.listdir(current_abs):
+                        if entry.lower() == part_lower:
+                            matched_entry = entry
+                            break
+                except OSError:
+                    pass
+            if matched_entry is not None:
+                current_abs = os.path.join(current_abs, matched_entry)
+                real_parts.append(matched_entry)
+            else:
+                all_matched = False
+                break
+
+        if all_matched and os.path.exists(current_abs):
+            real_rel = "/".join(real_parts)
+            return path_resolver.get_path(project, real_rel, kind)
+    return pp
 
 
-def create_artifact_backup(project: str, rel_path: str):
-    """Creates a timestamped snapshot in the item's own .history folder before modification."""
+def create_artifact_backup(project: str, project_path: ProjectPath) -> None:
+    """Creates a timestamped snapshot in the item's own .history folder before
+    modification. Takes an already-resolved ProjectPath -- callers that only
+    have a raw rel_path string should resolve it first via
+    resolve_artifact_project_path, same as every current call site already does."""
     try:
-        if not validate_artifact_path(project, rel_path):
+        if not project_path.exists():
             return
-        src_pp = resolve_artifact_project_path(project, rel_path)
-        if not src_pp.exists():
-            return
-
+        rel_path = project_path.relative_path
         _, ext = os.path.splitext(os.path.basename(rel_path))
         timestamp = datetime.now().strftime(HISTORY_TIMESTAMP_FORMAT)
         backup_rel = os.path.join(NAMESPACE_ARTIFACTS, rel_path, f"{timestamp}{ext}")
         backup_pp = path_resolver.get_path(project, backup_rel, ResourceKind.HISTORY)
-
-        src_pp.copy(backup_pp)
+        project_path.copy(backup_pp)
     except Exception as e:
-        print(f"Backup error for {rel_path}: {e}", file=sys.stderr)
+        print(f"Backup error for {project_path.relative_path}: {e}", file=sys.stderr)
 
 
 def list_directory_contents(
@@ -178,7 +210,7 @@ def restore_backup(project: str, rel_path: str, backup_name: str) -> str:
     with open(backup_raw_path, "rb") as f:
         backup_bytes = f.read()
 
-    create_artifact_backup(project, rel_path)
+    create_artifact_backup(project, dest_pp)
 
     with open(dest_raw_path, "wb") as f:
         f.write(backup_bytes)

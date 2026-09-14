@@ -6,6 +6,7 @@ from tools.utils.filesystem_utils import (
     create_artifact_backup,
     get_artifact_history,
     recycle_file,
+    resolve_artifact_project_path,
     restore_backup,
     validate_artifact_path,
     validate_project_path,
@@ -60,7 +61,8 @@ def test_create_artifact_backup_existingFile_copiesIntoPerItemHistoryFolder(tmp_
     src_file = art_dir / "spec.md"
     src_file.write_text("content")
 
-    create_artifact_backup("test_proj", "docs/spec.md")
+    pp = resolve_artifact_project_path("test_proj", "docs/spec.md")
+    create_artifact_backup("test_proj", pp)
 
     history_dir = tmp_path / "test_proj" / ".history" / "artifacts" / "docs" / "spec.md"
     backups = list(history_dir.glob("*.md"))
@@ -76,7 +78,8 @@ def test_create_artifact_backup_missingSourceFile_noOpsSilently(tmp_path, monkey
     art_dir = tmp_path / "test_proj" / "artifacts"
     art_dir.mkdir(parents=True)
 
-    create_artifact_backup("test_proj", "docs/missing.md")
+    pp = resolve_artifact_project_path("test_proj", "docs/missing.md")
+    create_artifact_backup("test_proj", pp)
 
     history_root = tmp_path / "test_proj" / ".history"
     assert not history_root.exists()
@@ -113,7 +116,8 @@ def test_get_artifact_history_afterBackup_listsBareTimestampedBackup(tmp_path, m
     art_dir = tmp_path / "test_proj" / "artifacts" / "docs"
     art_dir.mkdir(parents=True)
     (art_dir / "spec.md").write_text("content")
-    create_artifact_backup("test_proj", "docs/spec.md")
+    pp = resolve_artifact_project_path("test_proj", "docs/spec.md")
+    create_artifact_backup("test_proj", pp)
 
     history = get_artifact_history("test_proj", "docs/spec.md")
 
@@ -138,8 +142,10 @@ def test_get_artifact_history_doesNotLeakSiblingItemsBackups(tmp_path, monkeypat
     art_dir.mkdir(parents=True)
     (art_dir / "spec.md").write_text("a")
     (art_dir / "spec2.md").write_text("b")
-    create_artifact_backup("test_proj", "docs/spec.md")
-    create_artifact_backup("test_proj", "docs/spec2.md")
+    pp_spec = resolve_artifact_project_path("test_proj", "docs/spec.md")
+    pp_spec2 = resolve_artifact_project_path("test_proj", "docs/spec2.md")
+    create_artifact_backup("test_proj", pp_spec)
+    create_artifact_backup("test_proj", pp_spec2)
 
     assert len(get_artifact_history("test_proj", "docs/spec.md")) == 1
 
@@ -150,7 +156,8 @@ def test_restore_backup_validBackup_copiesBackupContentBackToOriginal(tmp_path, 
     art_dir.mkdir(parents=True)
     target = art_dir / "spec.md"
     target.write_text("v1")
-    create_artifact_backup("test_proj", "docs/spec.md")
+    pp = resolve_artifact_project_path("test_proj", "docs/spec.md")
+    create_artifact_backup("test_proj", pp)
     history_dir = tmp_path / "test_proj" / ".history" / "artifacts" / "docs" / "spec.md"
     backup_name = next(history_dir.glob("*.md")).name
     target.write_text("v2")

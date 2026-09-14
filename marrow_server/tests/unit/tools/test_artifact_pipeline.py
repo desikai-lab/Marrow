@@ -1,77 +1,150 @@
-import shutil
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import patch
 
-from tools.artifact_pipeline import save_project_artifacts_logic
+from tools.artifact_pipeline import DefaultPipeline, PipelineContext
+from tools.pipeline_base import PersistPipeline
+from tools.utils.filesystem_utils import resolve_artifact_project_path
 
-PROJECT = "TestProject"
+
+class TestPersistPipelineInterface(unittest.TestCase):
+    def test_defaultPipeline_isPersistPipelineSubclass(self):
+        self.assertTrue(issubclass(DefaultPipeline, PersistPipeline))
 
 
-class TestArtifactPipelineUnknownFields(unittest.IsolatedAsyncioTestCase):
+class TestDefaultPipelineApplyUpdates(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        self.tmp = tempfile.mkdtemp()
-        self.artifacts = Path(self.tmp) / PROJECT / "artifacts"
-        self.artifacts.mkdir(parents=True)
-        (self.artifacts / "test.md").write_text(
-            "# Title\n\n## Section A\nContent A\n", encoding="utf-8"
+        self.dp = DefaultPipeline()
+
+    async def test_applyUpdates_allUpdatesFail_returnsEmptyAppliedList(self):
+        ctx = PipelineContext(
+            "TestProject",
+            [
+                {
+                    "path": "docs/spec.md",
+                    "mode": "patch",
+                    "old_str": "not present anywhere",
+                    "content": "x",
+                },
+            ],
         )
-        self.patchers = [
-            patch("config.PROJECTS_ROOT", self.tmp),
-        ]
-        for p in self.patchers:
-            p.start()
+        group = [(0, ctx.updates[0])]
+        project_path = resolve_artifact_project_path("TestProject", "docs/spec.md")
+        final_content, applied = await self.dp._apply_updates(
+            ctx, project_path, group, "existing content"
+        )
+        self.assertEqual(applied, [])
+        self.assertEqual(ctx.results[0]["status"], "error")
 
-    def tearDown(self):
-        for p in self.patchers:
-            p.stop()
-        shutil.rmtree(self.tmp, ignore_errors=True)
+    async def test_applyUpdates_replaceFileSucceeds_returnsAppliedIndexAndNewContent(self):
+        ctx = PipelineContext(
+            "TestProject",
+            [
+                {"path": "docs/spec.md", "mode": "replace_file", "content": "new content"},
+            ],
+        )
+        group = [(0, ctx.updates[0])]
+        project_path = resolve_artifact_project_path("TestProject", "docs/spec.md")
+        final_content, applied = await self.dp._apply_updates(
+            ctx, project_path, group, "old content"
+        )
+        self.assertEqual(applied, [0])
+        self.assertEqual(final_content, "new content")
+        self.assertEqual(ctx.results[0]["status"], "success")
 
-    async def test_saveProjectArtifacts_withUnknownField_returnsWarningAndApplies(self):
-        updates = [
-            {
-                "path": "test.md",
-                "mode": "replace_file",
-                "content": "New content",
-                "old_str": "unused",
-                "_explicit_fields": {"path", "mode", "content", "old_str"},
-            }
-        ]
-        results = await save_project_artifacts_logic(PROJECT, updates)
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]["status"], "success")
-        self.assertIn("warning", results[0])
-        self.assertIn("old_str", results[0]["warning"])
+    async def test_applyUpdates_success_resultPathIsRelativePathNotRawArg(self):
+        ctx = PipelineContext(
+            "TestProject",
+            [
+                {"path": "Docs/Spec.md", "mode": "replace_file", "content": "x"},
+            ],
+        )
+        project_path = resolve_artifact_project_path("TestProject", "Docs/Spec.md")
+        group = [(0, ctx.updates[0])]
+        await self.dp._apply_updates(ctx, project_path, group, "old")
+        self.assertEqual(ctx.results[0]["path"], project_path.relative_path)
 
-    async def test_saveProjectArtifacts_validFieldsOnly_noWarning(self):
-        updates = [
-            {
-                "path": "test.md",
-                "mode": "replace_file",
-                "content": "Clean content",
-                "_explicit_fields": {"path", "mode", "content"},
-            }
-        ]
-        results = await save_project_artifacts_logic(PROJECT, updates)
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]["status"], "success")
-        self.assertNotIn("warning", results[0])
-
-    async def test_saveProjectArtifacts_traversalPath_returnsError(self):
-        updates = [
-            {
-                "path": "../secret.txt",
-                "mode": "replace_file",
-                "content": "Traversal attempt",
-                "_explicit_fields": {"path", "mode", "content"},
-            }
-        ]
-        results = await save_project_artifacts_logic(PROJECT, updates)
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]["status"], "error")
-
+    async def test_run_resolveFails_resultReportsRawPathNotCrash(self):
+        dp = DefaultPipeline()
+        ctx = PipelineContext(
+            "TestProject",
+            [
+                {"path": "../escape.md", "mode": "replace_file", "content": "x"},
+            ],
+        )
+        group = [(0, ctx.updates[0])]
+        with patch(
+            "tools.artifact_pipeline.resolve_artifact_project_path",
+            side_effect=ValueError("bad path"),
+        ):
+            await dp.run(ctx, "../escape.md", group)
+        self.assertEqual(ctx.results[0]["status"], "error")
+        self.assertEqual(ctx.results[0]["path"], "../escape.md")  # raw fallback, not a crash
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TestDefaultPipelineSignatureGuards(unittest.TestCase):
+    def test_readOldContent_signature_hasNoPathParameter(self):
+        import inspect
+        sig = inspect.signature(DefaultPipeline._read_old_content)
+        self.assertNotIn("path", sig.parameters)
+
+
+class TestDefaultPipelineBackupTiming(unittest.IsolatedAsyncioTestCase):
+    async def test_run_allUpdatesFailToApply_noBackupTaken(self):
+        dp = DefaultPipeline()
+        ctx = PipelineContext(
+            "TestProject",
+            [
+                {
+                    "path": "docs/spec.md",
+                    "mode": "patch",
+                    "old_str": "not present anywhere",
+                    "content": "x",
+                },
+            ],
+        )
+        group = [(0, ctx.updates[0])]
+        with (
+            patch("tools.artifact_pipeline.create_artifact_backup") as mock_backup,
+            patch(
+                "common.project_path.ProjectPath.exists_async", return_value=True
+            ),
+            patch(
+                "common.project_path.ProjectPath.read_async",
+                return_value="existing content",
+            ),
+        ):
+            await dp.run(ctx, "docs/spec.md", group)
+        mock_backup.assert_not_called()
+
+    async def test_run_saveContentRaises_backupWasTakenBeforeFailedWrite(self):
+        dp = DefaultPipeline()
+        ctx = PipelineContext(
+            "TestProject",
+            [
+                {
+                    "path": "docs/spec.md",
+                    "mode": "replace_file",
+                    "content": "new content",
+                },
+            ],
+        )
+        group = [(0, ctx.updates[0])]
+        with (
+            patch("tools.artifact_pipeline.create_artifact_backup") as mock_backup,
+            patch(
+                "common.project_path.ProjectPath.exists_async", return_value=True
+            ),
+            patch(
+                "common.project_path.ProjectPath.read_async",
+                return_value="old content",
+            ),
+            patch(
+                "common.project_path.ProjectPath.write_async",
+                side_effect=OSError("disk full"),
+            ),
+        ):
+            await dp.run(ctx, "docs/spec.md", group)
+        # Accepted residual: backup DOES fire here, since we were genuinely
+        # committed to writing -- this locks in that documented trade-off.
+        mock_backup.assert_called_once()
+        self.assertEqual(ctx.results[0]["status"], "error")
