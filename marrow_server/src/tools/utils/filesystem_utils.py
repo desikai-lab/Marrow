@@ -35,8 +35,9 @@ def validate_project_path(project: str) -> str:
 def validate_artifact_path(project: str, rel_path: str) -> bool:
     """Validates the artifact path and ensures it is inside the project's artifacts/ folder (or root README.md).
     Returns True if valid, False if traversal or invalid."""
-    kind = ResourceKind.ROOT if rel_path.lower() == "readme.md" else ResourceKind.ARTIFACTS
-    target_rel = "README.md" if rel_path.lower() == "readme.md" else rel_path
+    clean_path = rel_path.lstrip("/")
+    kind = ResourceKind.ROOT if clean_path.lower() == "readme.md" else ResourceKind.ARTIFACTS
+    target_rel = "README.md" if clean_path.lower() == "readme.md" else clean_path
     try:
         path_resolver.get_path(project, target_rel, kind)
         return True
@@ -45,11 +46,28 @@ def validate_artifact_path(project: str, rel_path: str) -> bool:
 
 
 def resolve_artifact_project_path(project: str, rel_path: str) -> ProjectPath:
-    """Resolves an artifact path to a ProjectPath primitive. Raises ProjectFileError if invalid."""
+    """Resolves an artifact path to a ProjectPath primitive. Raises ProjectFileError if invalid.
+    If the exact case match does not exist on disk, attempts to resolve actual case-insensitive file path."""
     clean_path = rel_path.lstrip("/")
     kind = ResourceKind.ROOT if clean_path.lower() == "readme.md" else ResourceKind.ARTIFACTS
     target_rel = "README.md" if clean_path.lower() == "readme.md" else clean_path
-    return path_resolver.get_path(project, target_rel, kind)
+    pp = path_resolver.get_path(project, target_rel, kind)
+    if not pp.exists():
+        # Case-insensitive resolution fallback
+        kind_path = path_resolver.get_path(project, "", kind)
+        dir_rel = os.path.dirname(clean_path)
+        base_name = os.path.basename(clean_path).lower()
+        search_dir = path_resolver.get_path(project, dir_rel, kind) if dir_rel else kind_path
+        if search_dir.exists():
+            search_dir_abs = search_dir.as_accessor_source()
+            try:
+                for entry in os.listdir(search_dir_abs):
+                    if entry.lower() == base_name:
+                        real_rel = os.path.join(dir_rel, entry) if dir_rel else entry
+                        return path_resolver.get_path(project, real_rel, kind)
+            except OSError:
+                pass
+    return pp
 
 
 def create_artifact_backup(project: str, project_path: ProjectPath) -> None:
