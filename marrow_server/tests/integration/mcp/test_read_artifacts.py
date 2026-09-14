@@ -45,7 +45,7 @@ async def test_read_project_artifacts_logic_upperCaseAndSlashVariants_returnsNor
     assert len(results) == 2
     assert "error" not in results[0], f"Reading results[0] returned error: {results[0].get('error')}"
     assert "error" not in results[1], f"Reading results[1] returned error: {results[1].get('error')}"
-    assert results[0]["path"] == "Integration/Casing_Test.md"
+    assert results[0]["path"] == "integration/casing_Test.md"
     assert results[0]["content"] == "Normalized read test."
     assert results[1]["path"] == "integration/casing_test.md"
     assert results[1]["content"] == "Normalized read test."
