@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, Literal
 
 from common.path_resolver import ResourceKind, get_dir_path
+from common.project_path import ProjectPath
 from storage.uow import UnitOfWork
 from utils.exceptions import ArtifactNotFoundError
 
@@ -27,13 +28,15 @@ def read_artifact_logic(
     rel_path: str,
     mode: Literal["full", "section", "lines", "paged"] = "paged",
     direction: Literal["begin", "end"] = "begin",
+    project_path: ProjectPath | None = None,
     **kwargs,
 ) -> str:
     """Universal artifact read via the Strategy pattern."""
-    if not validate_artifact_path(project, rel_path):
-        raise ArtifactNotFoundError(f"Artifact {rel_path} not found.")
+    if project_path is None:
+        if not validate_artifact_path(project, rel_path):
+            raise ArtifactNotFoundError(f"Artifact {rel_path} not found.")
+        project_path = resolve_artifact_project_path(project, rel_path)
 
-    project_path = resolve_artifact_project_path(project, rel_path)
     if not project_path.exists():
         raise ArtifactNotFoundError(f"Artifact {rel_path} not found.")
 
@@ -254,7 +257,8 @@ def read_project_artifacts_logic(project: str, reads: list[dict[str, Any]]) -> l
             project_path = resolve_artifact_project_path(project, raw_path)
             content = read_artifact_logic(
                 project=project,
-                rel_path=project_path.relative_path,
+                rel_path=raw_path,
+                project_path=project_path,
                 mode=req.get("mode", "full"),
                 direction=req.get("direction", "begin"),
                 section_name=req.get("section_name"),
