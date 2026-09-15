@@ -56,7 +56,6 @@ def resolve_artifact_project_path(project: str, rel_path: str) -> ProjectPath:
     return path_resolver.get_path(project, target_rel, kind)
 
 
-
 def create_artifact_backup(project: str, project_path: ProjectPath) -> None:
     """Creates a timestamped snapshot in the item's own .history folder before
     modification. Takes an already-resolved ProjectPath -- callers that only
