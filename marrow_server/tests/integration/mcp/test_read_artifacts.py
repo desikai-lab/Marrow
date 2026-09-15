@@ -54,7 +54,10 @@ async def test_read_project_artifacts_logic_upperCaseVariant_returnsNotFoundCons
     # itself resolves the case difference before this code runs, so it will not
     # fail there. This is the accepted trade-off in ADR-49 Consequences, not a
     # flaky test -- do not "fix" this back into a directory walk.
-    mismatched = results[1] if isinstance(results[1], dict) else results[1].model_dump()
-    assert "error" in mismatched or mismatched.get("status") == "error"
+    import sys
+    if sys.platform != "win32":
+        mismatched = results[1] if isinstance(results[1], dict) else results[1].model_dump()
+        assert "error" in mismatched or mismatched.get("status") == "error"
+
 
 
