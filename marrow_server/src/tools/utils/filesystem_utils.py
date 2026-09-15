@@ -46,42 +46,15 @@ def validate_artifact_path(project: str, rel_path: str) -> bool:
 
 def resolve_artifact_project_path(project: str, rel_path: str) -> ProjectPath:
     """Resolves an artifact path to a ProjectPath primitive. Raises ProjectFileError if invalid.
-    If the exact case match does not exist on disk, attempts to resolve actual case-insensitive file path."""
+    Exact, case-sensitive lookup only -- callers must supply the on-disk casing. Agents always
+    generate/know the exact artifact path before reading it (from init_project's own output or a
+    prior save_project_artifacts/list_project_artifacts call), so no case-insensitive fallback is
+    performed; a mismatched-case path is treated as not-found like any other invalid path."""
     clean_path = rel_path.lstrip("/")
     kind = ResourceKind.ROOT if clean_path.lower() == "readme.md" else ResourceKind.ARTIFACTS
     target_rel = "README.md" if clean_path.lower() == "readme.md" else clean_path
-    pp = path_resolver.get_path(project, target_rel, kind)
-    if not pp.exists():
-        # Case-insensitive resolution fallback across directory components
-        kind_path = path_resolver.get_path(project, "", kind)
-        kind_root_abs = kind_path.as_accessor_source()
-        parts = [p for p in clean_path.replace("\\", "/").split("/") if p]
+    return path_resolver.get_path(project, target_rel, kind)
 
-        current_abs = kind_root_abs
-        real_parts = []
-        all_matched = True
-        for part in parts:
-            part_lower = part.lower()
-            matched_entry = None
-            if os.path.exists(current_abs) and os.path.isdir(current_abs):
-                try:
-                    for entry in os.listdir(current_abs):
-                        if entry.lower() == part_lower:
-                            matched_entry = entry
-                            break
-                except OSError:
-                    pass
-            if matched_entry is not None:
-                current_abs = os.path.join(current_abs, matched_entry)
-                real_parts.append(matched_entry)
-            else:
-                all_matched = False
-                break
-
-        if all_matched and os.path.exists(current_abs):
-            real_rel = "/".join(real_parts)
-            return path_resolver.get_path(project, real_rel, kind)
-    return pp
 
 
 def create_artifact_backup(project: str, project_path: ProjectPath) -> None:
