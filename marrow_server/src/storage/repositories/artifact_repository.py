@@ -3,10 +3,11 @@ import logging
 from typing import Any
 
 from config import EMBEDDING_MODEL_TEXT, MAX_EMBED_CHARS
+from utils.metrics import track_time
+
 from storage.db import get_artifact_table, get_chunk_table, schedule_index_rebuild
 from storage.embeddings import embeddings_manager
 from storage.entities import ArtifactChunkRecord, ArtifactRecord
-from utils.metrics import track_time
 
 logger = logging.getLogger("marrow.artifact_repository")
 
@@ -80,8 +81,9 @@ class ArtifactChunkRepository:
         self.table = get_chunk_table(project_root)
 
     async def upsert_chunks(self, path: str, content: str, updated: str, ext: str = ".md") -> None:
-        from storage.artifact_chunker import ChunkerFactory
         from tools.utils.project_settings import load_project_settings
+
+        from storage.artifact_chunker import ChunkerFactory
 
         await asyncio.to_thread(self.table.delete, f"path = '{path}'")
         chunker = ChunkerFactory.get(ext)
