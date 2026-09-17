@@ -60,7 +60,9 @@ class TestSaveArtifactHistoryIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.history_path.exists())
         history_text = self.history_path.read_text(encoding="utf-8-sig")
         # New format: ## Date — Task Title heading + **next_agent_role:** metadata + handover body
-        self.assertIn("F4000189 — Auto-append session.md to history.md", history_text)  # task title in heading
+        self.assertIn(
+            "F4000189 — Auto-append session.md to history.md", history_text
+        )  # task title in heading
         self.assertIn("**next_agent_role:** Planning Agent", history_text)  # departing agent role
         self.assertIn("Planning finished and approved.", history_text)  # handover body
 

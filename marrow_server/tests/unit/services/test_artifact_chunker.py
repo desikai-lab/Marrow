@@ -7,10 +7,6 @@ Covers:
 - tools.utils.markdown_fence: build_fenced_ranges / in_fenced_range helpers
 """
 
-import logging
-
-import pytest
-
 from storage.artifact_chunker import (
     ChunkerFactory,
     HeaderTreeChunkerStrategy,
@@ -93,9 +89,7 @@ class TestHeaderTreeChunkerStrategy:
         assert chunks[-1].section == "# Guide > ## Setup > ### Configuration"
 
     def test_chunk_sibling_h2_reset_does_not_leak_prior_h2(self):
-        content = (
-            "# Doc\n## Section A\n### Sub A\nDetail.\n## Section B\n### Sub B\nDetail.\n"
-        )
+        content = "# Doc\n## Section A\n### Sub A\nDetail.\n## Section B\n### Sub B\nDetail.\n"
         chunks = self._chunk(content)
         sub_a = next(c for c in chunks if "Sub A" in c.section)
         sub_b = next(c for c in chunks if "Sub B" in c.section)

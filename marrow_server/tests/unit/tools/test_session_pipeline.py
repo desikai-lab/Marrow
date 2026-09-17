@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, patch
 
 from tools.artifact_pipeline import PipelineContext
 from tools.session_pipeline import SessionPipeline
-
 from tools.utils.filesystem_utils import resolve_artifact_project_path
 
 GOOD_HEADER = (
@@ -219,9 +218,7 @@ class TestSessionPipelineRun(unittest.IsolatedAsyncioTestCase):
         )
         group = [(0, ctx.updates[0])]
         project_path = resolve_artifact_project_path(PROJECT, "session.md")
-        final_content, applied = await self.sp._apply_updates(
-            ctx, project_path, group, GOOD_HEADER
-        )
+        final_content, applied = await self.sp._apply_updates(ctx, project_path, group, GOOD_HEADER)
         self.assertEqual(applied, [])
         self.assertEqual(ctx.results[0]["status"], "error")
 
@@ -333,6 +330,7 @@ class TestBuildHistoryEntry(unittest.TestCase):
 class TestSessionPipelineSignatureGuards(unittest.TestCase):
     def test_readOldContent_signature_hasNoPathParameter(self):
         import inspect
+
         sig = inspect.signature(SessionPipeline._read_old_content)
         self.assertNotIn("path", sig.parameters)
 
@@ -354,9 +352,7 @@ class TestSessionPipelineBackupTiming(unittest.IsolatedAsyncioTestCase):
         group = [(0, ctx.updates[0])]
         with (
             patch("tools.session_pipeline.create_artifact_backup") as mock_backup,
-            patch(
-                "common.project_path.ProjectPath.exists_async", return_value=True
-            ),
+            patch("common.project_path.ProjectPath.exists_async", return_value=True),
             patch(
                 "common.project_path.ProjectPath.read_async",
                 return_value="## SESSION STATE\n**next_agent_role:** Planning Agent\n",
@@ -380,9 +376,7 @@ class TestSessionPipelineBackupTiming(unittest.IsolatedAsyncioTestCase):
         group = [(0, ctx.updates[0])]
         with (
             patch("tools.session_pipeline.create_artifact_backup") as mock_backup,
-            patch(
-                "common.project_path.ProjectPath.exists_async", return_value=True
-            ),
+            patch("common.project_path.ProjectPath.exists_async", return_value=True),
             patch(
                 "common.project_path.ProjectPath.read_async",
                 return_value="## SESSION STATE\n**next_agent_role:** Planning Agent\n",

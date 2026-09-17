@@ -88,6 +88,7 @@ class TestDefaultPipelineApplyUpdates(unittest.IsolatedAsyncioTestCase):
 class TestDefaultPipelineSignatureGuards(unittest.TestCase):
     def test_readOldContent_signature_hasNoPathParameter(self):
         import inspect
+
         sig = inspect.signature(DefaultPipeline._read_old_content)
         self.assertNotIn("path", sig.parameters)
 
@@ -109,9 +110,7 @@ class TestDefaultPipelineBackupTiming(unittest.IsolatedAsyncioTestCase):
         group = [(0, ctx.updates[0])]
         with (
             patch("tools.artifact_pipeline.create_artifact_backup") as mock_backup,
-            patch(
-                "common.project_path.ProjectPath.exists_async", return_value=True
-            ),
+            patch("common.project_path.ProjectPath.exists_async", return_value=True),
             patch(
                 "common.project_path.ProjectPath.read_async",
                 return_value="existing content",
@@ -135,9 +134,7 @@ class TestDefaultPipelineBackupTiming(unittest.IsolatedAsyncioTestCase):
         group = [(0, ctx.updates[0])]
         with (
             patch("tools.artifact_pipeline.create_artifact_backup") as mock_backup,
-            patch(
-                "common.project_path.ProjectPath.exists_async", return_value=True
-            ),
+            patch("common.project_path.ProjectPath.exists_async", return_value=True),
             patch(
                 "common.project_path.ProjectPath.read_async",
                 return_value="old content",
@@ -156,8 +153,14 @@ class TestDefaultPipelineBackupTiming(unittest.IsolatedAsyncioTestCase):
 
 class TestVectorizationHandler(unittest.IsolatedAsyncioTestCase):
     def _ctx_with_one_success(self, path="docs/features/active/F1/notes.md"):
-        ctx = PipelineContext("TestProject", [{"path": path, "mode": "replace_file", "content": "x"}])
-        ctx.results[0] = {"path": path, "status": "success", "message": "Applied replace_file to memory successfully. File saved."}
+        ctx = PipelineContext(
+            "TestProject", [{"path": path, "mode": "replace_file", "content": "x"}]
+        )
+        ctx.results[0] = {
+            "path": path,
+            "status": "success",
+            "message": "Applied replace_file to memory successfully. File saved.",
+        }
         return ctx
 
     async def test_handle_successfulWrite_upsertsRealFileContentNotBoolCoercedPath(self):
@@ -178,7 +181,9 @@ class TestVectorizationHandler(unittest.IsolatedAsyncioTestCase):
             handler = VectorizationHandler()
             await handler.handle(ctx)
         mock_uow_instance.artifacts.upsert.assert_awaited_once()
-        called_path, called_content, _updated_at = mock_uow_instance.artifacts.upsert.await_args.args
+        called_path, called_content, _updated_at = (
+            mock_uow_instance.artifacts.upsert.await_args.args
+        )
         self.assertEqual(called_path, path)
         self.assertEqual(called_content, "mocked artifact content")
         mock_uow_instance.chunks.upsert_chunks.assert_awaited_once()
@@ -196,4 +201,3 @@ class TestVectorizationHandler(unittest.IsolatedAsyncioTestCase):
             handler = VectorizationHandler()
             await handler.handle(ctx)
         mock_uow_instance.artifacts.upsert.assert_not_awaited()
-

@@ -2,7 +2,6 @@ import os
 from unittest.mock import patch
 
 import pytest
-
 from common.path_resolver import (
     ResourceKind,
     get_artifacts_path,
@@ -105,6 +104,7 @@ def test_get_history_raw_dir_different_namespaces_do_not_collide():
 
 def test_namespaceConstants_haveExpectedValues():
     from common import path_resolver
+
     assert path_resolver.NAMESPACE_ARTIFACTS == "artifacts"
     assert path_resolver.NAMESPACE_TASKS == "tasks"
     assert path_resolver.HISTORY_TIMESTAMP_FORMAT == "%Y%m%d_%H%M%S"
@@ -119,6 +119,7 @@ def test_get_history_returnsArtifactHistoryModel(tmp_path, monkeypatch):
     (hist_dir / "20260101_120000.md").write_text("v1", encoding="utf-8")
 
     from common import path_resolver
+
     history = path_resolver.get_history(project, rel_path, "artifacts")
     assert history.project == project
     assert history.rel_path == rel_path
@@ -136,8 +137,3 @@ def test_get_raw_path_marrow_meta_kind_returns_marrow_root_string():
     raw = get_raw_path("MyProject", "", kind=ResourceKind.MARROW_META)
     assert isinstance(raw, str)
     assert raw.endswith(".marrow")
-
-
-
-
-

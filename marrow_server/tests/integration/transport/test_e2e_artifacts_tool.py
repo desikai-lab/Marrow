@@ -19,7 +19,6 @@ import pytest
 from mcp.client.session import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -29,18 +28,12 @@ def _server_params(tmp_path) -> StdioServerParameters:
     server_script = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "..", "..", "src", "mcp_local.py")
     )
-    src_dir = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "..", "src")
-    )
-    root_dir = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "..")
-    )
+    src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
+    root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
     env = os.environ.copy()
     env["PROJECTS_ROOT"] = str(tmp_path)
     env["PYTHONPATH"] = f"{src_dir}{os.pathsep}{root_dir}"
-    return StdioServerParameters(
-        command=sys.executable, args=[server_script], env=env
-    )
+    return StdioServerParameters(command=sys.executable, args=[server_script], env=env)
 
 
 def _first_text(result) -> str:
@@ -96,11 +89,7 @@ async def test_initProject_newProject_returnsFilesCreated(tmp_artifacts_root):
                 "init_project", {"project": PROJECT, "template": "default"}
             )
             text = _assert_success(res)
-            assert (
-                PROJECT in text
-                or "files_created" in text.lower()
-                or "session" in text.lower()
-            )
+            assert PROJECT in text or "files_created" in text.lower() or "session" in text.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -113,9 +102,7 @@ async def test_saveProjectArtifacts_replaceFileMode_createsNewFile(tmp_artifacts
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
             res = await session.call_tool(
                 "save_project_artifacts",
                 {
@@ -134,11 +121,7 @@ async def test_saveProjectArtifacts_replaceFileMode_createsNewFile(tmp_artifacts
                 },
             )
             text = _assert_success(res)
-            assert (
-                "success" in text.lower()
-                or "saved" in text.lower()
-                or "applied" in text.lower()
-            )
+            assert "success" in text.lower() or "saved" in text.lower() or "applied" in text.lower()
 
 
 @pytest.mark.asyncio
@@ -146,9 +129,7 @@ async def test_saveProjectArtifacts_appendSectionMode_addsNewSection(tmp_artifac
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
             await session.call_tool(
                 "save_project_artifacts",
                 {
@@ -187,9 +168,7 @@ async def test_saveProjectArtifacts_replaceSectionMode_updatesExistingSection(
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
             await session.call_tool(
                 "save_project_artifacts",
                 {
@@ -229,9 +208,7 @@ async def test_saveProjectArtifacts_patchMode_replacesUniqueSubstring(tmp_artifa
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
             await session.call_tool(
                 "save_project_artifacts",
                 {
@@ -268,9 +245,7 @@ async def test_saveProjectArtifacts_replaceChunkMode_replacesLineRange(tmp_artif
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
             await session.call_tool(
                 "save_project_artifacts",
                 {
@@ -308,9 +283,7 @@ async def test_saveProjectArtifacts_deleteSectionMode_removesSection(tmp_artifac
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
             await session.call_tool(
                 "save_project_artifacts",
                 {
@@ -351,9 +324,7 @@ async def test_saveProjectArtifacts_invalidMode_returnsErrorStatus(tmp_artifacts
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
             res = await session.call_tool(
                 "save_project_artifacts",
                 {
@@ -368,11 +339,7 @@ async def test_saveProjectArtifacts_invalidMode_returnsErrorStatus(tmp_artifacts
                 },
             )
             text = _first_text(res)
-            assert (
-                "error" in text.lower()
-                or "invalid" in text.lower()
-                or "unknown" in text.lower()
-            )
+            assert "error" in text.lower() or "invalid" in text.lower() or "unknown" in text.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -385,9 +352,7 @@ async def test_readProjectArtifacts_fullMode_returnsEntireContent(tmp_artifacts_
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
             await session.call_tool(
                 "save_project_artifacts",
                 {
@@ -417,9 +382,7 @@ async def test_readProjectArtifacts_pagedMode_respectsMaxChars(tmp_artifacts_roo
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
             long_content = "# Paged\n\n" + "X" * 500
             await session.call_tool(
                 "save_project_artifacts",
@@ -457,9 +420,7 @@ async def test_readProjectArtifacts_sectionMode_returnsSectionContent(tmp_artifa
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
             await session.call_tool(
                 "save_project_artifacts",
                 {
@@ -500,9 +461,7 @@ async def test_readProjectArtifacts_linesMode_returnsSpecificLineRange(tmp_artif
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
             await session.call_tool(
                 "save_project_artifacts",
                 {
@@ -541,16 +500,12 @@ async def test_readProjectArtifacts_nonexistentPath_returnsErrorItem(tmp_artifac
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
             res = await session.call_tool(
                 "read_project_artifacts",
                 {
                     "project": PROJECT,
-                    "reads": [
-                        {"path": "docs/__does_not_exist_e2e__.md", "mode": "full"}
-                    ],
+                    "reads": [{"path": "docs/__does_not_exist_e2e__.md", "mode": "full"}],
                 },
             )
             text = _first_text(res)
@@ -562,9 +517,7 @@ async def test_readProjectArtifacts_batchReads_returnsAllItems(tmp_artifacts_roo
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
             for i in range(3):
                 await session.call_tool(
                     "save_project_artifacts",
@@ -583,10 +536,7 @@ async def test_readProjectArtifacts_batchReads_returnsAllItems(tmp_artifacts_roo
                 "read_project_artifacts",
                 {
                     "project": PROJECT,
-                    "reads": [
-                        {"path": f"docs/e2e/batch_{i}.md", "mode": "full"}
-                        for i in range(3)
-                    ],
+                    "reads": [{"path": f"docs/e2e/batch_{i}.md", "mode": "full"} for i in range(3)],
                 },
             )
             text = _first_text(res)
@@ -603,20 +553,14 @@ async def test_listProjectArtifacts_topLevel_returnsProjectFiles(tmp_artifacts_r
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
             res = await session.call_tool(
                 "list_project_artifacts",
                 {"project": PROJECT, "path": "", "recursive": False},
             )
             text = _assert_success(res)
             # Default template provides session.md and spec.md at root
-            assert (
-                "session" in text.lower()
-                or "spec" in text.lower()
-                or "docs" in text.lower()
-            )
+            assert "session" in text.lower() or "spec" in text.lower() or "docs" in text.lower()
 
 
 @pytest.mark.asyncio
@@ -663,9 +607,7 @@ async def test_getProjectArtifactOutline_markdownFile_returnsHeadings(tmp_artifa
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
             await session.call_tool(
                 "save_project_artifacts",
                 {
@@ -704,9 +646,7 @@ async def test_listArtifactHistory_afterMultipleSaves_returnsVersionList(tmp_art
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
 
             path = "docs/e2e/history_test.md"
             for version in ["Version 1", "Version 2", "Version 3"]:
@@ -744,9 +684,7 @@ async def test_restoreProjectArtifact_validBackup_successResponse(tmp_artifacts_
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
 
             path = "docs/e2e/restore_test.md"
 
@@ -787,7 +725,7 @@ async def test_restoreProjectArtifact_validBackup_successResponse(tmp_artifacts_
             history_text = _first_text(history_res)
 
             # Extract backup name from the response (pattern: anything.md.timestamp)
-            backup_names = re.findall(r'[\w\-\.]+\.md\.\d+', history_text)
+            backup_names = re.findall(r"[\w\-\.]+\.md\.\d+", history_text)
             if backup_names:
                 backup_name = backup_names[0]
                 restore_res = await session.call_tool(
@@ -815,9 +753,7 @@ async def test_moveProjectArtifact_existingFile_movesToNewPath(tmp_artifacts_roo
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
 
             src = "docs/e2e/move_source.md"
             dest = "docs/e2e/move_destination.md"
@@ -842,10 +778,7 @@ async def test_moveProjectArtifact_existingFile_movesToNewPath(tmp_artifacts_roo
             )
             text = _first_text(move_res)
             assert (
-                "moved" in text.lower()
-                or dest in text
-                or "success" in text.lower()
-                or "->" in text
+                "moved" in text.lower() or dest in text or "success" in text.lower() or "->" in text
             )
 
             # Destination should now be readable with original content
@@ -870,9 +803,7 @@ async def test_deleteProjectArtifact_existingFile_fileNoLongerReadable(tmp_artif
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
 
             path = "docs/e2e/delete_me.md"
             await session.call_tool(
@@ -923,9 +854,7 @@ async def test_searchProjectArtifacts_matchingQuery_returnsResult(tmp_artifacts_
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
 
             unique_token = "UNIQUE_SEARCH_TOKEN_XYZ_7491"
             await session.call_tool(
@@ -963,9 +892,7 @@ async def test_searchProjectArtifacts_noMatch_returnsEmptyOrMinimalResponse(tmp_
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
 
             res = await session.call_tool(
                 "search_project_artifacts",
@@ -993,13 +920,9 @@ async def test_getSessionContext_freshProject_returnsContextWithRoleGuidelines(
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
 
-            res = await session.call_tool(
-                "get_session_context", {"project": PROJECT}
-            )
+            res = await session.call_tool("get_session_context", {"project": PROJECT})
             text = _assert_success(res)
             assert (
                 "next step" in text.lower()
@@ -1019,9 +942,7 @@ async def test_readProjectArtifacts_pathTraversalAttempt_returnsError(tmp_artifa
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
 
             res = await session.call_tool(
                 "read_project_artifacts",
@@ -1044,9 +965,7 @@ async def test_saveProjectArtifacts_pathTraversalAttempt_returnsError(tmp_artifa
     async with stdio_client(_server_params(tmp_artifacts_root)) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            await session.call_tool(
-                "init_project", {"project": PROJECT, "template": "default"}
-            )
+            await session.call_tool("init_project", {"project": PROJECT, "template": "default"})
 
             res = await session.call_tool(
                 "save_project_artifacts",

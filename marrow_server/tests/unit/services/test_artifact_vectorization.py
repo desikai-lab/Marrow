@@ -168,10 +168,14 @@ Some actual content.
         self.assertEqual(results[0]["status"], "success")
 
         uow = UnitOfWork(self.project_root)
-        search_results = asyncio.run(uow.chunks.semantic_search("Unique vector search phrase", limit=1))
-        self.assertTrue(len(search_results) > 0, "Vector table artifact_chunks was not populated by save_project_artifacts_logic")
+        search_results = asyncio.run(
+            uow.chunks.semantic_search("Unique vector search phrase", limit=1)
+        )
+        self.assertTrue(
+            len(search_results) > 0,
+            "Vector table artifact_chunks was not populated by save_project_artifacts_logic",
+        )
         self.assertEqual(search_results[0]["path"], path)
-
 
     def test_semantic_search_indexed_artifact_returns_relevant_result(self):
         """Verifies vector index operation and cascade search."""
@@ -224,8 +228,10 @@ Some actual content.
                 captured_overlap_pct.append(overlap_pct)
                 return iter([])
 
-        with patch("tools.utils.project_settings.load_project_settings", return_value=mock_settings), \
-             patch("storage.artifact_chunker.ChunkerFactory.get", return_value=MockChunker()):
+        with (
+            patch("tools.utils.project_settings.load_project_settings", return_value=mock_settings),
+            patch("storage.artifact_chunker.ChunkerFactory.get", return_value=MockChunker()),
+        ):
             asyncio.run(repo.upsert_chunks("test.txt", "some content", "2026-09-17", ext=".txt"))
 
         self.assertEqual(captured_overlap_pct, [0.3])
@@ -245,14 +251,14 @@ Some actual content.
                 captured_overlap_pct.append(overlap_pct)
                 return iter([])
 
-        with patch("tools.utils.project_settings.load_project_settings", return_value=mock_settings), \
-             patch("storage.artifact_chunker.ChunkerFactory.get", return_value=MockChunker()):
+        with (
+            patch("tools.utils.project_settings.load_project_settings", return_value=mock_settings),
+            patch("storage.artifact_chunker.ChunkerFactory.get", return_value=MockChunker()),
+        ):
             asyncio.run(repo.upsert_chunks("test.txt", "some content", "2026-09-17", ext=".txt"))
-
 
         self.assertEqual(captured_overlap_pct, [None])
 
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -2,7 +2,6 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from transport.app_factory import lifespan
 
 
@@ -29,7 +28,9 @@ async def test_lifespan_normal_startup_calls_run_migrations_all_projects_before_
         return fut
 
     with (
-        patch("migrator.runner.run_migrations_all_projects", side_effect=fake_migrations) as mock_migrate,
+        patch(
+            "migrator.runner.run_migrations_all_projects", side_effect=fake_migrations
+        ) as mock_migrate,
         patch("transport.app_factory.asyncio.create_task", side_effect=dummy_task),
         patch("transport.app_factory.mcp") as mock_mcp,
     ):
@@ -69,4 +70,3 @@ async def test_lifespan_migration_runner_raises_logs_and_still_starts_serving():
 
     mock_logger.error.assert_called_once()
     session_cm.__aenter__.assert_called_once()
-

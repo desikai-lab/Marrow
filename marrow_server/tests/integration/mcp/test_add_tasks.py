@@ -24,8 +24,12 @@ async def test_add_tasks_logic_single_task_returns_success_message(tmp_project):
 
 async def test_add_tasks_logic_batch_tasks_returns_all_created_ids(tmp_project):
     tasks = [
-        TaskInput(title="INT-TEST: Batch Task 1", type="F", priority="low", problem="P1", solution="S1"),
-        TaskInput(title="INT-TEST: Batch Task 2", type="B", priority="high", problem="P2", solution="S2"),
+        TaskInput(
+            title="INT-TEST: Batch Task 1", type="F", priority="low", problem="P1", solution="S1"
+        ),
+        TaskInput(
+            title="INT-TEST: Batch Task 2", type="B", priority="high", problem="P2", solution="S2"
+        ),
     ]
     result = await add_tasks_logic(tasks, tmp_project)
     assert isinstance(result, dict)
