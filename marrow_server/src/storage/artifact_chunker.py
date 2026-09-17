@@ -38,19 +38,21 @@ class HeaderTreeChunkerStrategy(ChunkerStrategy):
         headers = self._find_all_headers(content, fenced_ranges)
 
         if not self._has_splittable_structure(headers):
-            yield from OverlapChunkerStrategy().chunk(
-                content, max_chars, overlap_pct=overlap_pct
-            )
+            yield from OverlapChunkerStrategy().chunk(content, max_chars, overlap_pct=overlap_pct)
             return
 
-        lines = content.split("\n")
         split_points = list(self._build_breadcrumb_stack(headers))
 
         for i, (header_match, stack) in enumerate(split_points):
             start_pos = header_match.start()
             start_line = content[:start_pos].count("\n") + 1
             end_pos = split_points[i + 1][0].start() if i + 1 < len(split_points) else len(content)
-            end_line = content[:end_pos].count("\n") if i + 1 < len(split_points) else len(lines)
+            end_line = (
+                content[:end_pos].count("\n")
+                if i + 1 < len(split_points)
+                else len(content.splitlines())
+            )
+
             body = content[start_pos:end_pos].strip()
 
             breadcrumb = self._breadcrumb_str(stack)

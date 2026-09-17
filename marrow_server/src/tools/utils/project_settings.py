@@ -102,7 +102,6 @@ def load_project_settings(project: str) -> ProjectSettings:
     return settings
 
 
-
 def get_source_root(project: str) -> Path | None:
     """
     Public API. Returns the validated SOURCE_ROOT Path for the project,
