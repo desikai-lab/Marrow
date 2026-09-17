@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from config import PROJECTS_ROOT
+from config import DEFAULT_CHUNK_OVERLAP_PCT, PROJECTS_ROOT  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +14,7 @@ _settings_cache: dict[str, "ProjectSettings"] = {}
 class ProjectSettings:
     source_root: Path | None = None
     source_tools_available: bool = False
+    chunk_overlap_pct: float | None = None
 
 
 def _parse_settings_file(settings_path: Path) -> dict[str, str]:
@@ -37,6 +38,23 @@ def _parse_settings_file(settings_path: Path) -> dict[str, str]:
     return result
 
 
+def _parse_overlap_pct(raw_value: str | None) -> float | None:
+    """Parses and range-validates CHUNK_OVERLAP_PCT. Returns None (caller falls
+    back to config.DEFAULT_CHUNK_OVERLAP_PCT) if missing, non-numeric, or
+    outside [0, 0.5)."""
+    if raw_value is None or not raw_value.strip():
+        return None
+    try:
+        pct = float(raw_value)
+    except ValueError:
+        logger.warning("Invalid CHUNK_OVERLAP_PCT %r: not a number, using default.", raw_value)
+        return None
+    if not (0 <= pct < 0.5):
+        logger.warning("CHUNK_OVERLAP_PCT %r out of range [0, 0.5), using default.", raw_value)
+        return None
+    return pct
+
+
 def load_project_settings(project: str) -> ProjectSettings:
     """
     Load and cache settings for a project.
@@ -53,10 +71,12 @@ def load_project_settings(project: str) -> ProjectSettings:
         logger.debug(
             "No .settings file found for project '%s' — source tools unavailable.", project
         )
+        settings.chunk_overlap_pct = _parse_overlap_pct(None)
         _settings_cache[project] = settings
         return settings
 
     raw = _parse_settings_file(settings_path)
+    settings.chunk_overlap_pct = _parse_overlap_pct(raw.get("CHUNK_OVERLAP_PCT"))
     raw_root = raw.get("SOURCE_ROOT", "").strip()
 
     if not raw_root:
@@ -80,6 +100,7 @@ def load_project_settings(project: str) -> ProjectSettings:
     logger.info("SOURCE_ROOT for project '%s' resolved to: %s", project, resolved)
     _settings_cache[project] = settings
     return settings
+
 
 
 def get_source_root(project: str) -> Path | None:
