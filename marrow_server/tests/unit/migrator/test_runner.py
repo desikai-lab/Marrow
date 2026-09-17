@@ -1,8 +1,7 @@
 from unittest.mock import MagicMock
 
-import pytest
-
 import migrator.runner as runner_module
+import pytest
 from migrator.base import Migration, MigrationStepReport
 from migrator.runner import run_migrations_all_projects, run_migrations_for_project
 from migrator.version_store import load_project_meta
@@ -43,8 +42,12 @@ def projects_dir(tmp_path, monkeypatch):
     return tmp_path
 
 
-def test_run_migrations_for_project_fresh_project_applies_all_pending_steps_in_order(projects_dir, monkeypatch):
-    monkeypatch.setattr(runner_module, "LOCAL_STORAGE_LAYOUT_REGISTRY", [DummyStep1(), DummyStep2()])
+def test_run_migrations_for_project_fresh_project_applies_all_pending_steps_in_order(
+    projects_dir, monkeypatch
+):
+    monkeypatch.setattr(
+        runner_module, "LOCAL_STORAGE_LAYOUT_REGISTRY", [DummyStep1(), DummyStep2()]
+    )
 
     report = run_migrations_for_project("Proj1")
 
@@ -59,7 +62,9 @@ def test_run_migrations_for_project_fresh_project_applies_all_pending_steps_in_o
     assert meta.schema_versions["local_storage_layout"] == 3
 
 
-def test_run_migrations_for_project_already_at_head_version_no_op_skips_apply(projects_dir, monkeypatch):
+def test_run_migrations_for_project_already_at_head_version_no_op_skips_apply(
+    projects_dir, monkeypatch
+):
     mock_step1 = MagicMock(spec=Migration)
     mock_step1.subsystem = "local_storage_layout"
     mock_step1.from_version = 1
@@ -85,8 +90,12 @@ def test_run_migrations_for_project_already_at_head_version_no_op_skips_apply(pr
     mock_step2.apply.assert_not_called()
 
 
-def test_run_migrations_for_project_step_raises_stops_without_bumping_version_past_failure(projects_dir, monkeypatch):
-    monkeypatch.setattr(runner_module, "LOCAL_STORAGE_LAYOUT_REGISTRY", [DummyStep1(), RaisingStep2()])
+def test_run_migrations_for_project_step_raises_stops_without_bumping_version_past_failure(
+    projects_dir, monkeypatch
+):
+    monkeypatch.setattr(
+        runner_module, "LOCAL_STORAGE_LAYOUT_REGISTRY", [DummyStep1(), RaisingStep2()]
+    )
 
     report = run_migrations_for_project("Proj1")
 
@@ -100,12 +109,18 @@ def test_run_migrations_for_project_step_raises_stops_without_bumping_version_pa
     assert meta.schema_versions["local_storage_layout"] == 2
 
 
-def test_run_migrations_for_project_crash_simulated_between_steps_resumes_from_last_persisted_version_on_rerun(projects_dir, monkeypatch):
-    monkeypatch.setattr(runner_module, "LOCAL_STORAGE_LAYOUT_REGISTRY", [DummyStep1(), RaisingStep2()])
+def test_run_migrations_for_project_crash_simulated_between_steps_resumes_from_last_persisted_version_on_rerun(
+    projects_dir, monkeypatch
+):
+    monkeypatch.setattr(
+        runner_module, "LOCAL_STORAGE_LAYOUT_REGISTRY", [DummyStep1(), RaisingStep2()]
+    )
     first_report = run_migrations_for_project("Proj1")
     assert first_report.ending_version == 2
 
-    monkeypatch.setattr(runner_module, "LOCAL_STORAGE_LAYOUT_REGISTRY", [DummyStep1(), DummyStep2()])
+    monkeypatch.setattr(
+        runner_module, "LOCAL_STORAGE_LAYOUT_REGISTRY", [DummyStep1(), DummyStep2()]
+    )
     second_report = run_migrations_for_project("Proj1")
 
     assert second_report.starting_version == 2
@@ -115,8 +130,12 @@ def test_run_migrations_for_project_crash_simulated_between_steps_resumes_from_l
     assert second_report.steps[0].to_version == 3
 
 
-def test_run_migrations_for_project_dry_run_does_not_persist_version_bump(projects_dir, monkeypatch):
-    monkeypatch.setattr(runner_module, "LOCAL_STORAGE_LAYOUT_REGISTRY", [DummyStep1(), DummyStep2()])
+def test_run_migrations_for_project_dry_run_does_not_persist_version_bump(
+    projects_dir, monkeypatch
+):
+    monkeypatch.setattr(
+        runner_module, "LOCAL_STORAGE_LAYOUT_REGISTRY", [DummyStep1(), DummyStep2()]
+    )
 
     report = run_migrations_for_project("Proj1", dry_run=True)
 
@@ -128,14 +147,21 @@ def test_run_migrations_for_project_dry_run_does_not_persist_version_bump(projec
     assert meta.schema_versions.get("local_storage_layout") is None
 
 
-def test_run_migrations_all_projects_multiple_projects_one_fails_isolates_failure_continues_others(projects_dir, monkeypatch):
+def test_run_migrations_all_projects_multiple_projects_one_fails_isolates_failure_continues_others(
+    projects_dir, monkeypatch
+):
     p2 = projects_dir / "Proj2"
     p2.mkdir(parents=True)
 
     def fake_run_for_project(project_name, dry_run=False):
         if project_name == "Proj1":
             raise RuntimeError("simulated project failure")
-        return runner_module.MigrationReport(project=project_name, subsystem="local_storage_layout", starting_version=1, ending_version=2)
+        return runner_module.MigrationReport(
+            project=project_name,
+            subsystem="local_storage_layout",
+            starting_version=1,
+            ending_version=2,
+        )
 
     monkeypatch.setattr(runner_module, "run_migrations_for_project", fake_run_for_project)
 

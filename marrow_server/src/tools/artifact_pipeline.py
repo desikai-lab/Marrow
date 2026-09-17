@@ -209,15 +209,11 @@ class VectorizationHandler(BaseHandler):
 
         for path in success_paths:
             try:
-                abs_path = validate_artifact_path(ctx.project, path)
-                if not os.path.exists(abs_path):
+                project_path = resolve_artifact_project_path(ctx.project, path)
+                if not await project_path.exists_async():
                     continue
 
-                def read_file():
-                    with open(abs_path, encoding="utf-8", errors="replace") as f:
-                        return f.read()
-
-                content = await asyncio.to_thread(read_file)
+                content = await project_path.read_async()
 
                 # Cleanup (ChangeLog, comments)
                 cleaned = ContentCleaner.clean(content)

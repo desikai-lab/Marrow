@@ -144,6 +144,7 @@ async def test_update_task_atomically_writesTimestampedBackupUnderTasksNamespace
         assert len(backups) == 1
 
         import asyncio as _asyncio
+
         await _asyncio.sleep(1)  # ensure distinct timestamp
         await uow.update_task_atomically(key, {"title": "Updated 2"})
 
@@ -189,7 +190,9 @@ async def test_moveTasksBatchAtomically_usesTasksNamespaceHistoryDir(tmp_project
 
 
 @pytest.mark.asyncio
-async def test_moveTasksBatchAtomically_rollbackOnFailure_restoresFromTimestampedBackup(tmp_project):
+async def test_moveTasksBatchAtomically_rollbackOnFailure_restoresFromTimestampedBackup(
+    tmp_project,
+):
     key = "TD001"
     blob_data = _make_blob(key)
     record = _make_record(key)
@@ -231,6 +234,7 @@ async def test_backupOriginal_writesTimestampedFileUnderTasksNamespace(tmp_proje
 
     uow = UnitOfWork(str(tmp_project))
     from common.path_resolver import ResourceKind, get_path
+
     orig_pp = get_path(str(tmp_project), record.file_path, ResourceKind.ROOT)
 
     backup_pp = await uow._backup_original(record, orig_pp)
@@ -255,5 +259,3 @@ async def test_writeUpdatedBlob_returnsRecordWithNewStatusAndResolution(tmp_proj
 
     assert new_record.status == "done"
     assert new_record.resolution == "fixed"
-
-

@@ -1,7 +1,5 @@
 import logging
 
-import pytest
-
 from tools.utils.project_settings import ProjectSettings, _parse_overlap_pct
 
 

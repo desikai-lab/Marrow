@@ -31,7 +31,9 @@ async def test_read_project_artifacts_logic_nonexistent_path_returns_error_item(
     assert "error" in item or item.get("status") == "error"
 
 
-async def test_read_project_artifacts_logic_upperCaseVariant_returnsNotFoundConsistently(tmp_project):
+async def test_read_project_artifacts_logic_upperCaseVariant_returnsNotFoundConsistently(
+    tmp_project,
+):
     path = "integration/casing_test.md"
     await save_project_artifacts_logic(
         tmp_project,
@@ -55,9 +57,7 @@ async def test_read_project_artifacts_logic_upperCaseVariant_returnsNotFoundCons
     # fail there. This is the accepted trade-off in ADR-49 Consequences, not a
     # flaky test -- do not "fix" this back into a directory walk.
     import sys
+
     if sys.platform != "win32":
         mismatched = results[1] if isinstance(results[1], dict) else results[1].model_dump()
         assert "error" in mismatched or mismatched.get("status") == "error"
-
-
-

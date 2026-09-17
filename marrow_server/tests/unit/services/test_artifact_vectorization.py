@@ -144,6 +144,39 @@ Some actual content.
         self.assertIn("Line 3", final)
         self.assertIn("Line 5", final)
 
+    def test_save_project_artifacts_logic_vectorizes_content_to_lancedb(self):
+        """Verifies that save_project_artifacts_logic triggers vectorization and populates LanceDB tables."""
+        path = "docs/features/active/F1/notes.md"
+        abs_path = os.path.join(self.project_root, "artifacts", path)
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+        with open(abs_path, "w", encoding="utf-8") as f:
+            f.write("Initial content\n")
+
+        updates = [
+            {
+                "path": path,
+                "mode": "replace_file",
+                "content": "## Vectorized Section\nUnique vector search phrase for B4000236 test\n",
+            }
+        ]
+
+        from tools.artifact_pipeline import save_project_artifacts_logic
+
+        with patch("tools.artifact_pipeline.VECT_DEBOUNCE_SECONDS", 0):
+            results = asyncio.run(save_project_artifacts_logic(self.project, updates))
+
+        self.assertEqual(results[0]["status"], "success")
+
+        uow = UnitOfWork(self.project_root)
+        search_results = asyncio.run(
+            uow.chunks.semantic_search("Unique vector search phrase", limit=1)
+        )
+        self.assertTrue(
+            len(search_results) > 0,
+            "Vector table artifact_chunks was not populated by save_project_artifacts_logic",
+        )
+        self.assertEqual(search_results[0]["path"], path)
+
     def test_semantic_search_indexed_artifact_returns_relevant_result(self):
         """Verifies vector index operation and cascade search."""
 
@@ -195,8 +228,10 @@ Some actual content.
                 captured_overlap_pct.append(overlap_pct)
                 return iter([])
 
-        with patch("tools.utils.project_settings.load_project_settings", return_value=mock_settings), \
-             patch("storage.artifact_chunker.ChunkerFactory.get", return_value=MockChunker()):
+        with (
+            patch("tools.utils.project_settings.load_project_settings", return_value=mock_settings),
+            patch("storage.artifact_chunker.ChunkerFactory.get", return_value=MockChunker()),
+        ):
             asyncio.run(repo.upsert_chunks("test.txt", "some content", "2026-09-17", ext=".txt"))
 
         self.assertEqual(captured_overlap_pct, [0.3])
@@ -216,14 +251,14 @@ Some actual content.
                 captured_overlap_pct.append(overlap_pct)
                 return iter([])
 
-        with patch("tools.utils.project_settings.load_project_settings", return_value=mock_settings), \
-             patch("storage.artifact_chunker.ChunkerFactory.get", return_value=MockChunker()):
+        with (
+            patch("tools.utils.project_settings.load_project_settings", return_value=mock_settings),
+            patch("storage.artifact_chunker.ChunkerFactory.get", return_value=MockChunker()),
+        ):
             asyncio.run(repo.upsert_chunks("test.txt", "some content", "2026-09-17", ext=".txt"))
-
 
         self.assertEqual(captured_overlap_pct, [None])
 
 
 if __name__ == "__main__":
     unittest.main()
-

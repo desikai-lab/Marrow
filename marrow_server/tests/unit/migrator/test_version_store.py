@@ -1,6 +1,5 @@
 import pytest
 import yaml
-
 from migrator.version_store import (
     ProjectMeta,
     get_subsystem_version,
