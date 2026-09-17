@@ -23,6 +23,8 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_MODEL_TEXT)
 
 EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "384"))
 MAX_EMBED_CHARS = int(os.getenv("MAX_EMBED_CHARS", "2000"))
+DEFAULT_CHUNK_OVERLAP_PCT = float(os.getenv("DEFAULT_CHUNK_OVERLAP_PCT", "0.15"))
+
 
 # Optional: explicit fastembed model cache directory.
 # Leave unset for local/Windows dev (fastembed picks an OS-appropriate default).

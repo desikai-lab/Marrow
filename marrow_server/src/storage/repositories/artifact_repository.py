@@ -5,7 +5,6 @@ from typing import Any
 from config import EMBEDDING_MODEL_TEXT, MAX_EMBED_CHARS
 from utils.metrics import track_time
 
-from storage.artifact_chunker import ChunkerFactory
 from storage.db import get_artifact_table, get_chunk_table, schedule_index_rebuild
 from storage.embeddings import embeddings_manager
 from storage.entities import ArtifactChunkRecord, ArtifactRecord
@@ -82,11 +81,18 @@ class ArtifactChunkRepository:
         self.table = get_chunk_table(project_root)
 
     async def upsert_chunks(self, path: str, content: str, updated: str, ext: str = ".md") -> None:
+        from tools.utils.project_settings import load_project_settings
+
+        from storage.artifact_chunker import ChunkerFactory
+
         await asyncio.to_thread(self.table.delete, f"path = '{path}'")
         chunker = ChunkerFactory.get(ext)
+        settings = load_project_settings(self.project_root)
         records = []
 
-        for chunk in chunker.chunk(content, MAX_EMBED_CHARS):
+        for chunk in chunker.chunk(
+            content, MAX_EMBED_CHARS, overlap_pct=settings.chunk_overlap_pct
+        ):
             vector = await asyncio.to_thread(
                 embeddings_manager.generate_vector, chunk.text, model_name=EMBEDDING_MODEL_TEXT
             )
@@ -176,9 +182,14 @@ class ArtifactChunkRepository:
 
     @track_time(layer="repository")
     async def semantic_search(self, query_text: str, limit: int = 5) -> list[dict[str, Any]]:
+        """Performs semantic search against artifact chunks.
+        Note: section may contain a full H1>H2>H3 breadcrumb for .md files (see F4000202)
+        rather than a single leaf header.
+        """
         query_vector = await asyncio.to_thread(
             embeddings_manager.generate_vector, query_text, model_name=EMBEDDING_MODEL_TEXT
         )
+
         if query_vector is None:
             return []
 

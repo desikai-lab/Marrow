@@ -180,6 +180,50 @@ Some actual content.
         self.assertEqual(ctx.results[0]["status"], "error")
         self.assertEqual(ctx.results[1]["status"], "error")
 
+    def test_upsert_chunks_reads_project_settings_overlap_pct_and_passes_to_chunker(self):
+        """Verifies that upsert_chunks passes chunk_overlap_pct from project_settings."""
+        from storage.repositories.artifact_repository import ArtifactChunkRepository
+        from tools.utils.project_settings import ProjectSettings
+
+        repo = ArtifactChunkRepository(self.project_root)
+        mock_settings = ProjectSettings(chunk_overlap_pct=0.3)
+
+        captured_overlap_pct = []
+
+        class MockChunker:
+            def chunk(self, content, max_chars, overlap_pct=None):
+                captured_overlap_pct.append(overlap_pct)
+                return iter([])
+
+        with patch("tools.utils.project_settings.load_project_settings", return_value=mock_settings), \
+             patch("storage.artifact_chunker.ChunkerFactory.get", return_value=MockChunker()):
+            asyncio.run(repo.upsert_chunks("test.txt", "some content", "2026-09-17", ext=".txt"))
+
+        self.assertEqual(captured_overlap_pct, [0.3])
+
+    def test_upsert_chunks_falls_back_to_default_overlap_when_settings_absent(self):
+        """Verifies that upsert_chunks passes None when chunk_overlap_pct is not set in project_settings."""
+        from storage.repositories.artifact_repository import ArtifactChunkRepository
+        from tools.utils.project_settings import ProjectSettings
+
+        repo = ArtifactChunkRepository(self.project_root)
+        mock_settings = ProjectSettings(chunk_overlap_pct=None)
+
+        captured_overlap_pct = []
+
+        class MockChunker:
+            def chunk(self, content, max_chars, overlap_pct=None):
+                captured_overlap_pct.append(overlap_pct)
+                return iter([])
+
+        with patch("tools.utils.project_settings.load_project_settings", return_value=mock_settings), \
+             patch("storage.artifact_chunker.ChunkerFactory.get", return_value=MockChunker()):
+            asyncio.run(repo.upsert_chunks("test.txt", "some content", "2026-09-17", ext=".txt"))
+
+
+        self.assertEqual(captured_overlap_pct, [None])
+
 
 if __name__ == "__main__":
     unittest.main()
+
