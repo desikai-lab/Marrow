@@ -24,7 +24,7 @@ roles:
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_load_validProject_returnsJoinedAdrSummaries(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/decisions/0000-index.md":
                 return self._MINIMAL_INDEX
             if path == "docs/decisions/adr/0007-a.md":
@@ -48,7 +48,7 @@ roles:
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_load_missingIndividualAdrFile_skipsAndContinues(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/decisions/0000-index.md":
                 return self._MINIMAL_INDEX
             if path == "docs/decisions/adr/0007-a.md":
@@ -76,7 +76,7 @@ roles:
     playbooks: []
 """
 
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/decisions/0000-index.md":
                 return self._MINIMAL_INDEX
             if path == "docs/manuals/role_profiles.yaml":

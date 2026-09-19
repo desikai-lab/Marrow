@@ -16,7 +16,7 @@ roles:
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_load_validRole_returnsGuidelineBundleWithCoreAndPhaseText(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/manuals/guidelines/core.md":
                 return "CORE TEXT"
             if path == "docs/manuals/role_profiles.yaml":
@@ -33,7 +33,7 @@ roles:
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_load_missingYaml_returnsErrorString(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/manuals/guidelines/core.md":
                 return "CORE TEXT"
             if path == "docs/manuals/role_profiles.yaml":
@@ -47,7 +47,7 @@ roles:
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_load_unknownRole_returnsErrorString(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/manuals/guidelines/core.md":
                 return "CORE TEXT"
             if path == "docs/manuals/role_profiles.yaml":
@@ -61,7 +61,7 @@ roles:
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_load_missingGuidelineFile_returnsErrorString(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/manuals/guidelines/core.md":
                 return "CORE TEXT"
             if path == "docs/manuals/role_profiles.yaml":
@@ -77,7 +77,7 @@ roles:
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_load_agentRoleNormalized_resolvesCorrectProfile(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/manuals/guidelines/core.md":
                 return "CORE TEXT"
             if path == "docs/manuals/role_profiles.yaml":
@@ -103,7 +103,7 @@ roles:
     requires_approval: true
 """
 
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/manuals/guidelines/core.md":
                 return "CORE TEXT"
             if path == "docs/manuals/role_profiles.yaml":
