@@ -193,8 +193,13 @@ class ArtifactChunkRepository:
         return count
 
     @track_time(layer="repository")
-    async def semantic_search(self, query_text: str, limit: int = 5) -> list[dict[str, Any]]:
-        """Performs semantic search against artifact chunks.
+    async def semantic_search(
+        self, query_text: str, limit: int = 5, scopes: list[str] | None = None
+    ) -> list[dict[str, Any]]:
+        """Performs semantic search against artifact chunks, optionally restricted
+        to one or more directory scopes (OR semantics -- see _build_scope_filter).
+        `scopes` falsy (None or []) means unscoped: identical to today, no .where()
+        call at all.
         Note: section may contain a full H1>H2>H3 breadcrumb for .md files (see F4000202)
         rather than a single leaf header.
         """
@@ -205,7 +210,11 @@ class ArtifactChunkRepository:
         if query_vector is None:
             return []
 
-        results = await asyncio.to_thread(self.table.search(query_vector).limit(limit).to_list)
+        query = self.table.search(query_vector)
+        if scopes:
+            query = query.where(_build_scope_filter(scopes), prefilter=True)
+
+        results = await asyncio.to_thread(query.limit(limit).to_list)
         formatted = []
         for r in results:
             formatted.append(
