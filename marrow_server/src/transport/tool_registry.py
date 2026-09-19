@@ -6,11 +6,10 @@ Add a new tool here; mcp_core.py bootstrapper picks it up automatically.
 import asyncio
 from typing import Annotated, Any
 
-from mcp.server.fastmcp import FastMCP
-from pydantic import Field
-
 from domain.responses import EmptyArtifactsResult
+from mcp.server.fastmcp import FastMCP
 from models import ReadRequest, TaskInput, WriteRequest
+from pydantic import Field
 from services.artifact_command_service import save_project_artifacts_logic
 from services.artifact_query_service import search_artifact_sections_logic
 from services.skeleton_query_service import (
