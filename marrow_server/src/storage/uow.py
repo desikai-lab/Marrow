@@ -17,11 +17,10 @@ from common.path_resolver import (
 from common.project_file_error import ProjectFileError
 from common.project_path import ProjectPath
 from domain.validators.status_change import StatusChangeValidator
-from utils.exceptions import DomainProtectionError, TaskNotFoundError
-
 from storage.blobs import read_blob, write_blob
 from storage.entities import TaskRecord
 from storage.repositories import ArtifactChunkRepository, ArtifactRepository, TaskRepository
+from utils.exceptions import DomainProtectionError, TaskNotFoundError
 
 VALID_TRANSITIONS = {
     "open": ["paused", "closed", "analysis", "blocked"],
@@ -45,6 +44,15 @@ class UnitOfWork:
         self.tasks = TaskRepository(project_root)
         self.artifacts = ArtifactRepository(project_root)
         self.chunks = ArtifactChunkRepository(project_root)
+
+    @classmethod
+    def for_project(cls, project: str) -> "UnitOfWork":
+        """Construct a UnitOfWork for a project without the caller resolving a raw
+        path itself. storage/uow.py is on get_raw_path's allowlist; most
+        service-layer callers are not, and should not need to be just to open a
+        project's storage."""
+        project_root = get_raw_path(project, "", ResourceKind.ROOT)
+        return cls(project_root)
 
     def _check_domain_protection(self, path: str) -> None:
         """Raises DomainProtectionError if path points to a protected file."""
