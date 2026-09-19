@@ -62,7 +62,7 @@ def load(project: str, agent_role: str = "") -> str:
     """
     adr_parts: list[str] = []
     try:
-        index_text = tools.artifacts.read_artifact_logic(project, ADR_INDEX_PATH, 'full')
+        index_text = tools.artifacts.read_artifact_logic(project, ADR_INDEX_PATH, "full")
     except ArtifactNotFoundError:
         logger.warning(
             "ADR index not found for project '%s' at '%s' — skipping foundational ADRs.",

@@ -47,8 +47,8 @@ def load(project: str) -> SessionContext:
     role guess anymore (see ADR-0036/ROLE-01).
     """
     try:
-        session_text = tools.artifacts.read_artifact_logic(project, "session.md", 'full')
-        spec = tools.artifacts.read_artifact_logic(project, "spec.md", 'full')
+        session_text = tools.artifacts.read_artifact_logic(project, "session.md", "full")
+        spec = tools.artifacts.read_artifact_logic(project, "spec.md", "full")
     except ArtifactNotFoundError:
         logger.warning(
             "session.md not found for project '%s'; proceeding with empty session.", project
