@@ -3,13 +3,26 @@ import logging
 from typing import Any
 
 from config import EMBEDDING_MODEL_TEXT, MAX_EMBED_CHARS
-from utils.metrics import track_time
-
 from storage.db import get_artifact_table, get_chunk_table, schedule_index_rebuild
 from storage.embeddings import embeddings_manager
 from storage.entities import ArtifactChunkRecord, ArtifactRecord
+from utils.metrics import track_time
 
 logger = logging.getLogger("marrow.artifact_repository")
+
+
+def _build_scope_filter(scopes: list[str]) -> str:
+    """Builds a LanceDB SQL WHERE expression matching any chunk whose `path`
+    lies strictly under one of the given directory scopes (OR semantics).
+    Every scope is escaped so that quote/wildcard characters in it are treated
+    as literal data, never as SQL/LIKE syntax (REQ-06). Pure function, no I/O.
+    """
+    clauses = []
+    for scope in scopes:
+        # Escape order matters: backslash first, then quote, then LIKE metachars.
+        esc = scope.replace("\\", "\\\\").replace("'", "''").replace("%", "\\%").replace("_", "\\_")
+        clauses.append(f"path LIKE '{esc}/%' ESCAPE '\\'")
+    return "(" + " OR ".join(clauses) + ")"
 
 
 class ArtifactRepository:
@@ -81,9 +94,8 @@ class ArtifactChunkRepository:
         self.table = get_chunk_table(project_root)
 
     async def upsert_chunks(self, path: str, content: str, updated: str, ext: str = ".md") -> None:
-        from tools.utils.project_settings import load_project_settings
-
         from storage.artifact_chunker import ChunkerFactory
+        from tools.utils.project_settings import load_project_settings
 
         await asyncio.to_thread(self.table.delete, f"path = '{path}'")
         chunker = ChunkerFactory.get(ext)
