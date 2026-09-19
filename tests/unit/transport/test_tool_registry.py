@@ -7,10 +7,10 @@ import mcp_core
 from transport.tool_registry import register_all_tools
 
 
-def test_register_all_tools_called_with_mcp_instance_mounts_23_tools():
+def test_register_all_tools_called_with_mcp_instance_mounts_24_tools():
     mock_mcp = MagicMock()
     register_all_tools(mock_mcp)
-    assert mock_mcp.tool.call_count == 23
+    assert mock_mcp.tool.call_count == 24
 
 
 def test_register_all_tools_mcp_core_import_resolves_mcp_symbol():

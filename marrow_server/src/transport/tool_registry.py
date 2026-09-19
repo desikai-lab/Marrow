@@ -7,8 +7,9 @@ import asyncio
 from typing import Annotated, Any
 
 from mcp.server.fastmcp import FastMCP
-from models import ReadRequest, TaskInput, WriteRequest
 from pydantic import Field
+
+from models import ReadRequest, TaskInput, WriteRequest
 from services.artifact_command_service import save_project_artifacts_logic
 from services.artifact_query_service import search_artifact_sections_logic
 from services.skeleton_query_service import (
@@ -138,9 +139,30 @@ def register_all_tools(mcp: FastMCP) -> None:
         limit: Annotated[int, Field(description="Max results")] = 5,
     ) -> Any:
         """
-        [ARTIFACT TOOLS] Perform semantic search on artifact sections.
-        Calculates embeddings vector for the query and searches top results by distance.
-        Returns the path, section name, line numbers, and distance.
+        [ARTIFACT TOOLS] Performs semantic search over artifact chunks and returns each
+        hit's location plus its current file content.
+
+        Read-only: does not modify any artifact or index.
+
+        Parameters:
+          project : project name.
+          query   : natural-language search text.
+          limit   : int = 5 -- number of hits returned. Each hit costs one bounded
+                    line-range read of the live file, so keep it modest. Content is
+                    always included; there are no other tunable parameters.
+
+        Returns: list of hits, each with path, section, start_line, end_line, distance,
+                 content (str | null -- the live file text at [start_line, end_line];
+                 null only when warning is set) and warning (str | null -- present only
+                 when content could not be read).
+        Raises:  404 if the project is not found. The call does not fail when an
+                 individual hit's file is missing, unresolvable or unreadable: that hit
+                 gets content: null plus a warning (partial success), so treat a null
+                 content as an expected state, not an error.
+
+        Do NOT use for reading a known file path directly -- call read_project_artifacts
+        instead; semantic_search is for discovery by meaning, not for retrieving a file
+        you already know the path to.
         """
         results = await search_artifact_sections_logic(project, query, limit)
         return [r.model_dump() for r in results]
