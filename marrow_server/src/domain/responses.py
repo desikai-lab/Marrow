@@ -81,6 +81,19 @@ class ArtifactSectionResult(BaseModel):
     warning: str | None = None
 
 
+class EmptyArtifactsResult(BaseModel):
+    """Returned by search_artifact_sections_logic instead of a hit list when a
+    scoped query matches zero chunks (REQ-07). Deliberately carries nothing but
+    the message -- no path/section/distance placeholders -- so a caller can't
+    mistake it for a real hit by pattern-matching on ArtifactSectionResult's
+    shape. Distinct from a hit's `warning` field, which means "this hit exists
+    in the index but its live file content could not be read" (F4000241); this
+    model means "there were no hits at all."
+    """
+
+    message: str
+
+
 # ── Artifact Command ──────────────────────────────────────────────────────────
 
 

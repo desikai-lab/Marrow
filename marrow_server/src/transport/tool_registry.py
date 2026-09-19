@@ -6,6 +6,7 @@ Add a new tool here; mcp_core.py bootstrapper picks it up automatically.
 import asyncio
 from typing import Annotated, Any
 
+from domain.responses import EmptyArtifactsResult
 from mcp.server.fastmcp import FastMCP
 from models import ReadRequest, TaskInput, WriteRequest
 from pydantic import Field
@@ -136,34 +137,46 @@ def register_all_tools(mcp: FastMCP) -> None:
         project: Annotated[str, Field(description="Project name")],
         query: Annotated[str, Field(description="Search text")],
         limit: Annotated[int, Field(description="Max results")] = 5,
+        scopes: Annotated[
+            list[str] | None,
+            Field(
+                description=(
+                    "Directory paths to restrict hits to (OR'd, max 20). "
+                    "Omit for unscoped (default). Files won't match -- use "
+                    "read_project_artifacts for a known file."
+                )
+            ),
+        ] = None,
     ) -> Any:
         """
-        [ARTIFACT TOOLS] Performs semantic search over artifact chunks and returns each
-        hit's location plus its current file content.
-
-        Read-only: does not modify any artifact or index.
+        [ARTIFACT TOOLS] Semantic search over artifact chunks, optionally scoped to
+        one or more directories; returns each hit's location plus file content.
+        Read-only.
 
         Parameters:
           project : project name.
           query   : natural-language search text.
-          limit   : int = 5 -- number of hits returned. Each hit costs one bounded
-                    line-range read of the live file, so keep it modest. Content is
-                    always included; there are no other tunable parameters.
+          limit   : max hits. With scopes, applies to the combined OR result, not
+                    per scope.
+          scopes  : project-relative directory paths, max 20, OR semantics. Omit
+                    (or None/[]) for unscoped -- unchanged from before this param
+                    existed. Directories only; a file path simply matches nothing.
 
-        Returns: list of hits, each with path, section, start_line, end_line, distance,
-                 content (str | null -- the live file text at [start_line, end_line];
-                 null only when warning is set) and warning (str | null -- present only
-                 when content could not be read).
-        Raises:  404 if the project is not found. The call does not fail when an
-                 individual hit's file is missing, unresolvable or unreadable: that hit
-                 gets content: null plus a warning (partial success), so treat a null
-                 content as an expected state, not an error.
+        Returns: on a normal or unscoped call, a list of hits (path, section,
+          start_line, end_line, distance, content, warning -- as before). If
+          scopes matched zero chunks, returns a single object instead of a list:
+          {"message": str} explaining why -- check for a "message" key, not list
+          length, to tell the two shapes apart.
+        Raises: 404 unknown project. Validation error for a bad scope (absolute,
+          '..', outside project root) or >20 scopes -- names the scope, never a
+          host path. Per-hit read failures set `warning` (partial success), not an exception.
 
-        Do NOT use for reading a known file path directly -- call read_project_artifacts
-        instead; semantic_search is for discovery by meaning, not for retrieving a file
-        you already know the path to.
+        Do NOT use to read a known file -- call read_project_artifacts instead.
+        Do NOT pass a file path as a scope -- scopes are directories.
         """
-        results = await search_artifact_sections_logic(project, query, limit)
+        results = await search_artifact_sections_logic(project, query, limit, scopes=scopes)
+        if isinstance(results, EmptyArtifactsResult):
+            return results.model_dump()
         return [r.model_dump() for r in results]
 
     @mcp.tool()

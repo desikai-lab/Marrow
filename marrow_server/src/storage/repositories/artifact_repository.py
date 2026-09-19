@@ -12,6 +12,20 @@ from storage.entities import ArtifactChunkRecord, ArtifactRecord
 logger = logging.getLogger("marrow.artifact_repository")
 
 
+def _build_scope_filter(scopes: list[str]) -> str:
+    """Builds a LanceDB SQL WHERE expression matching any chunk whose `path`
+    lies strictly under one of the given directory scopes (OR semantics).
+    Every scope is escaped so that quote/wildcard characters in it are treated
+    as literal data, never as SQL/LIKE syntax (REQ-06). Pure function, no I/O.
+    """
+    clauses = []
+    for scope in scopes:
+        # Escape order matters: backslash first, then quote, then LIKE metachars.
+        esc = scope.replace("\\", "\\\\").replace("'", "''").replace("%", "\\%").replace("_", "\\_")
+        clauses.append(f"path LIKE '{esc}/%' ESCAPE '\\'")
+    return "(" + " OR ".join(clauses) + ")"
+
+
 class ArtifactRepository:
     def __init__(self, project_root: str):
         self.project_root = project_root
@@ -181,8 +195,13 @@ class ArtifactChunkRepository:
         return count
 
     @track_time(layer="repository")
-    async def semantic_search(self, query_text: str, limit: int = 5) -> list[dict[str, Any]]:
-        """Performs semantic search against artifact chunks.
+    async def semantic_search(
+        self, query_text: str, limit: int = 5, scopes: list[str] | None = None
+    ) -> list[dict[str, Any]]:
+        """Performs semantic search against artifact chunks, optionally restricted
+        to one or more directory scopes (OR semantics -- see _build_scope_filter).
+        `scopes` falsy (None or []) means unscoped: identical to today, no .where()
+        call at all.
         Note: section may contain a full H1>H2>H3 breadcrumb for .md files (see F4000202)
         rather than a single leaf header.
         """
@@ -193,7 +212,11 @@ class ArtifactChunkRepository:
         if query_vector is None:
             return []
 
-        results = await asyncio.to_thread(self.table.search(query_vector).limit(limit).to_list)
+        query = self.table.search(query_vector)
+        if scopes:
+            query = query.where(_build_scope_filter(scopes), prefilter=True)
+
+        results = await asyncio.to_thread(query.limit(limit).to_list)
         formatted = []
         for r in results:
             formatted.append(
