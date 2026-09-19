@@ -35,7 +35,7 @@ def _build_next_step_section(project: str, profile) -> str:
         DEFAULT_HARD_STOP_TEXT if profile.requires_approval else DEFAULT_AUTO_ADVANCE_TEXT
     )
     try:
-        template_text = tools.artifacts.read_artifact_logic(project, template_path)
+        template_text = tools.artifacts.read_artifact_logic(project, template_path, "full")
     except ArtifactNotFoundError:
         template_text = default_text
 
@@ -61,7 +61,7 @@ def _resolve_from_role_param(project: str, role: str) -> tuple[str, str | None, 
     propagates to @mcp_error_handler (consistent with session_service failures
     on the default path).
     """
-    spec = tools.artifacts.read_artifact_logic(project, "spec.md")
+    spec = tools.artifacts.read_artifact_logic(project, "spec.md", "full")
     return role, None, spec
 
 

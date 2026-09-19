@@ -22,10 +22,14 @@ def load(project: str, agent_role: str) -> GuidelineBundle | str:
     (missing yaml, unknown role, missing guideline file).
     The agent_role is normalized internally (lowercase, strip ' agent' suffix).
     """
-    core_text = tools.artifacts.read_artifact_logic(project, "docs/manuals/guidelines/core.md")
+    core_text = tools.artifacts.read_artifact_logic(
+        project, "docs/manuals/guidelines/core.md", "full"
+    )
 
     try:
-        yaml_text = tools.artifacts.read_artifact_logic(project, "docs/manuals/role_profiles.yaml")
+        yaml_text = tools.artifacts.read_artifact_logic(
+            project, "docs/manuals/role_profiles.yaml", "full"
+        )
     except ArtifactNotFoundError:
         return (
             f"Error: role_profiles.yaml not found for project '{project}'. "
@@ -39,7 +43,7 @@ def load(project: str, agent_role: str) -> GuidelineBundle | str:
         return profile  # error string from loader (unknown role etc.)
 
     try:
-        phase_text = tools.artifacts.read_artifact_logic(project, profile.guideline)
+        phase_text = tools.artifacts.read_artifact_logic(project, profile.guideline, "full")
     except ArtifactNotFoundError:
         return f"Error: guideline file not found: {profile.guideline}"
 
