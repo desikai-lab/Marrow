@@ -1,14 +1,13 @@
+import asyncio
 import logging
 import os
 from datetime import datetime
 from typing import Any, Literal
 
+import tools.utils.history_integrity  # noqa: F401 -- import for registration side-effect
 from common.path_resolver import ResourceKind, get_dir_path
 from common.project_path import ProjectPath
 from storage.uow import UnitOfWork
-from utils.exceptions import ArtifactNotFoundError
-
-import tools.utils.history_integrity  # noqa: F401 -- import for registration side-effect
 from tools.artifact_pipeline import save_project_artifacts_logic
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
 from tools.utils.filesystem_utils import (
@@ -19,8 +18,24 @@ from tools.utils.filesystem_utils import (
     validate_artifact_path,
     validate_project_path,
 )
+from utils.exceptions import ArtifactNotFoundError
 
 logger = logging.getLogger(__name__)
+
+
+def read_project_artifact_logic(
+    project_path: ProjectPath,
+    mode: Literal["full", "section", "lines", "paged"] = "paged",
+    direction: Literal["begin", "end"] = "begin",
+    **kwargs,
+) -> str:
+    """Core read execution: strategy dispatch + read against an already-resolved
+    ProjectPath. No path resolution here -- see read_artifact_logic below for the
+    (project, rel_path) convenience form."""
+    if not project_path.exists():
+        raise ArtifactNotFoundError(f"Artifact {project_path.relative_path} not found.")
+    strategy = ArtifactStrategyFactory.get_read_strategy(mode)
+    return strategy.read(project_path, direction=direction, **kwargs)
 
 
 def read_artifact_logic(
@@ -28,20 +43,28 @@ def read_artifact_logic(
     rel_path: str,
     mode: Literal["full", "section", "lines", "paged"] = "paged",
     direction: Literal["begin", "end"] = "begin",
-    project_path: ProjectPath | None = None,
     **kwargs,
 ) -> str:
-    """Universal artifact read via the Strategy pattern."""
-    if project_path is None:
-        if not validate_artifact_path(project, rel_path):
-            raise ArtifactNotFoundError(f"Artifact {rel_path} not found.")
-        project_path = resolve_artifact_project_path(project, rel_path)
-
-    if not project_path.exists():
+    """Universal artifact read via the Strategy pattern. Resolves (project, rel_path)
+    then delegates to read_project_artifact_logic."""
+    if not validate_artifact_path(project, rel_path):
         raise ArtifactNotFoundError(f"Artifact {rel_path} not found.")
+    project_path = resolve_artifact_project_path(project, rel_path)
+    return read_project_artifact_logic(project_path, mode, direction, **kwargs)
 
-    strategy = ArtifactStrategyFactory.get_read_strategy(mode)
-    return strategy.read(project_path, direction=direction, **kwargs)
+
+async def read_project_artifact_logic_async(
+    project_path: ProjectPath,
+    mode: Literal["full", "section", "lines", "paged"] = "paged",
+    direction: Literal["begin", "end"] = "begin",
+    **kwargs,
+) -> str:
+    """Async twin of read_project_artifact_logic (ADR-0045). The single
+    asyncio.to_thread bridge lives here, not at call sites. No async twin of the
+    (project, rel_path) wrapper exists: nothing needs one (YAGNI)."""
+    return await asyncio.to_thread(
+        read_project_artifact_logic, project_path, mode, direction, **kwargs
+    )
 
 
 def list_artifacts_logic(
@@ -255,10 +278,8 @@ def read_project_artifacts_logic(project: str, reads: list[dict[str, Any]]) -> l
 
         try:
             project_path = resolve_artifact_project_path(project, raw_path)
-            content = read_artifact_logic(
-                project=project,
-                rel_path=raw_path,
-                project_path=project_path,
+            content = read_project_artifact_logic(
+                project_path,
                 mode=req.get("mode", "full"),
                 direction=req.get("direction", "begin"),
                 section_name=req.get("section_name"),
