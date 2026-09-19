@@ -15,7 +15,7 @@ class TestSessionService(unittest.TestCase):
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_load_nextAgentRolePresent_returnsRoleVerbatim(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "session.md":
                 return "Phase 7\nnext_agent_role: Planning Agent"
             if path == "spec.md":
@@ -29,7 +29,7 @@ class TestSessionService(unittest.TestCase):
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_load_nextAgentRolePresent_overridesPhaseMismatch(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "session.md":
                 return "Phase 7\nnext_agent_role: execution"
             if path == "spec.md":
@@ -43,7 +43,7 @@ class TestSessionService(unittest.TestCase):
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_load_malformedPhaseButNextAgentRolePresent_phaseDefaultsToOne(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "session.md":
                 return "Phase unknown\nnext_agent_role: Discovery Agent"
             if path == "spec.md":
@@ -57,7 +57,7 @@ class TestSessionService(unittest.TestCase):
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_load_noNextAgentRoleLine_raisesValueError(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "session.md":
                 return "Phase 12"
             if path == "spec.md":
@@ -70,7 +70,7 @@ class TestSessionService(unittest.TestCase):
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_load_validProject_returnsSessionTextAndSpec(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "session.md":
                 return "Phase 12\nnext_agent_role: Execution Agent"
             if path == "spec.md":

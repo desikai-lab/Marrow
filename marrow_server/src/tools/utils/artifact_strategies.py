@@ -253,12 +253,11 @@ class LinesReadStrategy(ReadStrategy):
                     if end_line and i >= end_line:
                         break
         else:
-            with project_path.read_lines() as f:
-                for i, line in enumerate(f, 1):
-                    if i >= start_line:
-                        lines.append(line.rstrip("\n"))
-                    if end_line and i >= end_line:
-                        break
+            for i, line in enumerate(project_path.read_lines(), 1):
+                if i >= start_line:
+                    lines.append(line.rstrip("\n"))
+                if end_line and i >= end_line:
+                    break
 
         text = "\n".join(lines)
         return apply_read_filters(

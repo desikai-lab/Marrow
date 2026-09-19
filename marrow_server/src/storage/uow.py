@@ -46,6 +46,15 @@ class UnitOfWork:
         self.artifacts = ArtifactRepository(project_root)
         self.chunks = ArtifactChunkRepository(project_root)
 
+    @classmethod
+    def for_project(cls, project: str) -> "UnitOfWork":
+        """Construct a UnitOfWork for a project without the caller resolving a raw
+        path itself. storage/uow.py is on get_raw_path's allowlist; most
+        service-layer callers are not, and should not need to be just to open a
+        project's storage."""
+        project_root = get_raw_path(project, "", ResourceKind.ROOT)
+        return cls(project_root)
+
     def _check_domain_protection(self, path: str) -> None:
         """Raises DomainProtectionError if path points to a protected file."""
         normalized = path.replace("\\", "/").lstrip("/")

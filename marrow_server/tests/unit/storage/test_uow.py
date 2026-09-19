@@ -1,7 +1,10 @@
 import json
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+from common.project_file_error import ProjectFileError
 from storage.uow import UnitOfWork
 
 
@@ -259,3 +262,23 @@ async def test_writeUpdatedBlob_returnsRecordWithNewStatusAndResolution(tmp_proj
 
     assert new_record.status == "done"
     assert new_record.resolution == "fixed"
+
+
+def test_for_project_existing_project_name_returns_unit_of_work_rooted_at_project_dir(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr("config.PROJECTS_ROOT", str(tmp_path))
+    with (
+        patch("storage.uow.TaskRepository"),
+        patch("storage.uow.ArtifactRepository"),
+        patch("storage.uow.ArtifactChunkRepository"),
+    ):
+        uow = UnitOfWork.for_project("test_project")
+
+    assert isinstance(uow, UnitOfWork)
+    assert uow.project_root == os.path.normpath(str(tmp_path / "test_project"))
+
+
+def test_for_project_empty_project_name_raises_project_file_error():
+    with pytest.raises(ProjectFileError):
+        UnitOfWork.for_project("")

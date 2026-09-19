@@ -25,7 +25,7 @@ class TestSessionContext(unittest.TestCase):
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_get_session_context_logic_valid_project_returns_context_string(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "session.md":
                 return "Phase 8\nnext_agent_role: Planning Agent"
             if path == "docs/manuals/role_profiles.yaml":
@@ -48,7 +48,7 @@ class TestSessionContext(unittest.TestCase):
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_get_session_context_logic_missing_session_raises_value_error(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "session.md":
                 raise ArtifactNotFoundError("session", "session.md")
             raise ArtifactNotFoundError("file", path)
@@ -62,7 +62,7 @@ class TestSessionContext(unittest.TestCase):
     def test_get_session_context_logic_missing_guidelines_raises_artifact_not_found_error(
         self, mock_read
     ):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "session.md":
                 return "Phase 12\nnext_agent_role: Execution Agent"
             if path == "docs/manuals/role_profiles.yaml":
@@ -145,7 +145,7 @@ roles:
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_all_adrs_present_returns_bundle_with_foundational_section(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             base = self._base_side_effect(project, path)
             if base is not None:
                 return base
@@ -165,7 +165,7 @@ roles:
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_one_adr_missing_warns_and_continues(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             base = self._base_side_effect(project, path)
             if base is not None:
                 return base
@@ -185,7 +185,7 @@ roles:
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_index_missing_warns_and_returns_empty_adr_section(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             base = self._base_side_effect(project, path)
             if base is not None:
                 return base
@@ -332,7 +332,7 @@ roles:
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_getGuidelineLogic_validRole_returnsFormattedBundle(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/manuals/guidelines/core.md":
                 return "CORE"
             if path == "docs/manuals/role_profiles.yaml":
@@ -359,7 +359,7 @@ roles:
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_getGuidelineLogic_unknownRole_returnsErrorString(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/manuals/guidelines/core.md":
                 return "CORE"
             if path == "docs/manuals/role_profiles.yaml":
@@ -374,7 +374,7 @@ roles:
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_getGuidelineLogic_missingYaml_returnsErrorString(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/manuals/guidelines/core.md":
                 return "CORE"
             if path == "docs/manuals/role_profiles.yaml":
@@ -389,7 +389,7 @@ roles:
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_getGuidelineLogic_missingGuidelineFile_returnsErrorString(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/manuals/guidelines/core.md":
                 return "CORE"
             if path == "docs/manuals/role_profiles.yaml":
@@ -404,7 +404,7 @@ roles:
 
     @patch("tools.artifacts.read_artifact_logic")
     def test_getGuidelineLogic_missingAdrFile_skipsAndContinues(self, mock_read):
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/manuals/guidelines/core.md":
                 return "CORE"
             if path == "docs/manuals/role_profiles.yaml":
@@ -445,7 +445,7 @@ roles:
             "| 0007 | [Pipeline Standard](adr/0007-pipeline-standard.md) | Accepted | all |\n"
         )
 
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "session.md":
                 return "Phase 4\nnext_agent_role: Architecture Agent"
             if path == "spec.md":
@@ -511,7 +511,7 @@ roles:
     requires_approval: true
 """
 
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "session.md":
                 return "Phase 8\nnext_agent_role: Planning Agent"
             if path == "spec.md":
@@ -546,7 +546,7 @@ roles:
     requires_approval: false
 """
 
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "session.md":
                 return "Phase 12\nnext_agent_role: Execution Agent"
             if path == "spec.md":
@@ -578,7 +578,7 @@ roles:
     next: null
 """
 
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "session.md":
                 return "Phase 1\nnext_agent_role: reviewer"
             if path == "spec.md":
@@ -608,7 +608,7 @@ roles:
     requires_approval: true
 """
 
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "session.md":
                 return "Phase 8\nnext_agent_role: Planning Agent"
             if path == "spec.md":
@@ -656,7 +656,7 @@ class TestBuildNextStepSection(unittest.TestCase):
         from services.role_profile_service import RoleProfile
         from tools.session_context import _build_next_step_section
 
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/manuals/guidelines/hard_stop.md":
                 return "HARD STOP TEMPLATE. Next: {next_role}"
             raise ArtifactNotFoundError("file", path)
@@ -676,7 +676,7 @@ class TestBuildNextStepSection(unittest.TestCase):
         from services.role_profile_service import RoleProfile
         from tools.session_context import _build_next_step_section
 
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "docs/manuals/guidelines/auto_advance.md":
                 return "AUTO ADVANCE TEMPLATE. Next: {next_role}"
             raise ArtifactNotFoundError("file", path)
@@ -735,7 +735,7 @@ class TestBuildNextStepSection(unittest.TestCase):
         (e.g. a standalone reviewer-type role) must NOT contain a NEXT STEP section at all."""
         from tools.session_context import get_session_context_logic
 
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "session.md":
                 return "Phase 1\nnext_agent_role: reviewer"
             if path == "spec.md":
@@ -768,7 +768,7 @@ class TestBuildNextStepSection(unittest.TestCase):
         confirms the auto-advance loop-back path used by the live 4-role pipeline works."""
         from tools.session_context import get_session_context_logic
 
-        def side_effect(project, path):
+        def side_effect(project, path, *args, **kwargs):
             if path == "session.md":
                 return "Phase 15\nnext_agent_role: execution"
             if path == "spec.md":
