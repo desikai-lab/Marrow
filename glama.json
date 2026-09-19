@@ -3,6 +3,11 @@
   "maintainers": [
     "desikai"
   ],
+  "keywords": [
+    "windows",
+    "macos",
+    "apple"
+  ],
   "placeholderArguments": {
     "SECRET_TOKEN": "dummy-token-for-checks",
     "TASKS_DIR": "/tmp/marrow-data"
