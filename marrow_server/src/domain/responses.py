@@ -77,6 +77,8 @@ class ArtifactSectionResult(BaseModel):
     start_line: int
     end_line: int
     distance: float
+    content: str | None = None
+    warning: str | None = None
 
 
 # ── Artifact Command ──────────────────────────────────────────────────────────
