@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from config import DEFAULT_CHUNK_OVERLAP_PCT, PROJECTS_ROOT  # noqa: F401
+import config
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,7 @@ def load_project_settings(project: str) -> ProjectSettings:
         return _settings_cache[project]
 
     settings = ProjectSettings()
-    settings_path = Path(PROJECTS_ROOT) / project / ".settings"
+    settings_path = Path(config.PROJECTS_ROOT) / project / ".settings"
 
     if not settings_path.exists():
         logger.debug(

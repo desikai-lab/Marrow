@@ -31,8 +31,8 @@ class TestSourceTool(unittest.TestCase):
         self.project_path = self.projects_root / self.project_name
         self.project_path.mkdir()
 
-        # Patch PROJECTS_ROOT in project_settings
-        self.patcher = patch("tools.utils.project_settings.PROJECTS_ROOT", str(self.projects_root))
+        # Patch PROJECTS_ROOT in config
+        self.patcher = patch("config.PROJECTS_ROOT", str(self.projects_root))
         self.patcher.start()
 
         # Clear cache before each test
