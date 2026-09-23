@@ -3,11 +3,15 @@ import logging
 from typing import Any
 
 from config import EMBEDDING_MODEL_TEXT, MAX_EMBED_CHARS
-from utils.metrics import track_time
-
-from storage.db import get_artifact_table, get_chunk_table, schedule_index_rebuild
+from storage.db import (
+    get_artifact_table,
+    get_chunk_table,
+    get_keyword_table,
+    schedule_index_rebuild,
+)
 from storage.embeddings import embeddings_manager
 from storage.entities import ArtifactChunkRecord, ArtifactRecord
+from utils.metrics import track_time
 
 logger = logging.getLogger("marrow.artifact_repository")
 
@@ -94,19 +98,19 @@ class ArtifactChunkRepository:
         # Handle is cached in db._connections; safe singleton access
         self.table = get_chunk_table(project_root)
 
-    async def upsert_chunks(self, path: str, content: str, updated: str, ext: str = ".md") -> None:
-        from tools.utils.project_settings import load_project_settings
-
+    async def upsert_chunks(self, path: str, content: str, updated: str, ext: str = ".md") -> list:
         from storage.artifact_chunker import ChunkerFactory
+        from tools.utils.project_settings import load_project_settings
 
         await asyncio.to_thread(self.table.delete, f"path = '{path}'")
         chunker = ChunkerFactory.get(ext)
         settings = load_project_settings(self.project_root)
         records = []
 
-        for chunk in chunker.chunk(
-            content, MAX_EMBED_CHARS, overlap_pct=settings.chunk_overlap_pct
-        ):
+        chunks = list(
+            chunker.chunk(content, MAX_EMBED_CHARS, overlap_pct=settings.chunk_overlap_pct)
+        )
+        for chunk in chunks:
             vector = await asyncio.to_thread(
                 embeddings_manager.generate_vector, chunk.text, model_name=EMBEDDING_MODEL_TEXT
             )
@@ -127,6 +131,22 @@ class ArtifactChunkRepository:
             logger.info(f"Generated and indexed {len(records)} chunks for artifact {path}.")
         else:
             logger.warning(f"No chunks vectorised for artifact {path}.")
+
+        return chunks  # CHANGED from None -- application layer needs these for keyword extraction
+
+    async def save_keyword_records(self, path: str, records: list) -> None:
+        """Infrastructure-only: writes already-prepared keyword records to the
+        separate artifact_chunk_keywords table. Performs no extraction --
+        callers (application layer) are responsible for producing
+        fully-formed ArtifactChunkKeywordRecord instances before calling this.
+        Delete-then-insert, same convention as upsert_chunks' own table writes.
+        """
+        kw_table = get_keyword_table(self.project_root)
+        await asyncio.to_thread(kw_table.delete, f"path = '{path}'")
+        rows = [r.to_index_row() for r in records]
+        if rows:
+            await asyncio.to_thread(kw_table.add, rows)
+            schedule_index_rebuild(kw_table)
 
     async def rename(self, old_path: str, new_path: str) -> int:
         """Metadata-only path rename across ALL chunk rows for old_path.
