@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 
 import lancedb
+from utils.exceptions import StorageTimeoutError
 
 from storage.entities import (
     ARTIFACT_CHUNK_KEYWORD_SCHEMA,
@@ -11,7 +12,6 @@ from storage.entities import (
     SKELETON_CHUNK_SCHEMA,
     TASK_SCHEMA,
 )
-from utils.exceptions import StorageTimeoutError
 
 logger = logging.getLogger("marrow.db")
 
