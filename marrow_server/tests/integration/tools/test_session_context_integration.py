@@ -22,7 +22,6 @@ class TestGetGuidelineLogicIntegration(unittest.TestCase):
         self._build_fixture()
         self.patchers = [
             patch("config.PROJECTS_ROOT", self.tmp),
-            patch("tools.utils.filesystem_utils.PROJECTS_ROOT", self.tmp),
         ]
         for p in self.patchers:
             p.start()
@@ -125,7 +124,6 @@ class TestGetSessionContextRoleFilteringIntegration(unittest.TestCase):
         self._build_fixture()
         self.patchers = [
             patch("config.PROJECTS_ROOT", self.tmp),
-            patch("tools.utils.filesystem_utils.PROJECTS_ROOT", self.tmp),
         ]
         for p in self.patchers:
             p.start()
@@ -222,7 +220,6 @@ class TestGetSessionContextFlagParity(unittest.TestCase):
         self._build_fixture()
         self.patchers = [
             patch("config.PROJECTS_ROOT", self.tmp),
-            patch("tools.utils.filesystem_utils.PROJECTS_ROOT", self.tmp),
         ]
         for p in self.patchers:
             p.start()

@@ -4,6 +4,7 @@ import shutil
 from unittest.mock import patch
 
 import pytest
+
 from config import PROJECTS_ROOT
 from models import TaskInput
 from services.task_command_service import add_tasks_logic

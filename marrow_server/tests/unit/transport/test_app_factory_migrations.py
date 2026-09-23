@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from transport.app_factory import lifespan
 
 

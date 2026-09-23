@@ -1,4 +1,5 @@
 import pytest
+
 from common.path_resolver import ResourceKind, get_dir_path
 from common.project_file_error import ProjectFileError
 

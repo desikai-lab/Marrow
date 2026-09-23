@@ -1,4 +1,5 @@
 import pytest
+
 from tools.projects import init_project_logic
 from utils.exceptions import ValidationError
 

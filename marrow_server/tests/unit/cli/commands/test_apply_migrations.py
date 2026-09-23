@@ -2,6 +2,7 @@ import argparse
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from cli.commands.apply_migrations import ApplyMigrationsCommand
 
 

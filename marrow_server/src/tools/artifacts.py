@@ -117,7 +117,7 @@ async def move_project_artifact_logic(project: str, src_path: str, dest_path: st
         uow = UnitOfWork(project_root)
         await uow.artifacts.rename(src_path, dest_path)
 
-        chunks_updated = await uow.chunks.rename(src_path, dest_path)
+        chunks_updated = await uow.chunks.change_path(src_path, dest_path)
         if chunks_updated == 0:
             # Fallback: old path had no chunk rows (e.g. pre-fix stale state,
             # or artifact was never chunked). Re-embed from the new location.

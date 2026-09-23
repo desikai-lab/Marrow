@@ -1,7 +1,8 @@
 import pytest
+from pydantic import ValidationError
+
 from domain.enums import TaskPriority, TaskStatus, TaskType
 from models import TaskInput
-from pydantic import ValidationError
 
 
 def test_TaskStatus_Value_MatchesString():

@@ -1,4 +1,5 @@
 import pytest
+
 from common.project_file_error import ProjectFileError
 from common.project_path import ProjectPath
 

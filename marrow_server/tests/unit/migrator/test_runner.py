@@ -1,7 +1,8 @@
 from unittest.mock import MagicMock
 
-import migrator.runner as runner_module
 import pytest
+
+import migrator.runner as runner_module
 from migrator.base import Migration, MigrationStepReport
 from migrator.runner import run_migrations_all_projects, run_migrations_for_project
 from migrator.version_store import load_project_meta

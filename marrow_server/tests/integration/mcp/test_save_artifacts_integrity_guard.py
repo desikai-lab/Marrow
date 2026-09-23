@@ -2,6 +2,7 @@ import os
 from unittest.mock import patch
 
 import pytest
+
 from config import PROJECTS_ROOT
 from services.artifact_command_service import save_project_artifacts_logic
 

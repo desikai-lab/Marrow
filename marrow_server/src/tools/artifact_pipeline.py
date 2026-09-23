@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from common.project_path import ProjectPath
 
@@ -22,8 +22,54 @@ from tools.utils.filesystem_utils import (
     validate_artifact_path,
     validate_project_path,
 )
+from tools.utils.project_settings import ProjectSettings, load_project_settings
+
+if TYPE_CHECKING:
+    from storage.repositories import ArtifactChunkRepository
 
 logger = logging.getLogger("marrow.pipeline")
+
+
+async def maybe_extract_keywords(
+    settings: ProjectSettings,
+    chunk_repo: "ArtifactChunkRepository",
+    path: str,
+    chunks: list,
+    updated_at: str,
+) -> None:
+    """Application-level step: if LITERAL_EXTRACTION is on for the project,
+    extracts keywords from already-chunked units and persists them via
+    ArtifactChunkRepository.save_keyword_records.
+    `settings` is resolved once by the caller (VectorizationHandler.handle,
+    reindex-chunks CLI) -- this helper never loads settings itself.
+    The caller also passes its ArtifactChunkRepository (`uow.chunks` in the
+    handler, `repo` in the CLI), so the helper needs no project_root.
+    ArtifactChunkRepository itself never sees raw chunks for this purpose.
+    Isolated failure: never raises -- the chunk upsert this follows has
+    already succeeded and is not rolled back by a keyword extraction error.
+    """
+    if not settings.literal_extraction or not chunks:
+        return
+    try:
+        from storage.entities import ArtifactChunkKeywordRecord
+        from storage.keyword_extractor import ExtractiveKeywordExtractor
+
+        results = ExtractiveKeywordExtractor().extract_detailed(chunks)
+        records = [
+            ArtifactChunkKeywordRecord(
+                path=path,
+                start_line=c.start_line,
+                end_line=c.end_line,
+                keywords=" ".join(r.kept),
+                extracted_at=updated_at,
+            )
+            for c, r in zip(chunks, results)
+        ]
+        await chunk_repo.save_keyword_records(path, records)
+    except Exception as exc:
+        logger.warning(
+            "Keyword extraction failed for %s: %s (chunk indexing unaffected)", path, exc
+        )
 
 
 class DefaultPipeline(PersistPipeline):
@@ -201,6 +247,9 @@ class PersistHandler(BaseHandler):
 
 class VectorizationHandler(BaseHandler):
     async def handle(self, ctx: PipelineContext):
+        settings = load_project_settings(
+            ctx.project
+        )  # F4000249: resolved once per handle(), not per path
         # Collect unique paths that were successfully modified
         success_paths = set()
         for res in ctx.results:
@@ -226,11 +275,17 @@ class VectorizationHandler(BaseHandler):
                 await uow.artifacts.upsert(path, cleaned, updated_at)
 
                 # Chunk the artifact and persist sections
+                chunks = []
                 try:
                     ext = os.path.splitext(path)[1].lower()
-                    await uow.chunks.upsert_chunks(path, cleaned, updated_at, ext=ext)
+                    chunks = await uow.chunks.upsert_chunks(
+                        path, cleaned, updated_at, ext=ext
+                    )  # CHANGED: captures return
                 except Exception as chunk_e:
                     logger.error(f"Failed to chunk artifact {path}: {chunk_e}")
+
+                # F4000249: Stage 1 keyword lane -- application-level, flag-gated
+                await maybe_extract_keywords(settings, uow.chunks, path, chunks, updated_at)
 
                 # Debounce (configurable delay)
                 if VECT_DEBOUNCE_SECONDS > 0:

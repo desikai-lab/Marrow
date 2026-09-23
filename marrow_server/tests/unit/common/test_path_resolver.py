@@ -2,6 +2,7 @@ import os
 from unittest.mock import patch
 
 import pytest
+
 from common.path_resolver import (
     ResourceKind,
     get_artifacts_path,

@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from config import DEFAULT_CHUNK_OVERLAP_PCT, PROJECTS_ROOT  # noqa: F401
+import config
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +15,17 @@ class ProjectSettings:
     source_root: Path | None = None
     source_tools_available: bool = False
     chunk_overlap_pct: float | None = None
+    # ( ! ) This is an experimental feature and is working now only with English projects.
+    # If you are not using English, or not only English, for your project documents,
+    # it can affect semantic search results
+    literal_extraction: bool = False  # opt-in, off by default (Rev 7 §3.3)
+
+
+def _parse_bool_flag(raw_value: str | None) -> bool:
+    """Parses boolean flags ('1', 'true', 'yes', 'on'). Returns False if absent or unrecognized."""
+    if not raw_value:
+        return False
+    return raw_value.strip().lower() in ("1", "true", "yes", "on")
 
 
 def _parse_settings_file(settings_path: Path) -> dict[str, str]:
@@ -65,18 +76,20 @@ def load_project_settings(project: str) -> ProjectSettings:
         return _settings_cache[project]
 
     settings = ProjectSettings()
-    settings_path = Path(PROJECTS_ROOT) / project / ".settings"
+    settings_path = Path(config.PROJECTS_ROOT) / project / ".settings"
 
     if not settings_path.exists():
         logger.debug(
             "No .settings file found for project '%s' — source tools unavailable.", project
         )
         settings.chunk_overlap_pct = _parse_overlap_pct(None)
+        settings.literal_extraction = False  # no .settings file, flag defaults off
         _settings_cache[project] = settings
         return settings
 
     raw = _parse_settings_file(settings_path)
     settings.chunk_overlap_pct = _parse_overlap_pct(raw.get("CHUNK_OVERLAP_PCT"))
+    settings.literal_extraction = _parse_bool_flag(raw.get("LITERAL_EXTRACTION"))
     raw_root = raw.get("SOURCE_ROOT", "").strip()
 
     if not raw_root:

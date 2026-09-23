@@ -108,14 +108,14 @@ class TestMoveProjectArtifactLogicVectorSync(unittest.TestCase):
             uow.chunks.upsert_chunks(old_path, "# Error\nSome content", datetime.now().isoformat())
         )
 
-        # Mock uow.chunks.rename to raise an error
+        # Mock uow.chunks.change_path to raise an error
         with patch.object(
-            uow.chunks, "rename", side_effect=Exception("Database connection timed out")
+            uow.chunks, "change_path", side_effect=Exception("Database connection timed out")
         ):
             # We patch UnitOfWork constructor or the local instances, but since UnitOfWork is instantiated inside
-            # move_project_artifact_logic, we can patch UnitOfWork's chunks property or patch uow.chunks.rename class-level.
+            # move_project_artifact_logic, we can patch UnitOfWork's chunks property or patch uow.chunks.change_path class-level.
             with patch(
-                "storage.repositories.artifact_repository.ArtifactChunkRepository.rename",
+                "storage.repositories.artifact_repository.ArtifactChunkRepository.change_path",
                 side_effect=Exception("Database connection timed out"),
             ):
                 res = asyncio.run(move_project_artifact_logic(self.project, old_path, new_path))
