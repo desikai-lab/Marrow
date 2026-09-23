@@ -30,6 +30,44 @@ def _build_scope_filter(scopes: list[str]) -> str:
     return "(" + " OR ".join(clauses) + ")"
 
 
+def _reciprocal_rank_fusion(
+    vector_results: list[dict[str, Any]],
+    keyword_results: list[dict[str, Any]],
+    limit: int,
+    k: int = 60,
+) -> list[dict[str, Any]]:
+    """Merges vector and keyword search results using Reciprocal Rank Fusion (RRF).
+    Calculates RRF score = 1/(k + rank_v) + 1/(k + rank_k).
+    Result items contain 'match': 'vector' | 'keyword' | 'both'.
+    """
+    scores: dict[tuple[str, int, int], float] = {}
+    item_map: dict[tuple[str, int, int], dict[str, Any]] = {}
+    lane_map: dict[tuple[str, int, int], set[str]] = {}
+
+    for rank, item in enumerate(vector_results, start=1):
+        key = (item["path"], item["start_line"], item["end_line"])
+        scores[key] = scores.get(key, 0.0) + 1.0 / (k + rank)
+        item_map[key] = item
+        lane_map.setdefault(key, set()).add("vector")
+
+    for rank, item in enumerate(keyword_results, start=1):
+        key = (item["path"], item["start_line"], item["end_line"])
+        scores[key] = scores.get(key, 0.0) + 1.0 / (k + rank)
+        if key not in item_map:
+            item_map[key] = item
+        lane_map.setdefault(key, set()).add("keyword")
+
+    fused = []
+    for key, score in sorted(scores.items(), key=lambda x: x[1], reverse=True)[:limit]:
+        lanes = lane_map[key]
+        match_type = "both" if len(lanes) == 2 else next(iter(lanes))
+        entry = dict(item_map[key])
+        entry["match"] = match_type
+        fused.append(entry)
+
+    return fused
+
+
 class ArtifactRepository:
     def __init__(self, project_root: str):
         self.project_root = project_root
@@ -236,38 +274,76 @@ class ArtifactChunkRepository:
 
         return count
 
-    @track_time(layer="repository")
-    async def semantic_search(
+    async def _keyword_lane_search(
         self, query_text: str, limit: int = 5, scopes: list[str] | None = None
     ) -> list[dict[str, Any]]:
-        """Performs semantic search against artifact chunks, optionally restricted
-        to one or more directory scopes (OR semantics -- see _build_scope_filter).
-        `scopes` falsy (None or []) means unscoped: identical to today, no .where()
-        call at all.
-        Note: section may contain a full H1>H2>H3 breadcrumb for .md files (see F4000202)
-        rather than a single leaf header.
-        """
-        query_vector = await asyncio.to_thread(
-            embeddings_manager.generate_vector, query_text, model_name=EMBEDDING_MODEL_TEXT
-        )
-
-        if query_vector is None:
-            return []
-
-        query = self.table.search(query_vector)
+        """Queries the artifact_chunk_keywords table using LanceDB FTS (BM25)."""
+        kw_table = get_keyword_table(self.project_root)
+        search = kw_table.search(query_text, query_type="fts", use_tantivy=False)
         if scopes:
-            query = query.where(_build_scope_filter(scopes), prefilter=True)
+            search = search.where(_build_scope_filter(scopes), prefilter=True)
+        raw_rows = await asyncio.to_thread(search.limit(limit).to_list)
 
-        results = await asyncio.to_thread(query.limit(limit).to_list)
-        formatted = []
-        for r in results:
-            formatted.append(
+        results = []
+        for r in raw_rows:
+            results.append(
                 {
                     "path": r.get("path", ""),
                     "section": r.get("section", ""),
                     "start_line": r.get("start_line", 1),
                     "end_line": r.get("end_line", 1),
-                    "distance": round(r.get("_distance", 0), 4),
+                    "distance": 0.0,
                 }
             )
-        return formatted
+        return results
+
+    @track_time(layer="repository")
+    async def semantic_search(
+        self, query_text: str, limit: int = 5, scopes: list[str] | None = None
+    ) -> list[dict[str, Any]]:
+        """Performs search against artifact chunks.
+        If LITERAL_EXTRACTION flag is ON, runs both vector search and BM25 keyword
+        search concurrently, fusing results via RRF.
+        If flag is OFF, runs standard vector search only.
+        """
+        from tools.utils.project_settings import load_project_settings
+
+        settings = load_project_settings(self.project_root)
+
+        # 1. Vector lane search
+        query_vector = await asyncio.to_thread(
+            embeddings_manager.generate_vector, query_text, model_name=EMBEDDING_MODEL_TEXT
+        )
+        vector_results = []
+        if query_vector is not None:
+            query = self.table.search(query_vector)
+            if scopes:
+                query = query.where(_build_scope_filter(scopes), prefilter=True)
+
+            raw_vector_results = await asyncio.to_thread(query.limit(limit).to_list)
+            for r in raw_vector_results:
+                vector_results.append(
+                    {
+                        "path": r.get("path", ""),
+                        "section": r.get("section", ""),
+                        "start_line": r.get("start_line", 1),
+                        "end_line": r.get("end_line", 1),
+                        "distance": round(r.get("_distance", 0.0), 4),
+                    }
+                )
+
+        if not settings.literal_extraction:
+            return vector_results
+
+        # 2. Keyword lane search (if flag ON, best-effort)
+        keyword_results = []
+        try:
+            keyword_results = await self._keyword_lane_search(
+                query_text, limit=limit, scopes=scopes
+            )
+        except Exception as e:
+            logger.warning(
+                "Keyword lane search failed for '%s': %s (vector lane intact)", query_text, e
+            )
+
+        return _reciprocal_rank_fusion(vector_results, keyword_results, limit=limit)
