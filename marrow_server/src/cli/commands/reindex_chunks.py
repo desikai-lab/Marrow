@@ -83,6 +83,11 @@ class ReindexChunksCommand(BaseCommand):
 
         logger.info(f"Reindexing chunks for {len(files_to_index)} file(s)...")
 
+        from tools.artifact_pipeline import maybe_extract_keywords
+        from tools.utils.project_settings import load_project_settings
+
+        settings = load_project_settings(args.project)  # F4000249: resolved once, passed to helper
+
         async def _run_reindex() -> int:
             count = 0
             for rel_path in tqdm(files_to_index, desc="Chunks", unit="file"):
@@ -96,7 +101,10 @@ class ReindexChunksCommand(BaseCommand):
 
                     if not args.dry_run:
                         ext = os.path.splitext(rel_path)[1].lower()
-                        await repo.upsert_chunks(rel_path, clean_content, updated_at, ext=ext)
+                        chunks = await repo.upsert_chunks(
+                            rel_path, clean_content, updated_at, ext=ext
+                        )
+                        await maybe_extract_keywords(settings, repo, rel_path, chunks, updated_at)
 
                     count += 1
 
