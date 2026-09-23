@@ -1,4 +1,5 @@
 import pytest
+
 from domain.validators.section_exists import SectionNotExistsValidator
 from utils.exceptions import ValidationError
 

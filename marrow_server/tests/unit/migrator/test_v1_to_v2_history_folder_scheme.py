@@ -1,6 +1,7 @@
 import os
 
 import pytest
+
 from migrator.migrations.local_storage_layout.v1_to_v2_history_folder_scheme import (
     V1ToV2HistoryFolderScheme,
 )

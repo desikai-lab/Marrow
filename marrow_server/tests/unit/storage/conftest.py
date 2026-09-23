@@ -1,4 +1,5 @@
 import pytest
+
 from storage.db import init_db
 from storage.entities import TaskRecord
 

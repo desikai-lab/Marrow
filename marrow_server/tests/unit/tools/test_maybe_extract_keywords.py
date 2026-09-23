@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 def _settings(literal_extraction: bool) -> MagicMock:
@@ -12,21 +13,30 @@ def _settings(literal_extraction: bool) -> MagicMock:
 async def test_maybeExtractKeywords_flagOff_doesNothing():
     with patch("storage.keyword_extractor.ExtractiveKeywordExtractor") as mock_extractor:
         from tools.artifact_pipeline import maybe_extract_keywords
-        await maybe_extract_keywords(_settings(False), MagicMock(), "docs/a.md", [MagicMock()], "2026")
+
+        await maybe_extract_keywords(
+            _settings(False), MagicMock(), "docs/a.md", [MagicMock()], "2026"
+        )
         mock_extractor.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_maybeExtractKeywords_extractorRaises_doesNotPropagate():
-    with patch("storage.keyword_extractor.ExtractiveKeywordExtractor", side_effect=RuntimeError("boom")):
+    with patch(
+        "storage.keyword_extractor.ExtractiveKeywordExtractor", side_effect=RuntimeError("boom")
+    ):
         from tools.artifact_pipeline import maybe_extract_keywords
-        await maybe_extract_keywords(_settings(True), MagicMock(), "docs/a.md", [MagicMock()], "2026")
+
+        await maybe_extract_keywords(
+            _settings(True), MagicMock(), "docs/a.md", [MagicMock()], "2026"
+        )
 
 
 @pytest.mark.asyncio
 async def test_maybeExtractKeywords_emptyChunks_doesNothing():
     with patch("storage.keyword_extractor.ExtractiveKeywordExtractor") as mock_extractor:
         from tools.artifact_pipeline import maybe_extract_keywords
+
         await maybe_extract_keywords(_settings(True), MagicMock(), "docs/a.md", [], "2026")
         mock_extractor.assert_not_called()
 
@@ -42,6 +52,7 @@ async def test_maybeExtractKeywords_flagOn_savesRecordsViaChunkRepo():
     repo = MagicMock()
     repo.save_keyword_records = AsyncMock()
     from tools.artifact_pipeline import maybe_extract_keywords
+
     await maybe_extract_keywords(_settings(True), repo, "docs/a.md", [chunk], "2026")
     repo.save_keyword_records.assert_awaited_once()
     path_arg, records = repo.save_keyword_records.await_args.args

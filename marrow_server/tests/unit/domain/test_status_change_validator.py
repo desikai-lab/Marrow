@@ -1,4 +1,5 @@
 import pytest
+
 from domain.validators.status_change import StatusChangeValidator
 from utils.exceptions import ValidationError
 

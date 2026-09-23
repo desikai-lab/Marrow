@@ -126,10 +126,13 @@ class TestArtifactChunkRepositoryChangePath(unittest.TestCase):
             uow.chunks.table.delete = original_delete
 
 
-@patch("storage.repositories.artifact_repository.get_keyword_table", side_effect=Exception("db error"))
+@patch(
+    "storage.repositories.artifact_repository.get_keyword_table", side_effect=Exception("db error")
+)
 def test_changePath_keywordTableFailure_doesNotBlockChunkRename(mock_kw_table):
     """A keyword-table error during change_path must be swallowed (best-effort)."""
     from storage.repositories.artifact_repository import ArtifactChunkRepository
+
     repo = ArtifactChunkRepository.__new__(ArtifactChunkRepository)
     repo.project_root = "/fake"
     repo.table = MagicMock()
@@ -140,4 +143,3 @@ def test_changePath_keywordTableFailure_doesNotBlockChunkRename(mock_kw_table):
 
 if __name__ == "__main__":
     unittest.main()
-

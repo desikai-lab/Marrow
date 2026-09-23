@@ -7,6 +7,7 @@ Run with: pytest tests/test_hygiene_processor.py -v
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from tools.build_processors import HygieneCheckProcessor, ProcessorFactory
 
 # ── helpers ───────────────────────────────────────────────────────────────────

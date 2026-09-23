@@ -1,5 +1,5 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
 from storage.entities import ArtifactChunkKeywordRecord
 
 
@@ -21,7 +21,11 @@ def test_artifactChunkKeywordRecord_toIndexRow_returnsAllFields():
 
 def test_artifactChunkKeywordRecord_emptyKeywords_allowedForStubs():
     record = ArtifactChunkKeywordRecord(
-        path="docs/spec.md", start_line=1, end_line=1, keywords="", extracted_at="2026-09-23T12:00:00"
+        path="docs/spec.md",
+        start_line=1,
+        end_line=1,
+        keywords="",
+        extracted_at="2026-09-23T12:00:00",
     )
     assert record.to_index_row()["keywords"] == ""
 
@@ -32,6 +36,7 @@ def test_getKeywordTable_tableNotExists_createsTable(mock_list, mock_get_db):
     mock_db = MagicMock()
     mock_get_db.return_value = mock_db
     from storage.db import get_keyword_table
+
     get_keyword_table("/fake/root")
     mock_db.create_table.assert_called_once()
     args, kwargs = mock_db.create_table.call_args
@@ -45,5 +50,6 @@ def test_getKeywordTable_tableExists_opensTable(mock_list, mock_get_db):
     mock_db = MagicMock()
     mock_get_db.return_value = mock_db
     from storage.db import get_keyword_table
+
     get_keyword_table("/fake/root")
     mock_db.open_table.assert_called_once_with("artifact_chunk_keywords")
