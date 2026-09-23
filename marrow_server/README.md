@@ -77,6 +77,18 @@ EMBEDDING_MODEL_TEXT=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 EMBEDDING_DIMENSIONS=384
 ```
 
+### Project Settings (`.settings` in project root)
+
+Project-level configurations can be set in `{TASKS_DIR}/projects/{project_name}/.settings`:
+
+```ini
+SOURCE_ROOT=/projects/YourProject/src
+LITERAL_EXTRACTION=off
+```
+
+> **Experimental Warning:** `LITERAL_EXTRACTION=on` enables Stage 1 keyword signal blending (BM25 + RRF) for natural language artifact search. *Warning: Extractive keyword indexing is experimental and tuned specifically for English text; indexing non-English artifacts may produce low-quality keyword tokens or fallback stubs.* Defaults to `off`.
+
+
 ### 2. Run the server
 
 ```powershell
