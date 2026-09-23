@@ -3,14 +3,15 @@ import logging
 from pathlib import Path
 
 import lancedb
-from utils.exceptions import StorageTimeoutError
 
 from storage.entities import (
+    ARTIFACT_CHUNK_KEYWORD_SCHEMA,
     ARTIFACT_CHUNK_SCHEMA,
     ARTIFACT_SCHEMA,
     SKELETON_CHUNK_SCHEMA,
     TASK_SCHEMA,
 )
+from utils.exceptions import StorageTimeoutError
 
 logger = logging.getLogger("marrow.db")
 
@@ -215,6 +216,20 @@ def get_skeleton_table(project_root: str) -> lancedb.table.Table:
     return db.open_table("code_skeleton_index")
 
 
+def get_keyword_table(project_root: str) -> lancedb.table.Table:
+    """Returns the artifact_chunk_keywords table, creating it if it does not
+    exist. Separate table (not a column on artifact_chunks) -- experimental,
+    isolated, droppable independently of artifact_chunks. See
+    F4000249 architecture.md §3."""
+    db = get_db(project_root)
+    tables = list_table_names(db)
+    if "artifact_chunk_keywords" not in tables:
+        return db.create_table(
+            "artifact_chunk_keywords", schema=ARTIFACT_CHUNK_KEYWORD_SCHEMA, exist_ok=True
+        )
+    return db.open_table("artifact_chunk_keywords")
+
+
 # create_index_if_needed removed in PERF-04 / PERF-02.
 # Use schedule_index_rebuild(table) and index_rebuild_worker instead.
 
@@ -230,3 +245,4 @@ def init_db(project_root: str):
     get_artifact_table(project_root)
     get_chunk_table(project_root)
     get_skeleton_table(project_root)
+    get_keyword_table(project_root)  # F4000249: keyword lane table, always created, rows are lazy

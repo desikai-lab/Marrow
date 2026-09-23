@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import pyarrow as pa
+
 from config import EMBEDDING_DIMENSIONS
 
 # PyArrow schema for LanceDB
@@ -118,6 +119,42 @@ class ArtifactChunkRecord:
             "end_line": self.end_line,
             "updated": self.updated,
             "vector": self.vector,
+        }
+
+
+ARTIFACT_CHUNK_KEYWORD_SCHEMA = pa.schema(
+    [
+        pa.field("path", pa.string()),
+        pa.field("start_line", pa.int64()),
+        pa.field("end_line", pa.int64()),
+        pa.field("keywords", pa.string()),  # <=512 bytes enforced by extractor, not schema
+        pa.field("extracted_at", pa.string()),
+    ]
+)
+
+
+@dataclass
+class ArtifactChunkKeywordRecord:
+    """DTO for the separate, experimental artifact_chunk_keywords table.
+    Composite key (path, start_line, end_line) mirrors ArtifactChunkRecord's
+    chunk identity so a keyword row can be joined back to its chunk without a
+    foreign key or a column on artifact_chunks -- see architecture.md §3 for
+    why this is a separate table (isolation, not lifecycle convenience).
+    """
+
+    path: str
+    start_line: int
+    end_line: int
+    keywords: str  # "" = processed, nothing kept (stub/token-poor). Row absent = never processed.
+    extracted_at: str
+
+    def to_index_row(self) -> dict[str, Any]:
+        return {
+            "path": self.path,
+            "start_line": self.start_line,
+            "end_line": self.end_line,
+            "keywords": self.keywords,
+            "extracted_at": self.extracted_at,
         }
 
 
