@@ -346,7 +346,10 @@ disabled for that project.
 ```ini
 # Absolute path to the source code root as seen from inside the server container.
 SOURCE_ROOT=/projects/MyApp/src
+LITERAL_EXTRACTION=off
 ```
+
+> **Experimental Warning:** `LITERAL_EXTRACTION=on` enables Stage 1 keyword signal blending (BM25 + RRF) for natural language artifact search. *Warning: Extractive keyword indexing is experimental and tuned specifically for English text; indexing non-English artifacts may produce low-quality keyword tokens or fallback stubs.* Defaults to `off`.
 
 **The key constraint — server, worker, and .settings must all agree on the same path.**
 
