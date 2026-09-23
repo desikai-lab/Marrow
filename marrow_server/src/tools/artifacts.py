@@ -4,12 +4,10 @@ import os
 from datetime import datetime
 from typing import Any, Literal
 
+import tools.utils.history_integrity  # noqa: F401 -- import for registration side-effect
 from common.path_resolver import ResourceKind, get_dir_path
 from common.project_path import ProjectPath
 from storage.uow import UnitOfWork
-from utils.exceptions import ArtifactNotFoundError
-
-import tools.utils.history_integrity  # noqa: F401 -- import for registration side-effect
 from tools.artifact_pipeline import save_project_artifacts_logic
 from tools.utils.artifact_strategies import ArtifactStrategyFactory
 from tools.utils.filesystem_utils import (
@@ -20,6 +18,7 @@ from tools.utils.filesystem_utils import (
     validate_artifact_path,
     validate_project_path,
 )
+from utils.exceptions import ArtifactNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +116,7 @@ async def move_project_artifact_logic(project: str, src_path: str, dest_path: st
         uow = UnitOfWork(project_root)
         await uow.artifacts.rename(src_path, dest_path)
 
-        chunks_updated = await uow.chunks.rename(src_path, dest_path)
+        chunks_updated = await uow.chunks.change_path(src_path, dest_path)
         if chunks_updated == 0:
             # Fallback: old path had no chunk rows (e.g. pre-fix stale state,
             # or artifact was never chunked). Re-embed from the new location.

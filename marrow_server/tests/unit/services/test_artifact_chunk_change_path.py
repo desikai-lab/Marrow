@@ -15,7 +15,7 @@ from storage.uow import UnitOfWork
 FAKE_VECTOR = [0.1] * 384
 
 
-class TestArtifactChunkRepositoryRename(unittest.TestCase):
+class TestArtifactChunkRepositoryChangePath(unittest.TestCase):
     def setUp(self):
         self.project = "test_chunk_rename_internal"
         self.project_root = os.path.join(PROJECTS_ROOT, self.project)
@@ -48,7 +48,7 @@ class TestArtifactChunkRepositoryRename(unittest.TestCase):
         except Exception:
             pass
 
-    def test_rename_singleChunkFile_renamesRow(self):
+    def test_changePath_singleChunkFile_renamesRow(self):
         uow = UnitOfWork(self.project_root)
         content = "# H1\nsingle chunk content"
         updated = datetime.now().isoformat()
@@ -61,7 +61,7 @@ class TestArtifactChunkRepositoryRename(unittest.TestCase):
         self.assertTrue(any(r["path"] == "a.md" for r in results_before))
 
         # Rename
-        renamed = asyncio.run(uow.chunks.rename("a.md", "b.md"))
+        renamed = asyncio.run(uow.chunks.change_path("a.md", "b.md"))
         self.assertEqual(renamed, 1)
 
         # Check it moved to b.md
@@ -69,7 +69,7 @@ class TestArtifactChunkRepositoryRename(unittest.TestCase):
         self.assertTrue(any(r["path"] == "b.md" for r in results_after))
         self.assertFalse(any(r["path"] == "a.md" for r in results_after))
 
-    def test_rename_multiSectionFile_renamesAllRowsNotJustOne(self):
+    def test_changePath_multiSectionFile_renamesAllRowsNotJustOne(self):
         uow = UnitOfWork(self.project_root)
         # Create multi-section content to produce multiple chunks
         content = "## H2\nSome initial content\n\n## H3\nSecond section content"
@@ -84,7 +84,7 @@ class TestArtifactChunkRepositoryRename(unittest.TestCase):
         self.assertGreaterEqual(len(table_rows_before), 2)
 
         # Rename
-        renamed = asyncio.run(uow.chunks.rename("a.md", "b.md"))
+        renamed = asyncio.run(uow.chunks.change_path("a.md", "b.md"))
         self.assertEqual(renamed, len(table_rows_before))
 
         # Direct table search to verify paths
@@ -92,15 +92,15 @@ class TestArtifactChunkRepositoryRename(unittest.TestCase):
         self.assertTrue(all(r["path"] == "b.md" for r in table_rows_after))
         self.assertFalse(any(r["path"] == "a.md" for r in table_rows_after))
 
-    def test_rename_pathNotIndexed_returnsZeroNoRowsAdded(self):
+    def test_changePath_pathNotIndexed_returnsZeroNoRowsAdded(self):
         uow = UnitOfWork(self.project_root)
-        renamed = asyncio.run(uow.chunks.rename("never-indexed.md", "new.md"))
+        renamed = asyncio.run(uow.chunks.change_path("never-indexed.md", "new.md"))
         self.assertEqual(renamed, 0)
 
         table_rows = uow.chunks.table.search().to_list()
         self.assertEqual(len(table_rows), 0)
 
-    def test_rename_insertSucceedsDeleteFails_oldAndNewBothPresentNoDataLoss(self):
+    def test_changePath_insertSucceedsDeleteFails_oldAndNewBothPresentNoDataLoss(self):
         uow = UnitOfWork(self.project_root)
         content = "# H1\nsingle chunk content"
         updated = datetime.now().isoformat()
@@ -112,7 +112,7 @@ class TestArtifactChunkRepositoryRename(unittest.TestCase):
         uow.chunks.table.delete = MagicMock(side_effect=Exception("Simulated delete failure"))
 
         try:
-            renamed = asyncio.run(uow.chunks.rename("a.md", "b.md"))
+            renamed = asyncio.run(uow.chunks.change_path("a.md", "b.md"))
             self.assertEqual(renamed, 1)
 
             # Retrieve all rows using original delete's underlying table or search
@@ -126,5 +126,18 @@ class TestArtifactChunkRepositoryRename(unittest.TestCase):
             uow.chunks.table.delete = original_delete
 
 
+@patch("storage.repositories.artifact_repository.get_keyword_table", side_effect=Exception("db error"))
+def test_changePath_keywordTableFailure_doesNotBlockChunkRename(mock_kw_table):
+    """A keyword-table error during change_path must be swallowed (best-effort)."""
+    from storage.repositories.artifact_repository import ArtifactChunkRepository
+    repo = ArtifactChunkRepository.__new__(ArtifactChunkRepository)
+    repo.project_root = "/fake"
+    repo.table = MagicMock()
+    repo.table.search().where().to_list.return_value = []
+    result = asyncio.run(repo.change_path("old.md", "new.md"))
+    assert result == 0  # no chunk rows, but no exception
+
+
 if __name__ == "__main__":
     unittest.main()
+

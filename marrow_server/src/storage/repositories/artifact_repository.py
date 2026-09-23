@@ -148,7 +148,7 @@ class ArtifactChunkRepository:
             await asyncio.to_thread(kw_table.add, rows)
             schedule_index_rebuild(kw_table)
 
-    async def rename(self, old_path: str, new_path: str) -> int:
+    async def change_path(self, old_path: str, new_path: str) -> int:
         """Metadata-only path rename across ALL chunk rows for old_path.
         Insert-before-delete: favors transient duplication over data loss.
         Returns the number of chunk rows renamed (0 if none found).
@@ -176,6 +176,21 @@ class ArtifactChunkRepository:
 
         schedule_index_rebuild(self.table)
         logger.info(f"Renamed {len(new_rows)} chunk(s) in index: {old_path} -> {new_path}")
+
+        # F4000249: keep artifact_chunk_keywords path in lockstep, best-effort
+        try:
+            kw_table = get_keyword_table(self.project_root)
+            kw_rows = await asyncio.to_thread(
+                kw_table.search().where(f"path = '{old_path}'", prefilter=True).to_list
+            )
+            if kw_rows:
+                await asyncio.to_thread(kw_table.add, [dict(r, path=new_path) for r in kw_rows])
+                await asyncio.to_thread(kw_table.delete, f"path = '{old_path}'")
+        except Exception as e:
+            logger.warning(
+                "Keyword-table path change failed for %s -> %s: %s", old_path, new_path, e
+            )
+
         return len(new_rows)
 
     async def count_rows(self) -> int:
@@ -212,6 +227,13 @@ class ArtifactChunkRepository:
         count = len(results)
         await asyncio.to_thread(self.table.delete, f"path = '{path}'")
         logger.info(f"Pruned {count} ghost chunk(s) for artifact {path}.")
+
+        # F4000249: prune keyword rows for this path, best-effort
+        try:
+            await asyncio.to_thread(get_keyword_table(self.project_root).delete, f"path = '{path}'")
+        except Exception as e:
+            logger.warning("Keyword-table prune failed for %s: %s", path, e)
+
         return count
 
     @track_time(layer="repository")
