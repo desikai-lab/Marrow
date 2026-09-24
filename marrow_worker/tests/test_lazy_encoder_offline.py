@@ -1,6 +1,8 @@
 import os
 from unittest.mock import MagicMock, patch
 
+from src.embedding.lazy_model import DEFAULT_MODEL_REVISION
+
 
 def test_sentence_transformer_called_with_local_files_only_false_by_default():
     """
@@ -18,7 +20,9 @@ def test_sentence_transformer_called_with_local_files_only_false_by_default():
             enc = LazyEncoder()
             enc.__enter__()
 
-    mock_st_class.assert_called_once_with("BAAI/bge-small-en-v1.5", local_files_only=False)
+    mock_st_class.assert_called_once_with(
+        "BAAI/bge-small-en-v1.5", local_files_only=False, revision=DEFAULT_MODEL_REVISION
+    )
 
 
 def test_sentence_transformer_called_with_local_files_only_true_when_offline():
@@ -36,7 +40,9 @@ def test_sentence_transformer_called_with_local_files_only_true_when_offline():
             enc = LazyEncoder()
             enc.__enter__()
 
-    mock_st_class.assert_called_once_with("BAAI/bge-small-en-v1.5", local_files_only=True)
+    mock_st_class.assert_called_once_with(
+        "BAAI/bge-small-en-v1.5", local_files_only=True, revision=DEFAULT_MODEL_REVISION
+    )
 
 
 def test_lazy_encoder_reads_model_name_from_env():
@@ -53,4 +59,6 @@ def test_lazy_encoder_reads_model_name_from_env():
             enc = LazyEncoder()
             enc.__enter__()
 
-    mock_st_class.assert_called_once_with("custom/model", local_files_only=False)
+    mock_st_class.assert_called_once_with(
+        "custom/model", local_files_only=False, revision=DEFAULT_MODEL_REVISION
+    )
