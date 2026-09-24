@@ -3,7 +3,12 @@ import logging
 import os
 
 import torch
-from config import EMBEDDING_MODEL_CODE, EMBEDDING_MODEL_REVISION
+
+# Defaults mirror marrow_server/src/config.py. Read via os.getenv in __init__
+# (not `from config import ...`): the worker image has no config module
+# (PYTHONPATH=/app/marrow_worker/src) and must start without SECRET_TOKEN.
+DEFAULT_MODEL_CODE = "BAAI/bge-small-en-v1.5"
+DEFAULT_MODEL_REVISION = "5c38ec7c405ec4b44b94cc5a9ba96e735b382645"
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +22,9 @@ class LazyEncoder:
 
     def __init__(self, model_name: str | None = None, revision: str | None = None):
         if model_name is None:
-            model_name = EMBEDDING_MODEL_CODE
+            model_name = os.getenv("EMBEDDING_MODEL_CODE", DEFAULT_MODEL_CODE)
         if revision is None:
-            revision = EMBEDDING_MODEL_REVISION
+            revision = os.getenv("EMBEDDING_MODEL_REVISION", DEFAULT_MODEL_REVISION)
 
         self.model_name = model_name
         self.revision = revision
