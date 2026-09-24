@@ -3,7 +3,11 @@ FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
+# Upgrade build tooling in builder stage
+RUN pip install --no-cache-dir --upgrade pip 'setuptools>=70.0.0' 'wheel>=0.46.2'
+
 # Install CPU-only torch
+
 RUN pip install --no-cache-dir --prefix=/install torch --index-url https://download.pytorch.org/whl/cpu
 
 # Install marrow_common first (local dependency)
