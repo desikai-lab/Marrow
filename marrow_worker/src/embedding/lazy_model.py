@@ -3,11 +3,10 @@ import logging
 import os
 
 import torch
+from config import EMBEDDING_MODEL_CODE, EMBEDDING_MODEL_REVISION
 
 logger = logging.getLogger(__name__)
 
-# Default revision pin for BAAI/bge-small-en-v1.5
-DEFAULT_MODEL_REVISION = "5c38ec7c405ec4b44b94cc5a9ba96e735b382645"
 
 
 class LazyEncoder:
@@ -16,15 +15,18 @@ class LazyEncoder:
     and violently garbage collects it upon closing to prevent memory starvation.
     """
 
-    def __init__(self, model_name: str = None, revision: str = None):
+    def __init__(self, model_name: str | None = None, revision: str | None = None):
         if model_name is None:
-            model_name = os.getenv("EMBEDDING_MODEL_CODE", "BAAI/bge-small-en-v1.5")
+            model_name = EMBEDDING_MODEL_CODE
         if revision is None:
-            revision = os.getenv("EMBEDDING_MODEL_REVISION", DEFAULT_MODEL_REVISION)
+            revision = EMBEDDING_MODEL_REVISION
 
         self.model_name = model_name
         self.revision = revision
         self._model = None
+
+
+
 
     def __enter__(self):
         import sentence_transformers
