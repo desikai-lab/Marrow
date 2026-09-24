@@ -6,10 +6,15 @@ WORKDIR /app
 # Upgrade build tooling in builder stage
 RUN pip install --no-cache-dir --upgrade pip 'setuptools>=70.0.0' 'wheel>=0.46.2'
 
-# Install local packages together so pip resolves marrow-common without PyPI
+# Install hashed runtime lockfile (TD4000273, ADR-0052 Decision 7).
+# --no-deps: lock already lists the full transitive closure.
+COPY marrow_server/requirements.lock ./requirements.lock
+RUN pip install --no-cache-dir --prefix=/install --require-hashes --no-deps -r requirements.lock
+
+# Install local packages without deps (all runtime deps already in the prefix layer).
 COPY marrow_common/ ./marrow_common/
 COPY marrow_server/ ./marrow_server/
-RUN pip install --no-cache-dir --prefix=/install ./marrow_common ./marrow_server
+RUN pip install --no-cache-dir --prefix=/install --no-deps ./marrow_common ./marrow_server
 
 FROM python:3.12-slim
 
