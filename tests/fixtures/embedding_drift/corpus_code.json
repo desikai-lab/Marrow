@@ -1,0 +1,7 @@
+[
+  "def parse_json(raw_text: str) -> dict:\n    return json.loads(raw_text)",
+  "class DatabasePool:\n    def __init__(self, dsn: str, max_connections: int = 10):\n        self.dsn = dsn\n        self.max_connections = max_connections",
+  "async def fetch_user_profile(user_id: str, client: httpx.AsyncClient) -> UserProfile:\n    resp = await client.get(f'/users/{user_id}')\n    resp.raise_for_status()\n    return UserProfile.model_validate(resp.json())",
+  "export interface TaskInput {\n  id: string;\n  title: string;\n  status: 'open' | 'in_progress' | 'closed';\n}",
+  "public class ConnectionManager {\n  private readonly string _connectionString;\n  public ConnectionManager(string connStr) => _connectionString = connStr;\n}"
+]
