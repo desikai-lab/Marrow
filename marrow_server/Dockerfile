@@ -6,14 +6,10 @@ WORKDIR /app
 # Upgrade build tooling in builder stage
 RUN pip install --no-cache-dir --upgrade pip 'setuptools>=70.0.0' 'wheel>=0.46.2'
 
-# Install marrow_common first (local dependency)
-
+# Install local packages together so pip resolves marrow-common without PyPI
 COPY marrow_common/ ./marrow_common/
-RUN pip install --no-cache-dir --prefix=/install ./marrow_common
-
-# Install marrow_server
 COPY marrow_server/ ./marrow_server/
-RUN pip install --no-cache-dir --prefix=/install ./marrow_server
+RUN pip install --no-cache-dir --prefix=/install ./marrow_common ./marrow_server
 
 FROM python:3.12-slim
 
