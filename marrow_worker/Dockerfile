@@ -11,10 +11,11 @@ RUN pip install --no-cache-dir --upgrade pip 'setuptools>=70.0.0' 'wheel>=0.46.2
 RUN pip install --no-cache-dir --prefix=/install 'torch==2.14.0' --index-url https://download.pytorch.org/whl/cpu
 ENV PYTHONPATH=/install/lib/python3.12/site-packages
 
-# Install hashed runtime lockfile (TD4000273, ADR-0052 Decision 7).
-# --no-deps: lock already lists the full transitive closure; torch above is pre-satisfied.
-COPY marrow_worker/requirements.lock ./requirements.lock
-RUN pip install --no-cache-dir --prefix=/install --require-hashes --no-deps -r requirements.lock
+# Install runtime dependencies from requirements.txt (B4000278: hashed
+# lockfiles retired). With full dependency resolution, the pre-installed
+# CPU torch satisfies `torch>=2.2` and pip keeps it (no CUDA wheels pulled).
+COPY marrow_worker/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # Install local packages without deps (all runtime deps already in the prefix layer).
 COPY marrow_common/ ./marrow_common/

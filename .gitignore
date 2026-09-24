@@ -57,7 +57,4 @@ htmlcov/
 # Marrow runtime
 session_lock
 *.lock
-# ... except hashed dependency lockfiles (TD4000273, ADR-0052 Decision 7)
-!marrow_worker/requirements.lock
-!marrow_server/requirements.lock
 .continue/mcpServers/new-mcp-server.yaml

@@ -6,10 +6,11 @@ WORKDIR /app
 # Upgrade build tooling in builder stage
 RUN pip install --no-cache-dir --upgrade pip 'setuptools>=70.0.0' 'wheel>=0.46.2'
 
-# Install hashed runtime lockfile (TD4000273, ADR-0052 Decision 7).
-# --no-deps: lock already lists the full transitive closure.
-COPY marrow_server/requirements.lock ./requirements.lock
-RUN pip install --no-cache-dir --prefix=/install --require-hashes --no-deps -r requirements.lock
+# Install runtime dependencies from requirements.txt (B4000278: hashed
+# lockfiles retired — pip resolves the full closure at build time, which
+# honours upstream environment markers that a hand-maintained lock dropped).
+COPY marrow_server/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # Install local packages without deps (all runtime deps already in the prefix layer).
 COPY marrow_common/ ./marrow_common/
