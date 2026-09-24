@@ -38,3 +38,27 @@ def test_lazy_encoder_context():
 
     # After context closes, _model must be destroyed entirely
     assert encoder._model is None
+
+
+def test_lazy_encoder_pins_revision_passes():
+    encoder = LazyEncoder(model_name="custom/model", revision="custom_sha")
+    fake_model = MagicMock()
+
+    with patch("sentence_transformers.SentenceTransformer", return_value=fake_model) as mock_st:
+        with encoder:
+            mock_st.assert_called_once()
+            _, kwargs = mock_st.call_args
+            assert kwargs.get("revision") == "custom_sha"
+
+
+def test_lazy_encoder_logs_versions_once_passes(caplog):
+    encoder = LazyEncoder()
+    fake_model = MagicMock()
+
+    with patch("sentence_transformers.SentenceTransformer", return_value=fake_model):
+        with caplog.at_level("INFO"):
+            with encoder:
+                pass
+
+    assert "Loading embedding model 'BAAI/bge-small-en-v1.5'" in caplog.text
+

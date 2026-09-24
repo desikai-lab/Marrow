@@ -14,9 +14,13 @@ if not SECRET_TOKEN:
 
 # Phase 3: Embedding Settings
 EMBEDDING_MODEL_CODE = os.getenv("EMBEDDING_MODEL_CODE", "BAAI/bge-small-en-v1.5")
+EMBEDDING_MODEL_REVISION = os.getenv(
+    "EMBEDDING_MODEL_REVISION", "5c38ec7c405ec4b44b94cc5a9ba96e735b382645"
+)
 EMBEDDING_MODEL_TEXT = os.getenv(
     "EMBEDDING_MODEL_TEXT", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 )
+
 
 # Backward compatibility (as fallback or for generic text)
 EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_MODEL_TEXT)
