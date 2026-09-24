@@ -29,7 +29,10 @@ dependencies = [
     "torch>=2.2",
     "pydantic>=2.7",
     "python-dotenv>=1.0",
+    "anyio>=4.14.2",
+    "h11>=0.16.0",
 ]
+
 
 [project.optional-dependencies]
 dev = [
