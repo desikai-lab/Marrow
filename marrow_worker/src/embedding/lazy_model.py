@@ -13,7 +13,6 @@ DEFAULT_MODEL_REVISION = "5c38ec7c405ec4b44b94cc5a9ba96e735b382645"
 logger = logging.getLogger(__name__)
 
 
-
 class LazyEncoder:
     """
     Context manager that loads the Heavy Neural Network into RAM/VRAM only when opened,
@@ -30,13 +29,10 @@ class LazyEncoder:
         self.revision = revision
         self._model = None
 
-
-
-
     def __enter__(self):
         import sentence_transformers
-        from sentence_transformers import SentenceTransformer
         import transformers
+        from sentence_transformers import SentenceTransformer
 
         # local_files_only is controlled by HF_HUB_OFFLINE env var.
         # Default (0): allows download on first run into the shared marrow-hf-cache volume.
@@ -80,4 +76,3 @@ class LazyEncoder:
         embeddings = self._model.encode(texts, convert_to_numpy=True)
         # Ensure primitive Python floats for serialization
         return [arr.tolist() for arr in embeddings]
-
