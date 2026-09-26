@@ -1,0 +1,60 @@
+name: Build and Publish Trixie Server Image
+
+# workflow_dispatch ONLY. Human-triggered publisher for the trixie-slim
+# experimental server image. Builds the selected branch HEAD (same convention
+# as docker-publish.yml) -- no pinned commit, no local-comparison job.
+# Server-only: never builds or publishes the worker image.
+# Kept as its own file rather than a job in docker-publish.yml because that
+# file is TD4000280's owned surface (ADR-0035 one-task-one-branch).
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker image tag (e.g., experimental)'
+        required: true
+        default: 'experimental'
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # -------------------------------------------------------------
+  #  Trixie experimental server (only image this workflow publishes)
+  # -------------------------------------------------------------
+  build-trixie-server:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Downcase repository name
+        run: |
+          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}-server-trixie-slim" >> $GITHUB_ENV
+
+      - name: Log into registry ${{ env.REGISTRY }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Trixie Server Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./marrow_server/Dockerfile.trixie-experimental
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
