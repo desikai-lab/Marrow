@@ -11,6 +11,7 @@ Usage in mcp_core.py:
 import functools
 import inspect
 import logging
+import sys
 import traceback
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -61,15 +62,17 @@ if EXTERNAL_DEBUG:
 
 
 def _raise_full_trace() -> None:
-    """EXTERNAL_DEBUG only: raise the full traceback as a JSON-RPC error.
+    """EXTERNAL_DEBUG only: raise the active traceback as a JSON-RPC error.
 
     A *returned* error dict can never carry a trace for tools whose declared
     output is a list — FastMCP output-schema validation rejects the dict and
     pydantic truncates what remains. Raising bypasses output validation, so
-    the complete traceback reaches the client in the error message. Never
-    called unless EXTERNAL_DEBUG is true; default path (flag off) is
-    unchanged and keeps returning sanitised dicts.
+    the complete traceback reaches the client in the error message. No-op
+    when no exception is being handled (direct calls keep the dict
+    contract, which test_error_middleware.py asserts).
     """
+    if sys.exc_info()[0] is None:
+        return
     raise McpError(ErrorData(code=INTERNAL_ERROR, message=traceback.format_exc()))
 
 
@@ -115,8 +118,6 @@ def mcp_error_handler(func: Callable) -> Callable:
 
 
 def _handle_domain_error(e: BaseBacklogError, func_name: str, project: Any = None) -> dict:
-    if EXTERNAL_DEBUG:
-        _raise_full_trace()
     logger.warning(
         "[MCP][DomainError] %s in %s: %s",
         type(e).__name__,
@@ -133,12 +134,12 @@ def _handle_domain_error(e: BaseBacklogError, func_name: str, project: Any = Non
     }
     if e.details:
         response["details"] = e.details
+    if EXTERNAL_DEBUG:
+        _raise_full_trace()
     return response
 
 
 def _handle_system_error(e: Exception, func_name: str, project: Any = None) -> dict:
-    if EXTERNAL_DEBUG:
-        _raise_full_trace()
     logger.error(
         "[MCP][SystemError] %s in %s: %s",
         type(e).__name__,
@@ -149,6 +150,8 @@ def _handle_system_error(e: Exception, func_name: str, project: Any = None) -> d
         if EXTERNAL_DEBUG
         else None,
     )
+    if EXTERNAL_DEBUG:
+        _raise_full_trace()
     return {
         "status": "error",
         "error_type": "SystemError",
