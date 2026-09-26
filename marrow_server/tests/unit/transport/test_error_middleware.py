@@ -4,7 +4,16 @@ Unit tests for the mcp_error_handler decorator and domain exceptions.
 Run: pytest tests/test_error_middleware.py -v
 """
 
-from utils.error_middleware import mcp_error_handler
+import logging
+from unittest.mock import MagicMock, patch
+
+import utils.error_middleware as error_middleware_module
+from utils.error_middleware import (
+    DebugArtifactLogHandler,
+    _handle_domain_error,
+    _handle_system_error,
+    mcp_error_handler,
+)
 from utils.exceptions import (
     ArtifactNotFoundError,
     BaseBacklogError,
@@ -162,3 +171,144 @@ class TestDetailsField:
     def test_mcp_error_handler_includes_details_when_not_empty(self):
         result = _raises(DomainProtectionError("blocked", details={"reason": "protected"}))()
         assert result["details"]["reason"] == "protected"
+
+
+class TestDebugArtifactLogHandler:
+    def _make_record(self, project=None, debug_traceback=None):
+        record = logging.LogRecord(
+            name="utils.error_middleware",
+            level=logging.ERROR,
+            pathname=__file__,
+            lineno=1,
+            msg="msg",
+            args=(),
+            exc_info=None,
+            func="some_tool",
+        )
+        record.project = project
+        record.debug_traceback = debug_traceback
+        return record
+
+    def test_emit_missing_project_field_is_noop(self):
+        handler = DebugArtifactLogHandler()
+        record = self._make_record(project=None, debug_traceback="Traceback...")
+        with patch("utils.error_middleware.get_artifacts_path") as mock_get_path:
+            handler.emit(record)
+        mock_get_path.assert_not_called()
+
+    def test_emit_missing_traceback_field_is_noop(self):
+        handler = DebugArtifactLogHandler()
+        record = self._make_record(project="MyProject", debug_traceback=None)
+        with patch("utils.error_middleware.get_artifacts_path") as mock_get_path:
+            handler.emit(record)
+        mock_get_path.assert_not_called()
+
+    def test_emit_valid_fields_appends_traceback_to_debug_log(self):
+        handler = DebugArtifactLogHandler()
+        record = self._make_record(
+            project="MyProject",
+            debug_traceback="Traceback (most recent call last):\nValueError: boom",
+        )
+        mock_pp = MagicMock()
+        mock_pp.exists.return_value = True
+        mock_pp.read.return_value = "existing content\n"
+        with patch(
+            "utils.error_middleware.get_artifacts_path", return_value=mock_pp
+        ) as mock_get_path:
+            handler.emit(record)
+        mock_get_path.assert_called_once_with("MyProject", "Debug.log")
+        mock_pp.read.assert_called_once()
+        written = mock_pp.write.call_args[0][0]
+        assert written.startswith("existing content\n")
+        assert "ValueError: boom" in written
+        assert "some_tool" in written
+
+    def test_emit_no_existing_file_writes_fresh_entry(self):
+        handler = DebugArtifactLogHandler()
+        record = self._make_record(project="MyProject", debug_traceback="tb")
+        mock_pp = MagicMock()
+        mock_pp.exists.return_value = False
+        with patch("utils.error_middleware.get_artifacts_path", return_value=mock_pp):
+            handler.emit(record)
+        mock_pp.read.assert_not_called()
+        written = mock_pp.write.call_args[0][0]
+        assert "tb" in written
+
+    def test_emit_write_failure_swallowed_via_handleError(self):
+        handler = DebugArtifactLogHandler()
+        record = self._make_record(project="MyProject", debug_traceback="tb")
+        mock_pp = MagicMock()
+        mock_pp.exists.return_value = False
+        mock_pp.write.side_effect = RuntimeError("disk full")
+        with patch("utils.error_middleware.get_artifacts_path", return_value=mock_pp):
+            with patch.object(DebugArtifactLogHandler, "handleError") as mock_handle_error:
+                handler.emit(record)  # must not raise
+        mock_handle_error.assert_called_once_with(record)
+
+
+class TestProjectKwargPlumbing:
+    def test_handle_domain_error_external_debug_true_passes_project_and_traceback_via_extra(self):
+        with patch.object(error_middleware_module, "EXTERNAL_DEBUG", True):
+            with patch.object(error_middleware_module, "logger") as mock_logger:
+                _handle_domain_error(BaseBacklogError("boom"), "some_tool", project="MyProject")
+        _, kwargs = mock_logger.warning.call_args
+        extra = kwargs["extra"]
+        assert extra["project"] == "MyProject"
+        assert "debug_traceback" in extra
+
+    def test_handle_domain_error_external_debug_false_passes_extra_none(self):
+        with patch.object(error_middleware_module, "EXTERNAL_DEBUG", False):
+            with patch.object(error_middleware_module, "logger") as mock_logger:
+                _handle_domain_error(BaseBacklogError("boom"), "some_tool", project="MyProject")
+        _, kwargs = mock_logger.warning.call_args
+        assert kwargs["extra"] is None
+
+    def test_handle_system_error_external_debug_true_passes_project_and_traceback_via_extra(self):
+        with patch.object(error_middleware_module, "EXTERNAL_DEBUG", True):
+            with patch.object(error_middleware_module, "logger") as mock_logger:
+                _handle_system_error(RuntimeError("boom"), "some_tool", project="MyProject")
+        _, kwargs = mock_logger.error.call_args
+        extra = kwargs["extra"]
+        assert extra["project"] == "MyProject"
+        assert "debug_traceback" in extra
+
+    def test_handle_system_error_external_debug_false_passes_extra_none(self):
+        with patch.object(error_middleware_module, "EXTERNAL_DEBUG", False):
+            with patch.object(error_middleware_module, "logger") as mock_logger:
+                _handle_system_error(RuntimeError("boom"), "some_tool", project="MyProject")
+        _, kwargs = mock_logger.error.call_args
+        assert kwargs["extra"] is None
+
+    def test_async_wrapper_extracts_project_from_kwargs_for_domain_error(self):
+        @mcp_error_handler
+        async def tool(project: str):
+            raise ArtifactNotFoundError("missing")
+
+        with patch.object(error_middleware_module, "_handle_domain_error") as mock_handle:
+            mock_handle.return_value = {"status": "error"}
+            import asyncio
+
+            asyncio.run(tool(project="MyProject"))
+        mock_handle.assert_called_once()
+        assert mock_handle.call_args[0][2] == "MyProject"
+
+    def test_sync_wrapper_extracts_project_from_kwargs_for_system_error(self):
+        @mcp_error_handler
+        def tool(project: str):
+            raise RuntimeError("boom")
+
+        with patch.object(error_middleware_module, "_handle_system_error") as mock_handle:
+            mock_handle.return_value = {"status": "error"}
+            tool(project="MyProject")
+        mock_handle.assert_called_once()
+        assert mock_handle.call_args[0][2] == "MyProject"
+
+    def test_sync_wrapper_no_project_kwarg_passes_none(self):
+        @mcp_error_handler
+        def tool():
+            raise RuntimeError("boom")
+
+        with patch.object(error_middleware_module, "_handle_system_error") as mock_handle:
+            mock_handle.return_value = {"status": "error"}
+            tool()
+        assert mock_handle.call_args[0][2] is None
