@@ -16,10 +16,12 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
+from mcp.shared.exceptions import McpError
+from mcp.types import INTERNAL_ERROR, ErrorData
+
 from common.path_resolver import get_artifacts_path
 from config import EXTERNAL_DEBUG
 from tools.utils.security import sanitize_error_message
-
 from utils.exceptions import BaseBacklogError
 
 logger = logging.getLogger(__name__)
@@ -58,6 +60,19 @@ if EXTERNAL_DEBUG:
     # exact scope. Existing handlers/propagation on this logger are untouched.
 
 
+def _raise_full_trace() -> None:
+    """EXTERNAL_DEBUG only: raise the full traceback as a JSON-RPC error.
+
+    A *returned* error dict can never carry a trace for tools whose declared
+    output is a list — FastMCP output-schema validation rejects the dict and
+    pydantic truncates what remains. Raising bypasses output validation, so
+    the complete traceback reaches the client in the error message. Never
+    called unless EXTERNAL_DEBUG is true; default path (flag off) is
+    unchanged and keeps returning sanitised dicts.
+    """
+    raise McpError(ErrorData(code=INTERNAL_ERROR, message=traceback.format_exc()))
+
+
 def mcp_error_handler(func: Callable) -> Callable:
     """
     Decorator that centralises error handling for every MCP tool.
@@ -69,6 +84,9 @@ def mcp_error_handler(func: Callable) -> Callable:
       error dict with 'error_type' equal to the concrete exception class name.
     - If any other Exception is raised (system error) → returns a structured
       error dict with 'error_type': 'SystemError' and a sanitised message.
+    - EXTERNAL_DEBUG=true only: instead of returning the dict, the full
+      traceback is raised as a JSON-RPC error so it reaches the client whole
+      (returned dicts cannot carry it past output-schema validation).
     """
     if inspect.iscoroutinefunction(func):
 
@@ -97,6 +115,8 @@ def mcp_error_handler(func: Callable) -> Callable:
 
 
 def _handle_domain_error(e: BaseBacklogError, func_name: str, project: Any = None) -> dict:
+    if EXTERNAL_DEBUG:
+        _raise_full_trace()
     logger.warning(
         "[MCP][DomainError] %s in %s: %s",
         type(e).__name__,
@@ -117,6 +137,8 @@ def _handle_domain_error(e: BaseBacklogError, func_name: str, project: Any = Non
 
 
 def _handle_system_error(e: Exception, func_name: str, project: Any = None) -> dict:
+    if EXTERNAL_DEBUG:
+        _raise_full_trace()
     logger.error(
         "[MCP][SystemError] %s in %s: %s",
         type(e).__name__,
