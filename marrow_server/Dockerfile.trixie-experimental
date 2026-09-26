@@ -1,0 +1,27 @@
+# syntax=docker/dockerfile:1
+#
+# EXPERIMENTAL -- NOT a shippable artifact. Checked in per B4000282 Q-3 to make
+# the RT-04/RT-16 environment comparison reproducible, not to be published via
+# docker-publish.yml (that workflow's build-push-action uses the exact literal
+# path ./marrow_server/Dockerfile, no glob -- this file is already excluded).
+# Built ONLY by .github/workflows/build-b4000282-trixie-comparison.yml
+# (workflow_dispatch) -- there is no Docker engine on the Execution machine.
+#
+# Only two blocks in this file are ours to edit: the build-steps RUN and the
+# CMD. Every other line is Glama's real deploy template, reproduced verbatim
+# (source: human-supplied Glama Dockerfile, B4000282 requirements.md §1).
+# Do NOT prune the uv/Python-3.14-preview install even though CMD never uses
+# it -- REQ-01 requires replicating the actual build, not a pruned guess at it.
+
+FROM debian:trixie-slim
+ENV DEBIAN_FRONTEND=noninteractive \
+    GLAMA_VERSION="1.0.0" \
+    PYTHONUNBUFFERED=1
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git && curl -fsSL https://deb.nodesource.com/setup_26.x | bash - && apt-get install -y --no-install-recommends nodejs && npm install -g mcp-proxy@6.7.16 pnpm@10.14.0 && node --version && curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR="/usr/local/bin" sh && uv python install 3.14 --default --preview && ln -s $(uv python find) /usr/local/bin/python && python --version && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+WORKDIR /app
+RUN git clone https://github.com/desikai-lab/Marrow . && git checkout 4dc53d3335f99504cf9652fbf768273f60ed2f12
+ENV PATH="/app/node_modules/.bin:$PATH"
+# --- EDITABLE: build steps (the only Dockerfile content this task may set) ---
+RUN (apt-get update && apt-get install -y --no-install-recommends python3 python3-pip ca-certificates && rm -rf /var/lib/apt/lists/*) && (python3 -m pip install --no-cache-dir --break-system-packages --ignore-installed --upgrade pip 'setuptools>=70.0.0' 'wheel>=0.46.2') && (python3 -m pip install --no-cache-dir --break-system-packages -r marrow_server/requirements.txt) && (python3 -m pip install --no-cache-dir --break-system-packages --no-deps ./marrow_common ./marrow_server)
+# --- EDITABLE: CMD (the only other customization point) ---
+CMD ["mcp-proxy","--","sh","-c","PYTHONPATH=marrow_server/src python3 marrow_server/src/mcp_local.py"]
