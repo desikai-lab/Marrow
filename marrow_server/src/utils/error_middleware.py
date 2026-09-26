@@ -19,6 +19,7 @@ from typing import Any
 from common.path_resolver import get_artifacts_path
 from config import EXTERNAL_DEBUG
 from tools.utils.security import sanitize_error_message
+
 from utils.exceptions import BaseBacklogError
 
 logger = logging.getLogger(__name__)
