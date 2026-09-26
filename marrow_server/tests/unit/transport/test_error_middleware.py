@@ -288,7 +288,7 @@ class TestProjectKwargPlumbing:
             mock_handle.return_value = {"status": "error"}
             import asyncio
 
-            asyncio.get_event_loop().run_until_complete(tool(project="MyProject"))
+            asyncio.run(tool(project="MyProject"))
         mock_handle.assert_called_once()
         assert mock_handle.call_args[0][2] == "MyProject"
 
