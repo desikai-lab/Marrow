@@ -209,3 +209,53 @@ class TestErrorStructure:
         # There must be no naked "error" key without "status"
         if "error" in result:
             assert "status" in result, f"Bare 'error' key without 'status': {result}"
+
+    def test_external_debug_true_raises_full_traceback_system_error(self, monkeypatch):
+        """EXTERNAL_DEBUG=true: system errors raise McpError carrying the full
+        traceback instead of returning a (truncatable) dict."""
+        from mcp.shared.exceptions import McpError
+
+        import utils.error_middleware as em
+
+        monkeypatch.setattr(em, "EXTERNAL_DEBUG", True)
+
+        def boom():
+            raise ValueError("inner boom marker")
+
+        with pytest.raises(McpError) as exc_info:
+            _wrap(boom)
+        message = exc_info.value.error.message
+        assert "ValueError" in message
+        assert "inner boom marker" in message
+        assert "Traceback" in message
+
+    def test_external_debug_true_raises_full_traceback_domain_error(self, monkeypatch):
+        """EXTERNAL_DEBUG=true: domain errors raise too (dicts can't survive
+        output-schema validation for list-declared tools)."""
+        from mcp.shared.exceptions import McpError
+
+        import utils.error_middleware as em
+        from common.project_file_error import ProjectFileError
+
+        monkeypatch.setattr(em, "EXTERNAL_DEBUG", True)
+
+        def boom():
+            raise ProjectFileError("../outside-project-root")
+
+        with pytest.raises(McpError) as exc_info:
+            _wrap(boom)
+        assert "ProjectFileError" in exc_info.value.error.message
+
+    def test_external_debug_false_keeps_dict_contract(self, monkeypatch):
+        """EXTERNAL_DEBUG=false (default): unchanged dict return."""
+        import utils.error_middleware as em
+
+        monkeypatch.setattr(em, "EXTERNAL_DEBUG", False)
+
+        def boom():
+            raise ValueError("quiet boom")
+
+        result = _wrap(boom)
+        assert isinstance(result, dict)
+        assert result["status"] == "error"
+        assert result["error_type"] == "SystemError"
