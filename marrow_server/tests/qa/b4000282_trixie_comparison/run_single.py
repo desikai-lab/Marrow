@@ -26,6 +26,15 @@ from tests.qa.b4000282_trixie_comparison.checks import ensure_project, run_req05
 RESULT_PATH = Path("docs/qa/_scratch/b4000282-trixie-only-result.json")
 
 
+async def _safe(label: str, coro):
+    """A client-side timeout/error during a check IS data (RT-16's signature),
+    not a reason to lose the whole run -- record it instead of crashing."""
+    try:
+        return await coro
+    except Exception as e:
+        return {"client_error": f"{type(e).__name__}: {str(e)[:300]}"}
+
+
 async def _run_against(url: str, project: str) -> dict:
     async with streamablehttp_client(url) as (read, write, _):
         async with ClientSession(read, write) as session:
@@ -33,9 +42,9 @@ async def _run_against(url: str, project: str) -> dict:
             setup = await ensure_project(session, project)
             return {
                 "setup": setup,
-                "rt04": await run_rt04(session, project),
-                "rt16": await run_rt16(session, project),
-                "req05": await run_req05(session, project),
+                "rt04": await _safe("rt04", run_rt04(session, project)),
+                "rt16": await _safe("rt16", run_rt16(session, project)),
+                "req05": await _safe("req05", run_req05(session, project)),
             }
 
 
