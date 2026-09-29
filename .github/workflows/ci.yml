@@ -48,6 +48,7 @@ jobs:
         env:
           PYTHONPATH: src:..
           SECRET_TOKEN: ci-dummy-token
+          EXTERNAL_DEBUG: false
         run: python -m pytest tests/integration/mcp/ -v -m integration --tb=short
 
       - name: Run unit tests — marrow_worker
