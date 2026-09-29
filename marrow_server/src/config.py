@@ -39,7 +39,7 @@ FASTEMBED_CACHE_DIR: str | None = os.getenv("FASTEMBED_CACHE_DIR") or None
 
 # Agent Profile Engine
 AGENT_PROFILE_ENGINE_ENABLED: bool = (
-    os.getenv("AGENT_PROFILE_ENGINE_ENABLED", "true").lower() == "true"
+    os.getenv("AGENT_PROFILE_ENGINE_ENABLED", "false").lower() == "true"
 )
 # External debug log: when true, mcp_error_handler additionally writes the
 # full traceback of every caught exception to <project>/artifacts/Debug.log.
