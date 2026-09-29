@@ -1,5 +1,6 @@
 {
   "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "name": "Marrow",
   "maintainers": [
     "desikai"
   ],
