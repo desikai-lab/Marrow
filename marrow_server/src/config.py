@@ -44,9 +44,7 @@ AGENT_PROFILE_ENGINE_ENABLED: bool = (
 # External debug log: when true, mcp_error_handler additionally writes the
 # full traceback of every caught exception to <project>/artifacts/Debug.log.
 # Default false = zero behavior change (see F4000283).
-# EXTERNAL_DEBUG: bool = os.getenv("EXTERNAL_DEBUG", "false").lower() == "true"
-# temporarily force true for testing, until we have a better solution for the debug log.
-EXTERNAL_DEBUG: bool = "true"
+EXTERNAL_DEBUG: bool = os.getenv("EXTERNAL_DEBUG", "false").lower() == "true"
 VECT_DEBOUNCE_SECONDS = float(os.getenv("VECT_DEBOUNCE_SECONDS", "0.5"))
 
 # Priority: .env TASKS_DIR > local tests
