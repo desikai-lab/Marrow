@@ -1,0 +1,1387 @@
+{
+  "add_tasks": {
+    "description": "[TASK TOOLS] Adds a list of tasks to the project backlog.",
+    "inputSchema": {
+      "$defs": {
+        "TaskInput": {
+          "additionalProperties": true,
+          "properties": {
+            "blocked_by": {
+              "default": [],
+              "description": "List of task IDs this task depends on",
+              "title": "Blocked By"
+            },
+            "priority": {
+              "$ref": "#/$defs/TaskPriority",
+              "default": "medium",
+              "description": "Priority: critical, high, medium, low"
+            },
+            "problem": {
+              "description": "Detailed problem description",
+              "title": "Problem",
+              "type": "string"
+            },
+            "project": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Project name (e.g. 'YourProject', 'MCP')",
+              "title": "Project"
+            },
+            "solution": {
+              "description": "Proposed or implemented solution",
+              "title": "Solution",
+              "type": "string"
+            },
+            "status": {
+              "$ref": "#/$defs/TaskStatus",
+              "default": "open",
+              "description": "Current status (e.g. open, in_progress, paused, closed)"
+            },
+            "title": {
+              "description": "Short task title",
+              "title": "Title",
+              "type": "string"
+            },
+            "type": {
+              "$ref": "#/$defs/TaskType",
+              "description": "Task type: F (feature), B (bug), TD (tech debt)"
+            },
+            "where": {
+              "default": [],
+              "description": "List of affected files or modules",
+              "title": "Where"
+            }
+          },
+          "required": [
+            "type",
+            "title",
+            "problem",
+            "solution"
+          ],
+          "title": "TaskInput",
+          "type": "object"
+        },
+        "TaskPriority": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low"
+          ],
+          "title": "TaskPriority",
+          "type": "string"
+        },
+        "TaskStatus": {
+          "enum": [
+            "open",
+            "in_progress",
+            "paused",
+            "done",
+            "closed"
+          ],
+          "title": "TaskStatus",
+          "type": "string"
+        },
+        "TaskType": {
+          "enum": [
+            "F",
+            "B",
+            "TD"
+          ],
+          "title": "TaskType",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "project": {
+          "description": "Project name (e.g. 'YourProject', 'MCP')",
+          "title": "Project",
+          "type": "string"
+        },
+        "tasks": {
+          "description": "List of new tasks",
+          "items": {
+            "$ref": "#/$defs/TaskInput"
+          },
+          "title": "Tasks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "project",
+        "tasks"
+      ],
+      "title": "add_tasksArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            }
+          ],
+          "title": "Result"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "add_tasksOutput",
+      "type": "object"
+    }
+  },
+  "complete_tasks": {
+    "description": "[TASK TOOLS] Atomically closes one or more tasks and auto-unblocks dependents.",
+    "inputSchema": {
+      "properties": {
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        },
+        "task_ids": {
+          "description": "List of task keys to complete, e.g. ['TD4000078', 'TD4000080']",
+          "items": {
+            "type": "string"
+          },
+          "title": "Task Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "project",
+        "task_ids"
+      ],
+      "title": "complete_tasksArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            }
+          ],
+          "title": "Result"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "complete_tasksOutput",
+      "type": "object"
+    }
+  },
+  "delete_project_artifact": {
+    "description": "[ARTIFACT TOOLS] Deletes a single artifact file by moving it to the\n        recycle bin. The file is preserved in the recycle bin and can be restored\n        using restore_project_artifact if needed.\n\n        Do NOT use to move or rename a file \u2014 call move_project_artifact instead.\n\n        Returns: confirmation string with the deleted file path.\n        Raises:  404 error if the path does not exist in artifact storage.\n        ",
+    "inputSchema": {
+      "properties": {
+        "path": {
+          "description": "Path to delete",
+          "title": "Path",
+          "type": "string"
+        },
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project",
+        "path"
+      ],
+      "title": "delete_project_artifactArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            }
+          ],
+          "title": "Result"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "delete_project_artifactOutput",
+      "type": "object"
+    }
+  },
+  "get_file_skeleton": {
+    "description": "\n        [CODE TOOLS] Retrieves a token-optimized outline of a file's code units (classes, methods) with line numbers.\n        Use depth=1 for orientation (names only), depth=2 for analysis (signatures), depth=0 for full detail.\n        ",
+    "inputSchema": {
+      "properties": {
+        "depth": {
+          "default": 2,
+          "description": "0=full (default) | 1=class/namespace names only, no skeleton_text | 2=classes+method signatures",
+          "title": "Depth",
+          "type": "integer"
+        },
+        "path": {
+          "description": "Path to the source file (e.g. 'src/services/billing.ts')",
+          "title": "Path",
+          "type": "string"
+        },
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        },
+        "summary_only": {
+          "default": false,
+          "description": "Strip skeleton_text from output (applies at depth=0 only)",
+          "title": "Summary Only",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "project",
+        "path"
+      ],
+      "title": "get_file_skeletonArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Result",
+          "type": "array"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "get_file_skeletonOutput",
+      "type": "object"
+    }
+  },
+  "get_guideline": {
+    "description": "[SESSION TOOLS] Assembles and returns the full context bundle (core guidelines +\n        role-specific phase guidelines + filtered foundational ADRs) for a named agent role,\n        without reading or modifying session.md.\n\n        Use this for deliberate mid-session role switches when you already know the target\n        role and do not want to disturb pipeline state.\n        Do NOT use at session start \u2014 call get_session_context instead, which also injects\n        the SESSION STATE block and the correct NEXT STEP directive.\n\n        Allowed `role` values: any role registered in the project's role_profiles.yaml\n        (e.g. 'discovery', 'architecture', 'planning', 'execution'). Returns an error\n        string listing valid roles if the value is unrecognised.\n\n        Returns: assembled markdown string (core guidelines + role guidelines + ADRs).\n        Raises:  error string if role is not registered in role_profiles.yaml.\n        ",
+    "inputSchema": {
+      "properties": {
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        },
+        "role": {
+          "description": "Agent role name (e.g. 'discovery', 'execution')",
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project",
+        "role"
+      ],
+      "title": "get_guidelineArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "title": "Result",
+          "type": "string"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "get_guidelineOutput",
+      "type": "object"
+    }
+  },
+  "get_project_artifact_outline": {
+    "description": "[ARTIFACT TOOLS] Extracts table of contents.",
+    "inputSchema": {
+      "properties": {
+        "path": {
+          "description": "Path to .md file",
+          "title": "Path",
+          "type": "string"
+        },
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project",
+        "path"
+      ],
+      "title": "get_project_artifact_outlineArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            }
+          ],
+          "title": "Result"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "get_project_artifact_outlineOutput",
+      "type": "object"
+    }
+  },
+  "get_project_map": {
+    "description": "\n        [CODE TOOLS] Returns a live directory tree of all files indexed in the code skeleton index.\n        Use this to orient yourself and find relevant subdirectories before starting a scoped search.\n        ",
+    "inputSchema": {
+      "properties": {
+        "depth": {
+          "default": 4,
+          "description": "Maximum directory depth to show (default 4)",
+          "title": "Depth",
+          "type": "integer"
+        },
+        "include_tests": {
+          "default": false,
+          "description": "Include test files in the map (default False)",
+          "title": "Include Tests",
+          "type": "boolean"
+        },
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project"
+      ],
+      "title": "get_project_mapArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "additionalProperties": true,
+      "title": "get_project_mapDictOutput",
+      "type": "object"
+    }
+  },
+  "get_session_context": {
+    "description": "[SESSION TOOLS] Reads session.md, detects the active pipeline phase,\n        and returns core guidelines + phase-appropriate role guidelines + filtered foundational ADRs\n        + role-linked skill stubs (=== PLAYBOOKS === section, when the role has skills registered)\n        as a single assembled string.\n\n        If start_role is provided, session.md is bypassed entirely: the named role\n        is resolved directly and SESSION STATE is omitted from the response.\n        ",
+    "inputSchema": {
+      "properties": {
+        "project": {
+          "description": "Project name to read session state from",
+          "title": "Project",
+          "type": "string"
+        },
+        "start_role": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional. If provided, resolve this role directly without reading session.md. Useful for invoking standalone or on-demand roles without disturbing pipeline state. Returns an error string listing valid roles if the value is unrecognised.",
+          "title": "Start Role"
+        }
+      },
+      "required": [
+        "project"
+      ],
+      "title": "get_session_contextArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "title": "Result",
+          "type": "string"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "get_session_contextOutput",
+      "type": "object"
+    }
+  },
+  "get_task_details": {
+    "description": "[TASK TOOLS] Returns full task details.",
+    "inputSchema": {
+      "properties": {
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "Task ID",
+          "title": "Task Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project",
+        "task_id"
+      ],
+      "title": "get_task_detailsArguments",
+      "type": "object"
+    },
+    "outputSchema": null
+  },
+  "init_project": {
+    "description": "[PROJECT TOOLS] Creates a new Marrow project workspace by copying the built-in\n        default template into TASKS_DIR/projects/{project}. Produces a ready-to-use\n        artifact tree (session.md, spec.md, guidelines, role_profiles.yaml).\n\n        Primary use case: first-run initialization on Glama or any single-container\n        deployment where shell access is unavailable. For docker-compose deployments,\n        use the marrow-init service instead.\n\n        Do NOT use to list existing projects \u2014 call list_projects instead.\n        Do NOT use to read session state \u2014 call get_session_context(project) after init.\n\n        Parameters:\n          project   : str \u2014 unique project name (must not already exist)\n          template  : str \u2014 scaffold template; only \"default\" is supported in this release\n\n        Returns: { project, files_created } where files_created lists\n                 every file path copied into the new workspace (relative to workspace root).\n\n        Raises: ValidationError if project already exists or template is unsupported.\n        ",
+    "inputSchema": {
+      "properties": {
+        "project": {
+          "description": "Unique project name to create",
+          "title": "Project",
+          "type": "string"
+        },
+        "template": {
+          "default": "default",
+          "description": "Scaffold template name",
+          "title": "Template",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project"
+      ],
+      "title": "init_projectArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "additionalProperties": true,
+      "title": "init_projectDictOutput",
+      "type": "object"
+    }
+  },
+  "list_artifact_history": {
+    "description": "[HISTORY TOOLS] Returns the version history for a single artifact file \u2014 a list\n        of backup snapshots automatically created by save_project_artifacts on each write.\n        Each entry represents a point-in-time copy that can be restored.\n\n        Use this to inspect available versions before calling restore_project_artifact.\n        The most recent backup is listed first.\n        Do NOT use this to read current file content \u2014 call read_project_artifacts instead.\n\n        Returns: list of version objects \u2014 each with backup_name, created_at timestamp,\n                 and size in bytes. Empty list if no history exists for the path.\n        Raises:  404 if the artifact path does not exist in the project.\n        ",
+    "inputSchema": {
+      "properties": {
+        "path": {
+          "description": "Path to artifact",
+          "title": "Path",
+          "type": "string"
+        },
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project",
+        "path"
+      ],
+      "title": "list_artifact_historyArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Result",
+          "type": "array"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "list_artifact_historyOutput",
+      "type": "object"
+    }
+  },
+  "list_project_artifacts": {
+    "description": "[ARTIFACT TOOLS] Lists artifact files in a project's artifact storage, optionally\n        scoped to a subfolder and optionally traversing subdirectories.\n\n        `path` narrows the listing to a specific folder (e.g. 'docs/features/active');\n        omit or pass '' to list from the project root.\n        `recursive=True` traverses all subdirectories; default is False (top-level only).\n\n        Do NOT use to read file content \u2014 call read_project_artifacts instead.\n        Do NOT use to browse source code \u2014 call get_project_map for the src/ tree.\n\n        Returns: list of objects \u2014 each with path (relative to project root) and size in bytes.\n        Raises:  404 if the project or path does not exist.\n        ",
+    "inputSchema": {
+      "properties": {
+        "path": {
+          "default": "",
+          "description": "Relative folder path",
+          "title": "Path",
+          "type": "string"
+        },
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        },
+        "recursive": {
+          "default": false,
+          "description": "Recursive list",
+          "title": "Recursive",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "project"
+      ],
+      "title": "list_project_artifactsArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "items": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "title": "Result",
+          "type": "array"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "list_project_artifactsOutput",
+      "type": "object"
+    }
+  },
+  "list_projects": {
+    "description": "[PROJECT TOOLS] Returns a list of all available projects.",
+    "inputSchema": {
+      "properties": {},
+      "title": "list_projectsArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            }
+          ],
+          "title": "Result"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "list_projectsOutput",
+      "type": "object"
+    }
+  },
+  "move_project_artifact": {
+    "description": "[ARTIFACT TOOLS] Moves or renames an artifact.",
+    "inputSchema": {
+      "properties": {
+        "dest_path": {
+          "description": "Destination path",
+          "title": "Dest Path",
+          "type": "string"
+        },
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        },
+        "src_path": {
+          "description": "Source path",
+          "title": "Src Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project",
+        "src_path",
+        "dest_path"
+      ],
+      "title": "move_project_artifactArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            }
+          ],
+          "title": "Result"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "move_project_artifactOutput",
+      "type": "object"
+    }
+  },
+  "read_project_artifacts": {
+    "description": "[ARTIFACT TOOLS] Reads one or more artifact files in a single batch call.\n        Each item in `reads` targets one file and specifies an independent read mode.\n\n        Read modes per item:\n          full    \u2014 returns the entire file content.\n          paged   \u2014 windowed read of the entire file. max_chars (default 10000), skip_chars,\n                    and direction (default).\n          section \u2014 returns only the content under a named ## header (requires section_name).\n          lines   \u2014 returns a specific line range (requires start_line and end_line).\n\n        Optional per-item fields:\n          max_chars     : int  \u2014 truncate response at N characters (default 10000).\n          skip_chars    : int  \u2014 skip N characters from the start of the selection.\n          direction     : 'begin' | 'end' \u2014 read from start or end of file (default 'begin').\n          line_numbers  : bool \u2014 prefix each line with its 1-based line number.\n\n        Do NOT loop this tool per file \u2014 batch all reads into a single call to minimise\n        round-trips. For source code files in src/, use view_file_source instead.\n\n        Returns: list of result objects \u2014 each with path and content (or error if not found).\n        Raises:  per-item error entry if a path does not exist; does not abort the batch.\n        ",
+    "inputSchema": {
+      "$defs": {
+        "ReadRequest": {
+          "additionalProperties": true,
+          "properties": {
+            "direction": {
+              "default": "begin",
+              "description": "Read direction: 'begin' (from start) or 'end' (from the end of file)",
+              "enum": [
+                "begin",
+                "end"
+              ],
+              "title": "Direction",
+              "type": "string"
+            },
+            "end_line": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Ending line (for mode='lines')",
+              "title": "End Line"
+            },
+            "extra_fields": {
+              "additionalProperties": true,
+              "description": "Additional dynamic parameters",
+              "title": "Extra Fields",
+              "type": "object"
+            },
+            "line_numbers": {
+              "default": false,
+              "description": "Include line numbers in response",
+              "title": "Line Numbers",
+              "type": "boolean"
+            },
+            "max_chars": {
+              "default": 10000,
+              "description": "Response character limit",
+              "title": "Max Chars",
+              "type": "integer"
+            },
+            "mode": {
+              "default": "paged",
+              "description": "Read mode: 'full' (entire file, 0..EOF, ignores pagination params), 'paged' (windowed read \u2014 max_chars/skip_chars/direction apply), 'section' (single section, whole section returned), 'lines' (line range, whole range returned)",
+              "enum": [
+                "full",
+                "section",
+                "lines",
+                "paged"
+              ],
+              "title": "Mode",
+              "type": "string"
+            },
+            "path": {
+              "description": "Path to the artifact (e.g. 'README.md' or 'docs/spec.md')",
+              "title": "Path",
+              "type": "string"
+            },
+            "section_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Section header (for mode='section')",
+              "title": "Section Name"
+            },
+            "skip_chars": {
+              "default": 0,
+              "description": "Characters to skip from the beginning of selection",
+              "title": "Skip Chars",
+              "type": "integer"
+            },
+            "start_line": {
+              "default": 1,
+              "description": "Starting line (for mode='lines' or pagination)",
+              "title": "Start Line",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "title": "ReadRequest",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        },
+        "reads": {
+          "description": "List of read requests",
+          "items": {
+            "$ref": "#/$defs/ReadRequest"
+          },
+          "title": "Reads",
+          "type": "array"
+        }
+      },
+      "required": [
+        "project",
+        "reads"
+      ],
+      "title": "read_project_artifactsArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Result",
+          "type": "array"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "read_project_artifactsOutput",
+      "type": "object"
+    }
+  },
+  "restore_project_artifact": {
+    "description": "[HISTORY TOOLS] Restores a named backup snapshot of an artifact, replacing the\n        current live file with the backup content. The current live version is NOT\n        automatically backed up before the restore \u2014 it will be overwritten.\n\n        Use list_artifact_history first to retrieve valid backup_name values for the\n        target path. The backup_name is the exact string returned in the history list.\n        Do NOT guess or construct backup names \u2014 always read them from list_artifact_history.\n\n        Returns: confirmation string with the restored path and backup_name applied.\n        Raises:  404 if the path or backup_name does not exist.\n        ",
+    "inputSchema": {
+      "properties": {
+        "backup_name": {
+          "description": "Backup name",
+          "title": "Backup Name",
+          "type": "string"
+        },
+        "path": {
+          "description": "Path to artifact",
+          "title": "Path",
+          "type": "string"
+        },
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project",
+        "path",
+        "backup_name"
+      ],
+      "title": "restore_project_artifactArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            }
+          ],
+          "title": "Result"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "restore_project_artifactOutput",
+      "type": "object"
+    }
+  },
+  "run_project_build": {
+    "description": "[BUILD TOOLS] Executes a named build pipeline defined in the project's build\n        manifest (a YAML file registered under docs/builds/ in the artifact store).\n        The manifest defines the sequence of steps (shell commands, artifact writes,\n        tool calls) that run in order.\n\n        Optional `variables` dict injects runtime values into manifest template\n        placeholders, e.g. {\"FEATURE\": \"Auth\"} replaces {{FEATURE}} in step definitions.\n\n        Do NOT use this to read or write individual artifacts \u2014 call save_project_artifacts\n        or read_project_artifacts instead.\n\n        Returns: build result object with status (success | failure), step outputs, and\n                 elapsed time.\n        Raises:  404 if build_name does not match any manifest in the project.\n                 RuntimeError if any step in the pipeline fails (includes step output).\n        ",
+    "inputSchema": {
+      "properties": {
+        "build_name": {
+          "description": "Manifest name",
+          "title": "Build Name",
+          "type": "string"
+        },
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        },
+        "variables": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Runtime template variables e.g. {\"FEATURE\": \"Auth\"}",
+          "title": "Variables"
+        }
+      },
+      "required": [
+        "project",
+        "build_name"
+      ],
+      "title": "run_project_buildArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            }
+          ],
+          "title": "Result"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "run_project_buildOutput",
+      "type": "object"
+    }
+  },
+  "save_project_artifacts": {
+    "description": "[ARTIFACT TOOLS] Creates or updates one or more artifact files in a single\n        atomic batch. Each item in `updates` targets one file and specifies an independent\n        write mode \u2014 modes in the same batch do not interact.\n\n        Write modes per update item:\n          replace_file    \u2014 overwrites the entire file (creates it if absent).\n          replace_section \u2014 replaces the content under a named ## header; raises if the\n                            header appears more than once (ADR-0011).\n          append_section  \u2014 appends a new ## section at the end of the file.\n          replace_chunk   \u2014 replaces lines start_line..end_line with new content.\n          patch           \u2014 finds old_str (must be unique in the file) and replaces it\n                            with new content. Preferred for surgical single-line edits.\n          delete_section  \u2014 removes a named ## section and its content.\n\n        Do NOT use replace_file when only a section needs updating \u2014 use patch or\n        replace_section to avoid clobbering concurrent edits.\n        Do NOT use this tool for source code in src/ \u2014 the source directory is read-only\n        from the agent's perspective.\n\n        Returns: list of result objects, one per update \u2014 each with path and status.\n        Raises:  duplicate-header error (with line numbers) if replace_section finds\n                 multiple matching headers in the same file.\n        ",
+    "inputSchema": {
+      "$defs": {
+        "WriteRequest": {
+          "additionalProperties": true,
+          "properties": {
+            "content": {
+              "default": "",
+              "description": "Content to write or replace. In 'patch' mode, this is the replacement string \u2014 or use 'new_str' instead (alias, patch mode only).",
+              "title": "Content",
+              "type": "string"
+            },
+            "end_line": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Ending line (mode='replace_chunk' only)",
+              "title": "End Line"
+            },
+            "extra_fields": {
+              "additionalProperties": true,
+              "description": "Additional dynamic parameters (e.g. old_str, start_line)",
+              "title": "Extra Fields",
+              "type": "object"
+            },
+            "header_level": {
+              "default": 2,
+              "description": "Markdown header level (e.g. 2 for '##')",
+              "title": "Header Level",
+              "type": "integer"
+            },
+            "mode": {
+              "default": "replace_file",
+              "description": "Write mode: replace_file, replace_section, append_section, replace_chunk, patch, delete_section",
+              "enum": [
+                "replace_file",
+                "replace_section",
+                "append_section",
+                "replace_chunk",
+                "patch",
+                "delete_section"
+              ],
+              "title": "Mode",
+              "type": "string"
+            },
+            "new_str": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Alias for 'content' in 'patch' mode only. Takes precedence over 'content' if both are supplied.",
+              "title": "New Str"
+            },
+            "old_str": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "String to find and replace (mode='patch' only)",
+              "title": "Old Str"
+            },
+            "path": {
+              "description": "Path to the artifact to write",
+              "title": "Path",
+              "type": "string"
+            },
+            "section_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Section header (for append/replace/delete_section)",
+              "title": "Section Name"
+            },
+            "start_line": {
+              "default": 1,
+              "description": "Starting line (mode='replace_chunk' only)",
+              "title": "Start Line",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "title": "WriteRequest",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        },
+        "updates": {
+          "description": "List of write requests",
+          "items": {
+            "$ref": "#/$defs/WriteRequest"
+          },
+          "title": "Updates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "project",
+        "updates"
+      ],
+      "title": "save_project_artifactsArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Result",
+          "type": "array"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "save_project_artifactsOutput",
+      "type": "object"
+    }
+  },
+  "search_code_skeletons": {
+    "description": "\n        [CODE TOOLS] Semantic search over indexed source code skeletons.\n        Searches the code_skeleton_index populated by marrow_worker.\n        Returns matching code units (methods, classes, namespaces, etc.) ranked by\n        semantic similarity to the query, each with file path, line range, and skeleton text.\n        Use root_path to scope to a module.\n        ",
+    "inputSchema": {
+      "properties": {
+        "chunk_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional filter by code unit type: 'namespace', 'class', 'method', 'constructor', 'property', 'file', etc.",
+          "title": "Chunk Type"
+        },
+        "include_tests": {
+          "default": false,
+          "description": "Include test file chunks in results (default False)",
+          "title": "Include Tests",
+          "type": "boolean"
+        },
+        "limit": {
+          "default": 10,
+          "description": "Maximum number of results to return",
+          "title": "Limit",
+          "type": "integer"
+        },
+        "project": {
+          "description": "Project name (e.g. 'YourProject')",
+          "title": "Project",
+          "type": "string"
+        },
+        "query": {
+          "description": "Natural language search query, e.g. 'order processing method' or 'database context constructor'",
+          "title": "Query",
+          "type": "string"
+        },
+        "root_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Restrict search to files under this path prefix, e.g. 'src/worker'",
+          "title": "Root Path"
+        }
+      },
+      "required": [
+        "project",
+        "query"
+      ],
+      "title": "search_code_skeletonsArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Result",
+          "type": "array"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "search_code_skeletonsOutput",
+      "type": "object"
+    }
+  },
+  "search_project_artifacts": {
+    "description": "[ARTIFACT TOOLS] Full-text search across all artifact files in a project,\n        matching against file content and returning files and sections that contain\n        the query string.\n\n        Query is plain text \u2014 no special syntax required. Case-insensitive. For\n        semantic / meaning-based search, use semantic_search instead.\n        Do NOT use this to list files \u2014 call list_project_artifacts instead.\n        Do NOT use this for source code \u2014 call search_code_skeletons instead.\n\n        Returns: list of match objects \u2014 each with path, matched section name, and a\n                 short excerpt of the matched content with surrounding context.\n        Raises:  404 if the project does not exist.\n        ",
+    "inputSchema": {
+      "properties": {
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        },
+        "query": {
+          "description": "Search text",
+          "title": "Query",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project",
+        "query"
+      ],
+      "title": "search_project_artifactsArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Result",
+          "type": "array"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "search_project_artifactsOutput",
+      "type": "object"
+    }
+  },
+  "search_tasks": {
+    "description": "[TASK TOOLS] Queries the task backlog in LanceDB with optional filters and returns\n        matching task summaries ranked by creation order.\n\n        All parameters are optional filters \u2014 omit to retrieve all tasks with default status.\n        Default status filter is 'open'; pass status=None to retrieve tasks of all statuses.\n        Do NOT call get_task_details on every result \u2014 use this tool for status checks and\n        task selection, then call get_task_details on the single selected task for full content.\n\n        Allowed `status` values:    open | in_progress | blocked | done | None (no filter)\n        Allowed `priority` values:  low | medium | high | critical | None (no filter)\n        Allowed `type` values:      feature | bug | task | td | None (no filter)\n\n        Returns: list of task summary objects \u2014 each with task_id, title, status, priority,\n                 type, and blocked_by. Full problem/solution content is excluded; call\n                 get_task_details for that.\n        Raises:  404 if project is not found.\n        ",
+    "inputSchema": {
+      "properties": {
+        "priority": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Priority filter",
+          "title": "Priority"
+        },
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "open",
+          "description": "Status filter",
+          "title": "Status"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Type filter",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "project"
+      ],
+      "title": "search_tasksArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "items": {},
+          "title": "Result",
+          "type": "array"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "search_tasksOutput",
+      "type": "object"
+    }
+  },
+  "semantic_search": {
+    "description": "\n        [ARTIFACT TOOLS] Semantic search over artifact chunks, optionally scoped to\n        one or more directories; returns each hit's location plus file content.\n        Read-only.\n\n        Parameters:\n          project : project name.\n          query   : natural-language search text.\n          limit   : max hits. With scopes, applies to the combined OR result, not\n                    per scope.\n          scopes  : project-relative directory paths, max 20, OR semantics. Omit\n                    (or None/[]) for unscoped -- unchanged from before this param\n                    existed. Directories only; a file path simply matches nothing.\n\n        Returns: on a normal or unscoped call, a list of hits (path, section,\n          start_line, end_line, distance, content, warning -- as before). If\n          scopes matched zero chunks, returns a single object instead of a list:\n          {\"message\": str} explaining why -- check for a \"message\" key, not list\n          length, to tell the two shapes apart.\n        Raises: 404 unknown project. Validation error for a bad scope (absolute,\n          '..', outside project root) or >20 scopes -- names the scope, never a\n          host path. Per-hit read failures set `warning` (partial success), not an exception.\n\n        Do NOT use to read a known file -- call read_project_artifacts instead.\n        Do NOT pass a file path as a scope -- scopes are directories.\n        ",
+    "inputSchema": {
+      "properties": {
+        "limit": {
+          "default": 5,
+          "description": "Max results",
+          "title": "Limit",
+          "type": "integer"
+        },
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        },
+        "query": {
+          "description": "Search text",
+          "title": "Query",
+          "type": "string"
+        },
+        "scopes": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Directory paths to restrict hits to (OR'd, max 20). Omit for unscoped (default). Files won't match -- use read_project_artifacts for a known file.",
+          "title": "Scopes"
+        }
+      },
+      "required": [
+        "project",
+        "query"
+      ],
+      "title": "semantic_searchArguments",
+      "type": "object"
+    },
+    "outputSchema": null
+  },
+  "update_task": {
+    "description": "[TASK TOOLS] Partially updates mutable fields on an existing task (status, priority,\n        title, solution, etc.) using a merge strategy \u2014 only keys present in `updates` are\n        changed; all other fields remain intact. Use this for in-progress changes (e.g.\n        updating priority or editing the solution).\n\n        Do NOT use to close a task \u2014 call complete_tasks instead, which atomically closes\n        and auto-unblocks dependents.\n        Do NOT use to create tasks \u2014 call add_tasks instead.\n\n        Allowed `updates` keys:\n          status        : open | in_progress | blocked | done\n          priority      : low | medium | high | critical\n          title         : str\n          problem       : str\n          solution      : str\n          blocked_by    : list[task_id]\n\n        Returns: updated task object with all current field values.\n        Raises:  404 if task_id not found in project.\n        ",
+    "inputSchema": {
+      "properties": {
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "Task ID",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "updates": {
+          "additionalProperties": true,
+          "description": "Updates dict",
+          "title": "Updates",
+          "type": "object"
+        }
+      },
+      "required": [
+        "project",
+        "task_id",
+        "updates"
+      ],
+      "title": "update_taskArguments",
+      "type": "object"
+    },
+    "outputSchema": null
+  },
+  "view_file_source": {
+    "description": "\n        [CODE TOOLS] Read a precise line range from the live source repository (\"The Scalpel\").\n        Requires SOURCE_ROOT to be configured in project/.settings.\n        ",
+    "inputSchema": {
+      "properties": {
+        "end_line": {
+          "description": "Last line to retrieve (1-based)",
+          "title": "End Line",
+          "type": "integer"
+        },
+        "path": {
+          "description": "Relative path to the file from SOURCE_ROOT",
+          "title": "Path",
+          "type": "string"
+        },
+        "project": {
+          "description": "Project name",
+          "title": "Project",
+          "type": "string"
+        },
+        "start_line": {
+          "description": "First line to retrieve (1-based)",
+          "title": "Start Line",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "project",
+        "path",
+        "start_line",
+        "end_line"
+      ],
+      "title": "view_file_sourceArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            }
+          ],
+          "title": "Result"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "view_file_sourceOutput",
+      "type": "object"
+    }
+  }
+}
