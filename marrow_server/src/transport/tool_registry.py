@@ -6,31 +6,21 @@ Add a new tool here; mcp_core.py bootstrapper picks it up automatically.
 import asyncio
 from typing import Annotated, Any
 
-from domain.responses import EmptyArtifactsResult
 from mcp.server.fastmcp import FastMCP
 from models import ReadRequest, TaskInput, WriteRequest
+from operations import artifacts as artifacts_ops
 from operations import tasks as tasks_ops
 from pydantic import Field
-from services.artifact_command_service import save_project_artifacts_logic
-from services.artifact_query_service import search_artifact_sections_logic
 from services.skeleton_query_service import (
     get_file_skeleton_logic,
     get_project_map_logic,
     search_code_skeletons_logic,
 )
 from tools import (
-    delete_project_artifact_logic,
     get_guideline_logic,
-    get_project_artifact_outline_logic,
     get_session_context_logic,
-    list_artifact_history_logic,
-    list_artifacts_logic,
     list_projects_logic,
-    move_project_artifact_logic,
-    read_project_artifacts_logic,
-    restore_project_artifact_logic,
     run_project_build_logic,
-    search_project_artifacts_logic,
     view_file_source_logic,
 )
 from utils.error_middleware import mcp_error_handler
@@ -170,10 +160,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         Do NOT use to read a known file -- call read_project_artifacts instead.
         Do NOT pass a file path as a scope -- scopes are directories.
         """
-        results = await search_artifact_sections_logic(project, query, limit, scopes=scopes)
-        if isinstance(results, EmptyArtifactsResult):
-            return results.model_dump()
-        return [r.model_dump() for r in results]
+        return await artifacts_ops.semantic_search(project, query, limit, scopes)
 
     @mcp.tool()
     @mcp_error_handler
@@ -393,13 +380,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         Returns: list of result objects — each with path and content (or error if not found).
         Raises:  per-item error entry if a path does not exist; does not abort the batch.
         """
-        reads_dict = []
-        for r in reads:
-            d = r.model_dump()
-            extra = d.pop("extra_fields", {})
-            d.update(extra) if extra else None
-            reads_dict.append(d)
-        return await asyncio.to_thread(read_project_artifacts_logic, project, reads_dict)
+        return await artifacts_ops.read_project_artifacts(project, reads)
 
     @mcp.tool()
     @mcp_error_handler
@@ -430,15 +411,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         Raises:  duplicate-header error (with line numbers) if replace_section finds
                  multiple matching headers in the same file.
         """
-        updates_dict = []
-        for u in updates:
-            d = u.model_dump()
-            extra = d.pop("extra_fields", {})
-            d.update(extra) if extra else None
-            d["_explicit_fields"] = set(u.model_fields_set)
-            updates_dict.append(d)
-        results = await save_project_artifacts_logic(project, updates_dict)
-        return [r.model_dump() for r in results]
+        return await artifacts_ops.save_project_artifacts(project, updates)
 
     @mcp.tool()
     @mcp_error_handler
@@ -460,7 +433,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         Returns: list of objects — each with path (relative to project root) and size in bytes.
         Raises:  404 if the project or path does not exist.
         """
-        return await asyncio.to_thread(list_artifacts_logic, project, path, recursive=recursive)
+        return await artifacts_ops.list_project_artifacts(project, path, recursive)
 
     @mcp.tool()
     @mcp_error_handler
@@ -470,7 +443,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         dest_path: Annotated[str, Field(description="Destination path")],
     ) -> str | dict[str, Any]:
         """[ARTIFACT TOOLS] Moves or renames an artifact."""
-        return await move_project_artifact_logic(project, src_path, dest_path)
+        return await artifacts_ops.move_project_artifact(project, src_path, dest_path)
 
     @mcp.tool()
     @mcp_error_handler
@@ -487,7 +460,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         Returns: confirmation string with the deleted file path.
         Raises:  404 error if the path does not exist in artifact storage.
         """
-        return await delete_project_artifact_logic(project, path)
+        return await artifacts_ops.delete_project_artifact(project, path)
 
     @mcp.tool()
     @mcp_error_handler
@@ -508,7 +481,7 @@ def register_all_tools(mcp: FastMCP) -> None:
                  short excerpt of the matched content with surrounding context.
         Raises:  404 if the project does not exist.
         """
-        return await search_project_artifacts_logic(project, query)
+        return await artifacts_ops.search_project_artifacts(project, query)
 
     @mcp.tool()
     @mcp_error_handler
@@ -517,7 +490,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         path: Annotated[str, Field(description="Path to .md file")],
     ) -> str | dict[str, Any]:
         """[ARTIFACT TOOLS] Extracts table of contents."""
-        return await asyncio.to_thread(get_project_artifact_outline_logic, project, path)
+        return await artifacts_ops.get_project_artifact_outline(project, path)
 
     ## History tools
 
@@ -539,7 +512,7 @@ def register_all_tools(mcp: FastMCP) -> None:
                  and size in bytes. Empty list if no history exists for the path.
         Raises:  404 if the artifact path does not exist in the project.
         """
-        return await asyncio.to_thread(list_artifact_history_logic, project, path)
+        return await artifacts_ops.list_artifact_history(project, path)
 
     @mcp.tool()
     @mcp_error_handler
@@ -559,7 +532,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         Returns: confirmation string with the restored path and backup_name applied.
         Raises:  404 if the path or backup_name does not exist.
         """
-        return await asyncio.to_thread(restore_project_artifact_logic, project, path, backup_name)
+        return await artifacts_ops.restore_project_artifact(project, path, backup_name)
 
     ## Build tools
 
