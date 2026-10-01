@@ -9,6 +9,7 @@ from typing import Annotated, Any
 from domain.responses import EmptyArtifactsResult
 from mcp.server.fastmcp import FastMCP
 from models import ReadRequest, TaskInput, WriteRequest
+from operations import tasks as tasks_ops
 from pydantic import Field
 from services.artifact_command_service import save_project_artifacts_logic
 from services.artifact_query_service import search_artifact_sections_logic
@@ -17,8 +18,6 @@ from services.skeleton_query_service import (
     get_project_map_logic,
     search_code_skeletons_logic,
 )
-from services.task_command_service import add_tasks_logic, complete_tasks_logic, update_task_logic
-from services.task_query_service import get_task_details_logic, search_tasks_logic
 from tools import (
     delete_project_artifact_logic,
     get_guideline_logic,
@@ -49,7 +48,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         tasks: Annotated[list[TaskInput], Field(description="List of new tasks")],
     ) -> str | dict[str, Any]:
         """[TASK TOOLS] Adds a list of tasks to the project backlog."""
-        return await add_tasks_logic(tasks, project)
+        return await tasks_ops.add_tasks(project, tasks)
 
     @mcp.tool()
     @mcp_error_handler
@@ -76,8 +75,7 @@ def register_all_tools(mcp: FastMCP) -> None:
                  get_task_details for that.
         Raises:  404 if project is not found.
         """
-        results = await search_tasks_logic(project, status, priority, type)
-        return [r.model_dump() for r in results]
+        return await tasks_ops.search_tasks(project, status, priority, type)
 
     @mcp.tool()
     @mcp_error_handler
@@ -86,8 +84,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         task_id: Annotated[str, Field(description="Task ID")],
     ) -> Any:
         """[TASK TOOLS] Returns full task details."""
-        result = await get_task_details_logic(project, task_id)
-        return result.model_dump()
+        return await tasks_ops.get_task_details(project, task_id)
 
     @mcp.tool()
     @mcp_error_handler
@@ -116,8 +113,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         Returns: updated task object with all current field values.
         Raises:  404 if task_id not found in project.
         """
-        result = await update_task_logic(project, task_id, updates)
-        return result.model_dump()
+        return await tasks_ops.update_task(project, task_id, updates)
 
     @mcp.tool()
     @mcp_error_handler
@@ -129,7 +125,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         ],
     ) -> str | dict[str, Any]:
         """[TASK TOOLS] Atomically closes one or more tasks and auto-unblocks dependents."""
-        return await complete_tasks_logic(task_ids, project)
+        return await tasks_ops.complete_tasks(project, task_ids)
 
     @mcp.tool()
     @mcp_error_handler
