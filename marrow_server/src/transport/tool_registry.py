@@ -9,19 +9,13 @@ from typing import Annotated, Any
 from mcp.server.fastmcp import FastMCP
 from models import ReadRequest, TaskInput, WriteRequest
 from operations import artifacts as artifacts_ops
+from operations import code_intel as code_intel_ops
+from operations import context as context_ops
 from operations import tasks as tasks_ops
 from pydantic import Field
-from services.skeleton_query_service import (
-    get_file_skeleton_logic,
-    get_project_map_logic,
-    search_code_skeletons_logic,
-)
 from tools import (
-    get_guideline_logic,
-    get_session_context_logic,
     list_projects_logic,
     run_project_build_logic,
-    view_file_source_logic,
 )
 from utils.error_middleware import mcp_error_handler
 
@@ -194,15 +188,9 @@ def register_all_tools(mcp: FastMCP) -> None:
         semantic similarity to the query, each with file path, line range, and skeleton text.
         Use root_path to scope to a module.
         """
-        results = await search_code_skeletons_logic(
-            project,
-            query,
-            chunk_type=chunk_type,
-            limit=limit,
-            include_tests=include_tests,
-            root_path=root_path,
+        return await code_intel_ops.search_code_skeletons(
+            project, query, chunk_type, limit, include_tests, root_path
         )
-        return [r.model_dump() for r in results]
 
     @mcp.tool()
     @mcp_error_handler
@@ -225,10 +213,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         [CODE TOOLS] Retrieves a token-optimized outline of a file's code units (classes, methods) with line numbers.
         Use depth=1 for orientation (names only), depth=2 for analysis (signatures), depth=0 for full detail.
         """
-        results = await get_file_skeleton_logic(
-            project, path, depth=depth, summary_only=summary_only
-        )
-        return [r.model_dump() for r in results]
+        return await code_intel_ops.get_file_skeleton(project, path, depth, summary_only)
 
     @mcp.tool()
     @mcp_error_handler
@@ -243,8 +228,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         [CODE TOOLS] Returns a live directory tree of all files indexed in the code skeleton index.
         Use this to orient yourself and find relevant subdirectories before starting a scoped search.
         """
-        result = await get_project_map_logic(project, depth=depth, include_tests=include_tests)
-        return result.model_dump()
+        return await code_intel_ops.get_project_map(project, depth, include_tests)
 
     @mcp.tool()
     @mcp_error_handler
@@ -258,7 +242,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         [CODE TOOLS] Read a precise line range from the live source repository ("The Scalpel").
         Requires SOURCE_ROOT to be configured in project/.settings.
         """
-        return await asyncio.to_thread(view_file_source_logic, project, path, start_line, end_line)
+        return await code_intel_ops.view_file_source(project, path, start_line, end_line)
 
     @mcp.tool()
     @mcp_error_handler
@@ -285,7 +269,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         If start_role is provided, session.md is bypassed entirely: the named role
         is resolved directly and SESSION STATE is omitted from the response.
         """
-        return await asyncio.to_thread(get_session_context_logic, project, start_role)
+        return await context_ops.get_session_context(project, start_role)
 
     @mcp.tool()
     @mcp_error_handler
@@ -309,7 +293,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         Returns: assembled markdown string (core guidelines + role guidelines + ADRs).
         Raises:  error string if role is not registered in role_profiles.yaml.
         """
-        return await asyncio.to_thread(get_guideline_logic, project, role)
+        return await context_ops.get_guideline(project, role)
 
     ## Project tools
 
