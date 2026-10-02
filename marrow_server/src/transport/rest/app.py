@@ -1,4 +1,4 @@
-"""REST sub-application (ADR-0053). Sibling of the legacy MCP app; never wrapped by its middleware."""
+"""REST sub-application (ADR-0053). Sibling of the MCP app; never wrapped by its middleware."""
 
 import config
 from fastapi import Depends, FastAPI
