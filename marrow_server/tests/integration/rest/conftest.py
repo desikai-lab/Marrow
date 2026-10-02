@@ -63,3 +63,11 @@ def client(rest_project, other_project, keyless_project):
     from transport.rest.app import rest_app
 
     return TestClient(rest_app, raise_server_exceptions=False)
+
+
+@pytest.fixture(scope="session")
+def root_client(rest_project, other_project, keyless_project):
+    from fastapi.testclient import TestClient
+    from transport.app_factory import app
+
+    return TestClient(app, raise_server_exceptions=False)

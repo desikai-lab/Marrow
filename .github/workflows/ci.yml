@@ -51,6 +51,14 @@ jobs:
           EXTERNAL_DEBUG: false
         run: python -m pytest tests/integration/mcp/ -v -m integration --tb=short
 
+      - name: Run REST integration tests - marrow_server
+        working-directory: marrow_server
+        env:
+          PYTHONPATH: src:..
+          SECRET_TOKEN: ci-dummy-token
+          EXTERNAL_DEBUG: false
+        run: python -m pytest tests/integration/rest/ -v -m integration --tb=short
+
       - name: Run unit tests — marrow_worker
         working-directory: marrow_worker
         env:

@@ -169,4 +169,32 @@ def create_app() -> FastAPI:
     return app
 
 
-app = create_app()
+class PrefixDispatcher:
+    """Root ASGI app: /api/v1 -> REST app; everything else incl. lifespan -> MCP app (ADR-0053 section 1)."""
+
+    def __init__(self, rest_app, mcp_app, prefix: str = "/api/v1") -> None:
+        self._rest, self._mcp, self._prefix = rest_app, mcp_app, prefix
+
+    def _is_rest(self, scope) -> bool:
+        if scope["type"] not in ("http", "websocket"):
+            return False
+        path = scope["path"]
+        return path == self._prefix or path.startswith(self._prefix + "/")
+
+    async def __call__(self, scope, receive, send) -> None:
+        target = self._rest if self._is_rest(scope) else self._mcp
+        await target(scope, receive, send)
+
+
+def create_root_app():
+    import config
+
+    mcp_app = create_app()
+    if not config.REST_API_ENABLED:
+        return mcp_app
+    from transport.rest.app import create_rest_app
+
+    return PrefixDispatcher(create_rest_app(), mcp_app)
+
+
+app = create_root_app()
