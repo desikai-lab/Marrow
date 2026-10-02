@@ -2,7 +2,8 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-import config
+from common.path_resolver import get_settings_path
+from common.project_file_error import ProjectFileError
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,11 @@ def _parse_settings_file(settings_path: Path) -> dict[str, str]:
     return result
 
 
+def read_raw_settings(settings_path: Path) -> dict[str, str]:
+    """Public, cache-free read of a .settings file (ADR-0053 section 6). Never touches _settings_cache."""
+    return _parse_settings_file(settings_path)
+
+
 def _parse_overlap_pct(raw_value: str | None) -> float | None:
     """Parses and range-validates CHUNK_OVERLAP_PCT. Returns None (caller falls
     back to config.DEFAULT_CHUNK_OVERLAP_PCT) if missing, non-numeric, or
@@ -76,7 +82,12 @@ def load_project_settings(project: str) -> ProjectSettings:
         return _settings_cache[project]
 
     settings = ProjectSettings()
-    settings_path = Path(config.PROJECTS_ROOT) / project / ".settings"
+    try:
+        settings_path = Path(get_settings_path(project))
+    except ProjectFileError:
+        return ProjectSettings(
+            chunk_overlap_pct=_parse_overlap_pct(None)
+        )  # invalid name: defaults, not cached
 
     if not settings_path.exists():
         logger.debug(
