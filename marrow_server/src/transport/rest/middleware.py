@@ -39,7 +39,7 @@ def _log_access(scope: Scope, status: int, started: float) -> None:
     logger.info(
         "[REST] %s %s %s %.1fms label=%s req=%s",
         scope["method"],
-        getattr(scope.get("route"), "path", "-"),
+        scope.get("path", "-"),
         status,
         (time.perf_counter() - started) * 1000,
         state.get("key_label", "-"),

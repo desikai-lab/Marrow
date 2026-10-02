@@ -1,10 +1,12 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
 from transport.rest.errors import register_error_handlers
 from transport.rest.middleware import (
     AccessLogMiddleware,
     BodyLimitMiddleware,
     ConcurrencyLimitMiddleware,
+    _log_access,
 )
 
 
@@ -31,6 +33,25 @@ def _client(max_bytes=10) -> TestClient:
 
 def test_access_log_adds_eight_char_request_id_header():
     assert len(_client().get("/ok").headers["x-request-id"]) == 8
+
+
+def test_log_access_uses_actual_path_not_route_template(caplog):
+    import logging
+    import time
+
+    class _FakeRoute:
+        path = "/api/v1/projects/{project}/tasks"
+
+    scope = {
+        "method": "GET",
+        "path": "/api/v1/projects/BacklogMCP/tasks",
+        "route": _FakeRoute(),
+        "state": {"key_label": "-", "request_id": "abcd1234"},
+    }
+    with caplog.at_level(logging.INFO, logger="marrow.rest"):
+        _log_access(scope, 401, time.perf_counter())
+    assert "/api/v1/projects/BacklogMCP/tasks" in caplog.text
+    assert "{project}" not in caplog.text
 
 
 def test_unhandled_exception_returns_500_envelope_without_traceback():
