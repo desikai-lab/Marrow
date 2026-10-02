@@ -169,4 +169,32 @@ def create_app() -> FastAPI:
     return app
 
 
-app = create_app()
+class PrefixDispatcher:
+    """Root ASGI app: /api/v1 -> REST app; everything else incl. lifespan -> legacy app (ADR-0053 section 1)."""
+
+    def __init__(self, rest_app, legacy_app, prefix: str = "/api/v1") -> None:
+        self._rest, self._legacy, self._prefix = rest_app, legacy_app, prefix
+
+    def _is_rest(self, scope) -> bool:
+        if scope["type"] not in ("http", "websocket"):
+            return False
+        path = scope["path"]
+        return path == self._prefix or path.startswith(self._prefix + "/")
+
+    async def __call__(self, scope, receive, send) -> None:
+        target = self._rest if self._is_rest(scope) else self._legacy
+        await target(scope, receive, send)
+
+
+def create_root_app():
+    import config
+
+    legacy = create_app()
+    if not config.REST_API_ENABLED:
+        return legacy
+    from transport.rest.app import create_rest_app
+
+    return PrefixDispatcher(create_rest_app(), legacy)
+
+
+app = create_root_app()
