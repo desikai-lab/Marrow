@@ -1,5 +1,5 @@
 from fastapi import APIRouter
 
-from transport.rest.routers import context
+from transport.rest.routers import artifacts, context, search, tasks
 
-ROUTERS: list[APIRouter] = [context.router]
+ROUTERS: list[APIRouter] = [context.router, tasks.router, search.router, artifacts.router]
