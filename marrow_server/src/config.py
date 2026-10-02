@@ -47,6 +47,17 @@ AGENT_PROFILE_ENGINE_ENABLED: bool = (
 EXTERNAL_DEBUG: bool = os.getenv("EXTERNAL_DEBUG", "false").lower() == "true"
 VECT_DEBOUNCE_SECONDS = float(os.getenv("VECT_DEBOUNCE_SECONDS", "0.5"))
 
+# --- REST API (F4000286) ---
+REST_API_ENABLED: bool = os.getenv("REST_API_ENABLED", "true").lower() == "true"
+REST_CORS_ORIGINS: list[str] = [
+    o.strip() for o in os.getenv("REST_CORS_ORIGINS", "").split(",") if o.strip()
+]  # empty = no CORS headers
+REST_KEY_CACHE_MAX_AGE_S = int(
+    os.getenv("REST_KEY_CACHE_MAX_AGE_S", "60")
+)  # clamped 1..300 in ApiKeyService
+REST_MAX_BODY_BYTES = int(os.getenv("REST_MAX_BODY_BYTES", "5242880"))
+REST_MAX_CONCURRENCY = int(os.getenv("REST_MAX_CONCURRENCY", "16"))
+
 # Priority: .env TASKS_DIR > local tests
 TASKS_DIR_ENV = os.getenv("TASKS_DIR")
 if TASKS_DIR_ENV:

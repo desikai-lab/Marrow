@@ -107,6 +107,14 @@ def get_raw_path(
     return absolute
 
 
+def get_settings_path(project: str) -> str:
+    """The only builder of PROJECTS_ROOT/<project>/.settings. Raises ProjectFileError for an invalid project name."""
+    absolute = _resolve(project, ".settings", ResourceKind.ROOT)
+    if absolute is None:
+        raise ProjectFileError(".settings")
+    return absolute
+
+
 NAMESPACE_ARTIFACTS = "artifacts"
 NAMESPACE_TASKS = "tasks"
 HISTORY_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"
