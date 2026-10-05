@@ -5,7 +5,7 @@
     "desikai"
   ],
   "keywords": [
-    "windows", "macos", "apple", "linux"
+    "windows", "apple", "linux"
   ],
   "placeholderArguments": {
     "SECRET_TOKEN": "dummy-token-for-checks",
