@@ -6,7 +6,7 @@ Marrow is a self-hosted **Model Context Protocol (MCP)** server ecosystem built 
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 Marrow consists of two cooperating services:
 
@@ -38,12 +38,20 @@ Marrow consists of two cooperating services:
 | Component | Role |
 |---|---|
 | **`marrow_server`** | Core MCP + REST server. Manages tasks, artifacts, semantic search, and code skeleton index. |
-| **`marrow_worker`** | Background file watcher. Parses source code, generates embeddings, and pushes skeletons to `marrow_server`. |
+| **`marrow_worker`** | Background file watcher. Parses source code, generates embeddings, and pushes skeletons to `marrow_server`. See [`../marrow_worker/README.md`](../marrow_worker/README.md). |
 | **`marrow_common`** | Shared schemas and utilities (e.g. `SkeletonChunk`, `SCHEMA_VERSION`). |
+
+### Service internals
+
+- **Transports, one codebase:** MCP (Streamable HTTP, `2025-03-26`) and REST are sibling ASGI apps behind a `PrefixDispatcher` (`src/transport/app_factory.py`). MCP mounts at `/`; REST lives at `/api/v1/projects/{project}` and falls through to MCP when `REST_API_ENABLED=false` (ADR-0053).
+- **Shared logic:** both transports call the same `operations/` layer, so MCP tool parameter names equal REST body/query field names — enforced by the `test_rest_mcp_parity` CI test (ADR-0054). Not exposed on REST: `list_projects`, `init_project`, `run_project_build`.
+- **Layers:** `transport/` (FastAPI app, middleware, routers incl. `rest/`, `oauth_router`, `vectorize_router`) → `tools/` (MCP tool implementations) → `services/` (business logic, incl. `api_key_service` for `API_KEYS`) → `storage/` (LanceDB repositories + Markdown blob I/O) → `models.py` / `config.py`. Domain logic stays transport-agnostic.
+- **Storage:** LanceDB vectors + metadata (`EMBEDDING_MODEL_CODE` for code, `EMBEDDING_MODEL_TEXT` for tasks/artifacts, `EMBEDDING_DIMENSIONS=384`) plus Markdown blobs for task/artifact content. Worker ingest is a separate internal contract: `POST /api/vectorize` (schema-versioned, 422 on mismatch).
+- **Worker pipeline:** filesystem events → debounce → tree-sitter parse (multi-language, ADR-0022) → skeleton extract → lazy `sentence-transformers` encode → SQLite outbox (`WORKER_OUTBOX_PATH`, `WORKER_FLUSH_INTERVAL_SECONDS`, `WORKER_FLUSH_CONCURRENCY`) → batched POST to server. Full worker reference: [`../marrow_worker/README.md`](../marrow_worker/README.md).
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 - **Semantic Search** — Find tasks, documents, or code units using natural language.
 - **Code Skeleton Index** — Browse class/method signatures across your entire codebase without reading files.
@@ -54,13 +62,11 @@ Marrow consists of two cooperating services:
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
-- Python 3.12+
-- [`fastembed`](https://github.com/qdrant/fastembed) — local embedding generation (no API key required)
-- [`lancedb`](https://lancedb.github.io/lancedb/) — embedded vector database
+- Python 3.12+ (dependencies such as LanceDB, tree-sitter grammars and the embedding model are installed by `pip install -e .`)
 
 ### 1. Configure `marrow_server`
 
@@ -75,25 +81,24 @@ TASKS_DIR=C:/Path/To/Your/Marrow/Data
 EMBEDDING_MODEL_CODE=BAAI/bge-small-en-v1.5
 EMBEDDING_MODEL_TEXT=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 EMBEDDING_DIMENSIONS=384
+
+# REST API for third parties (see "REST API" below)
+REST_API_ENABLED=true
+# REST_CORS_ORIGINS=
+# REST_KEY_CACHE_MAX_AGE_S=60
+# REST_MAX_BODY_BYTES=5242880
+# REST_MAX_CONCURRENCY=16
 ```
 
-### Project Settings (`.settings` in project root)
-
-Project-level configurations can be set in `{TASKS_DIR}/projects/{project_name}/.settings`:
-
-```ini
-SOURCE_ROOT=/projects/YourProject/src
-LITERAL_EXTRACTION=off
-```
-
-> **Experimental Warning:** `LITERAL_EXTRACTION=on` enables Stage 1 keyword signal blending (BM25 + RRF) for natural language artifact search. *Warning: Extractive keyword indexing is experimental and tuned specifically for English text; indexing non-English artifacts may produce low-quality keyword tokens or fallback stubs.* Defaults to `off`.
-
+`SECRET_TOKEN` is required and should be at least 16 characters. `TASKS_DIR` is required — it is where project workspaces live.
 
 ### 2. Run the server
 
-```powershell
+```bash
 # From marrow_server/
-$env:PYTHONPATH="src"
+python -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -e .
 python src/marrow_server.py
 ```
 
@@ -101,28 +106,35 @@ The server starts on `http://localhost:8000`.
 
 ### 3. Run the worker (optional, for code navigation)
 
-```powershell
+```bash
 # From marrow_worker/
-python main.py `
-  --repo-dir "C:/Path/To/Your/Code" `
-  --project-name "YourProject" `
-  --target-url "http://localhost:8000" `
-  --secret-token "your_secure_token" `
+pip install -e .
+python main.py \
+  --repo-dir "C:/Path/To/Your/Code" \
+  --project-name "YourProject" \
+  --target-url "http://localhost:8000" \
+  --secret-token "your_secure_token" \
   --init
 ```
 
+`--init` runs a full initial scan on first launch. Omit it on later runs. The worker's `--repo-dir` must equal the project's `SOURCE_ROOT` — see [Project settings](../README.md#project-settings-settings) in the root README.
+
+### Project settings and REST API
+
+Project-level `.settings` (including `SOURCE_ROOT` and REST `API_KEYS`) and the third-party REST API are documented once in the root README — see [Project settings](../README.md#project-settings-settings) and [REST API for third parties](../README.md#rest-api-for-third-parties) — instead of duplicating them here.
+
 ---
 
-## 🧪 Running Tests
+## Running Tests
 
-```powershell
-# From marrow_server/
-$env:PYTHONPATH="src"; python -m pytest tests/ -v
+```bash
+# From marrow_server/ (with .venv activated)
+python -m pytest tests/ -v
 ```
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 marrow_server/
@@ -143,13 +155,13 @@ marrow_server/
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 - **v1.1.0**: Enhanced surgical code navigation and multi-agent handoff automation.
 - **v2.0.0**: Web-based administration UI and multi-user collaboration support.
 
 ---
 
-## 📄 License
+## License
 
-MIT License. See [`LICENSE`](LICENSE) for details.
+MIT License. See [`LICENSE`](../LICENSE) for details.
