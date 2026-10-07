@@ -9,7 +9,6 @@ services:
       SECRET_TOKEN: ${SECRET_TOKEN}
       TASKS_DIR: /data
       DEFAULT_PROJECT: ${DEFAULT_PROJECT:-default}
-      PROJECT_1_PATH: ${PROJECT_1_PATH:-}
     command: >
       sh -c "
         PROJECTS_DIR=$${TASKS_DIR}/projects
@@ -21,10 +20,6 @@ services:
           echo '[Marrow] Projects found. Skipping init.'
         marrow-admin apply-migrations
         fi
-        if [ -d $$PROJECTS_DIR/$$DEFAULT ] && [ ! -f $$PROJECTS_DIR/$$DEFAULT/.settings ] && [ -n "$$PROJECT_1_PATH" ]; then
-          echo '[Marrow] Creating default .settings with SOURCE_ROOT=/projects/'$$PROJECT_1_PATH'...'
-          printf 'SOURCE_ROOT=/projects/%s\n' "$$PROJECT_1_PATH" > $$PROJECTS_DIR/$$DEFAULT/.settings
-        fi
       "
     restart: "no"
 
@@ -35,7 +30,7 @@ services:
       - "8000:8000"
     volumes:
       - marrow-data:/data
-      - ${SOURCE_PATHS}:/projects:ro
+      - marrow-projects:/projects:ro
       - marrow-hf-cache:/root/.cache/huggingface
     environment:
       SECRET_TOKEN: ${SECRET_TOKEN}
@@ -63,9 +58,9 @@ services:
     image: ghcr.io/desikai-lab/marrow-worker:latest
     container_name: marrow-worker
     volumes:
-      # Same bind mount as the server — paths inside the container must be identical
+      # Same volume as the server — paths inside the container must be identical
       # so that SOURCE_ROOT in .settings resolves correctly for both services.
-      - ${SOURCE_PATHS}:/projects:ro
+      - marrow-projects:/projects:ro
       - marrow-hf-cache:/root/.cache/huggingface
     environment:
       SECRET_TOKEN: ${SECRET_TOKEN}
@@ -95,7 +90,7 @@ services:
   #   image: ghcr.io/desikai-lab/marrow-worker:latest
   #   container_name: marrow-worker-2
   #   volumes:
-  #     - ${SOURCE_PATHS}:/projects:ro
+  #     - marrow-projects:/projects:ro
   #     - marrow-hf-cache:/root/.cache/huggingface
   #   environment:
   #     SECRET_TOKEN: ${SECRET_TOKEN} 
@@ -117,4 +112,5 @@ services:
 
 volumes:
   marrow-data:
+  marrow-projects:
   marrow-hf-cache:
