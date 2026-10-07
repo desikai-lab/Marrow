@@ -63,13 +63,6 @@ Pick one path:
 
 You need: [Docker](https://docs.docker.com/get-docker/) with Docker Compose.
 
-> How Docker storage works here: `docker-compose.yml` uses two named volumes —
-> `marrow-data` (mounted at `/data` in the server; `TASKS_DIR=/data`, so your
-> projects live at `/data/projects/<name>` inside the volume) and
-> `marrow-projects` (mounted read-only at `/projects` in both server and worker;
-> this is where the worker reads your code). There is no host bind mount, so you
-> copy files into the volumes with `docker cp` as shown below.
-
 **1. Get the compose file**
 
 ```bash
@@ -93,10 +86,15 @@ SECRET_TOKEN=your-strong-random-secret
 # Name of the first project, auto-created on first run
 DEFAULT_PROJECT=MyProject
 
+# Absolute host path of the folder that contains ALL your source repositories.
+# It is mounted read-only at /projects in both server and worker, so edits on
+# the host reach the worker live.
+# Windows example: C:\Users\you\sources
+# Linux/macOS example: /home/you/sources
+SOURCE_PATHS=/home/you/sources
+
 # Worker for the first project.
-# PROJECT_1_PATH becomes /projects/<PROJECT_1_PATH> inside the containers
-# (via the marrow-projects named volume). It must exactly match SOURCE_ROOT
-# in that project's .settings file (see step 4).
+# PROJECT_1_PATH is relative to SOURCE_PATHS and becomes /projects/<PROJECT_1_PATH> in the containers.
 PROJECT_1_NAME=MyProject
 PROJECT_1_PATH=MyApp/src
 ```
@@ -107,7 +105,7 @@ PROJECT_1_PATH=MyApp/src
 docker compose up
 ```
 
-Marrow pulls the pre-built images, creates your first project, then starts the server and worker. The first run takes about 20 seconds while the embedding model downloads.
+Marrow pulls the pre-built images, creates your first project, then starts the server and worker. The first run takes about 20 seconds while the embedding model downloads. `marrow-init` also writes the project's `.settings` with `SOURCE_ROOT=/projects/<PROJECT_1_PATH>` automatically, so there is nothing to configure by hand.
 
 Check that it worked:
 
@@ -117,32 +115,7 @@ docker compose ps
 
 `marrow-server` should show `healthy` (the compose healthcheck calls `GET /health`).
 
-**4. Put your code and project settings into the volumes**
-
-Copy your source tree into the `marrow-projects` volume (path must match step 2):
-
-```bash
-docker cp /home/you/sources/MyApp/src marrow-worker:/projects/MyApp/src
-```
-
-Then create the project's `.settings` file. `TASKS_DIR` is `/data` in Docker
-(backed by the `marrow-data` volume), so the file lives at
-`/data/projects/MyProject/.settings` as seen by the server:
-
-```bash
-docker compose exec marrow-server sh -c "cat > /data/projects/MyProject/.settings <<'EOF'
-SOURCE_ROOT=/projects/MyApp/src
-EOF"
-```
-
-Why this matters is explained in [Project settings](#project-settings-settings).
-Restart the worker afterwards so it picks up the path:
-
-```bash
-docker compose restart marrow-worker
-```
-
-**5. Connect your agent**
+**4. Connect your agent**
 
 Add Marrow to your MCP client config (for Cursor, `~/.cursor/mcp.json`):
 
@@ -339,10 +312,10 @@ LITERAL_EXTRACTION=off
 **The one rule: three paths must agree.** `SOURCE_ROOT` in `.settings`, the server's mount, and the worker's `--repo-dir` must all be the **same path**. Both containers mount the same volume at `/projects`, so a project's path is identical everywhere:
 
 ```text
-Inside server AND worker containers
-/projects/
-  ├── MyApp/src/
-  └── OtherApp/src/
+Host machine                       Inside server AND worker containers
+C:\Sources\   (SOURCE_PATHS)  ──►  /projects/           (bind-mounted read-only)
+  ├── MyApp\src\                     ├── MyApp/src/
+  └── OtherApp\src\                  └── OtherApp/src/
 
 TASKS_DIR/projects/
   ├── MyApp/.settings        →  SOURCE_ROOT=/projects/MyApp/src
@@ -352,7 +325,7 @@ Worker for MyApp:    --repo-dir /projects/MyApp/src    --project-name MyApp
 Worker for OtherApp: --repo-dir /projects/OtherApp/src --project-name OtherApp
 ```
 
-In Docker, `/projects` is the `marrow-projects` named volume (see [Option A](#option-a--docker-recommended)); for a manual setup it is any local path both processes can see, e.g. `SOURCE_ROOT=/absolute/path/to/your/source/code` with the same value passed as the worker's `--repo-dir`.
+In Docker, `/projects` is your `SOURCE_PATHS` folder bind-mounted read-only into both containers (see [Option A](#option-a--docker-recommended)); for a manual setup it is any local path both processes can see, e.g. `SOURCE_ROOT=/absolute/path/to/your/source/code` with the same value passed as the worker's `--repo-dir`. `marrow-init` writes this `.settings` for the first project automatically.
 
 <details>
 <summary>Multi-project setup</summary>
