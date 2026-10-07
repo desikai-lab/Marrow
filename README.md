@@ -66,11 +66,11 @@ You need: [Docker](https://docs.docker.com/get-docker/) with Docker Compose.
 > How Docker storage works here: `docker-compose.yml` uses named volumes —
 > `marrow-data` (mounted at `/data` in the server; `TASKS_DIR=/data`, so your
 > projects live at `/data/projects/<name>` inside the volume) and
-> `marrow-projects` (mounted read-only at `/projects` in both server and worker;
-> this is where the worker looks for your code). This compose file defines no
-> host mount, so the worker starts with an empty code index and the code
-> intelligence tools stay empty until your code is visible at `/projects`
-> inside the containers. A bind mount that fixes this is tracked in TD4000299.
+> `marrow-projects` — the source code volume (mounted read-only at `/projects`
+> in both server and worker; the worker indexes whatever is visible there).
+> This compose file defines no host mount, so until your repositories are
+> present in the volume, the code intelligence tools stay empty. A host mount
+> for this volume is tracked in TD4000299.
 
 **1. Get the compose file**
 
@@ -341,7 +341,7 @@ Worker for MyApp:    --repo-dir /projects/MyApp/src    --project-name MyApp
 Worker for OtherApp: --repo-dir /projects/OtherApp/src --project-name OtherApp
 ```
 
-In Docker, `/projects` is the `marrow-projects` named volume shared by server and worker (see [Option A](#option-a--docker-recommended)); for a manual setup it is any local path both processes can see, e.g. `SOURCE_ROOT=/absolute/path/to/your/source/code` with the same value passed as the worker's `--repo-dir`.
+In Docker, `/projects` is the `marrow-projects` source code volume shared by server and worker (see [Option A](#option-a--docker-recommended)); for a manual setup it is any local path both processes can see, e.g. `SOURCE_ROOT=/absolute/path/to/your/source/code` with the same value passed as the worker's `--repo-dir`.
 
 <details>
 <summary>Multi-project setup</summary>
