@@ -6,7 +6,7 @@ Marrow is a self-hosted **Model Context Protocol (MCP)** server ecosystem built 
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 Marrow consists of two cooperating services:
 
@@ -51,7 +51,7 @@ Marrow consists of two cooperating services:
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 - **Semantic Search** — Find tasks, documents, or code units using natural language.
 - **Code Skeleton Index** — Browse class/method signatures across your entire codebase without reading files.
@@ -62,7 +62,7 @@ Marrow consists of two cooperating services:
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -125,7 +125,7 @@ Project-level `.settings` (including `SOURCE_ROOT` and REST `API_KEYS`) and the 
 
 ---
 
-## 🧪 Running Tests
+## Running Tests
 
 ```bash
 # From marrow_server/ (with .venv activated)
@@ -134,7 +134,7 @@ python -m pytest tests/ -v
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 marrow_server/
@@ -155,13 +155,13 @@ marrow_server/
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 - **v1.1.0**: Enhanced surgical code navigation and multi-agent handoff automation.
 - **v2.0.0**: Web-based administration UI and multi-user collaboration support.
 
 ---
 
-## 📄 License
+## License
 
 MIT License. See [`LICENSE`](../LICENSE) for details.

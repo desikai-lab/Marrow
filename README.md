@@ -129,6 +129,12 @@ SOURCE_ROOT=/projects/MyApp/src
 EOF"
 ```
 
+Restart the server afterwards so it picks up the new file (project settings are cached on first read):
+
+```bash
+docker compose restart marrow-server
+```
+
 Why this matters is explained in [Project settings](#project-settings-settings).
 
 **5. Connect your agent**
