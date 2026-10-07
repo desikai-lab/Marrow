@@ -70,7 +70,7 @@ You need: [Docker](https://docs.docker.com/get-docker/) with Docker Compose.
 > in both server and worker; the worker indexes whatever is visible there).
 > This compose file defines no host mount, so until your repositories are
 > present in the volume, the code intelligence tools stay empty. A host mount
-> for this volume is tracked in TD4000299.
+> for this volume is planned as a follow-up.
 
 **1. Get the compose file**
 
