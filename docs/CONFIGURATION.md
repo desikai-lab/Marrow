@@ -16,6 +16,7 @@
 | `DEFAULT_PROJECT` | Name of the project auto-created on first run (Docker only) | `default` |
 | `EMBEDDING_MODEL_CODE` | Sentence-transformer model for code skeleton embeddings | `BAAI/bge-small-en-v1.5` |
 | `EMBEDDING_MODEL_TEXT` | Sentence-transformer model for text/artifact embeddings | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` |
+| `EMBEDDING_MODEL_REVISION` | Pinned Hub commit for `EMBEDDING_MODEL_CODE` — server and worker must resolve the same revision, or stored and fresh vectors silently disagree | `5c38ec7c405ec4b44b94cc5a9bb96e735b38267a` |
 | `EMBEDDING_DIMENSIONS` | Embedding vector dimensions — must match the chosen model | `384` |
 | `MAX_EMBED_CHARS` | Maximum characters to embed per chunk | `2000` |
 | `VECT_DEBOUNCE_SECONDS` | Debounce delay before vectorizing a changed file | `0.5` |
@@ -32,6 +33,8 @@
 | `--init` | Run a full repo scan on startup | off |
 | `--polling-interval` | File system polling interval in seconds — lower = faster response, higher CPU on large repos | `1.0` |
 
+The worker also honours `EMBEDDING_MODEL_CODE`, `EMBEDDING_MODEL_REVISION` (must match the server), `HF_HUB_OFFLINE`, and `MCP_SECRET_TOKEN` environment variables.
+
 ## Docker Compose .env
 
 | Variable | Description |
@@ -44,5 +47,6 @@
 | `PROJECT_2_NAME` | Project name for a second worker (if used) |
 | `PROJECT_2_PATH` | Subfolder for the second worker |
 | `EMBEDDING_MODEL_CODE` | Override the code skeleton embedding model (passed to both server and worker) — default `BAAI/bge-small-en-v1.5` |
+| `EMBEDDING_MODEL_REVISION` | Override the pinned model commit (rarely needed) — default is the built-in pin, identical in server and worker |
 | `HF_HUB_OFFLINE` | Set to `1` after first run to block all HuggingFace network calls and use the local cache only — default `0` |
 | `POLLING_INTERVAL` | File polling interval in seconds for the worker — increase for large repos to reduce CPU | `1.0` |
