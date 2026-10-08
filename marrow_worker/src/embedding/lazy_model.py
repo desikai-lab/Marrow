@@ -8,7 +8,7 @@ import torch
 # (not `from config import ...`): the worker image has no config module
 # (PYTHONPATH=/app/marrow_worker/src) and must start without SECRET_TOKEN.
 DEFAULT_MODEL_CODE = "BAAI/bge-small-en-v1.5"
-DEFAULT_MODEL_REVISION = "5c38ec7c405ec4b44b94cc5a9ba96e735b382645"
+DEFAULT_MODEL_REVISION = "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a"
 
 logger = logging.getLogger(__name__)
 
