@@ -3,11 +3,16 @@
 # Configuration Reference
 
 ## Contents
-- [marrow_server environment variables](#marrow_server)
-- [marrow_worker CLI arguments](#marrow_worker)
+- [marrow_server](#marrow_server)
+  - [Server environment variables](#server-environment-variables)
+- [marrow_worker](#marrow_worker)
+  - [Worker CLI arguments](#worker-cli-arguments)
+  - [Worker environment variables](#worker-environment-variables)
 - [Docker Compose .env variables](#docker-compose-env)
 
 ## marrow_server
+
+### Server environment variables
 
 | Variable | Description | Default |
 |---|---|---|
@@ -24,6 +29,8 @@
 
 ## marrow_worker
 
+### Worker CLI arguments
+
 | Argument | Description | Default |
 |---|---|---|
 | `--repo-dir` | Absolute path to the source code to watch — must match `SOURCE_ROOT` in `.settings` | `os.getcwd()` |
@@ -33,7 +40,7 @@
 | `--init` | Run a full repo scan on startup | off |
 | `--polling-interval` | File system polling interval in seconds — lower = faster response, higher CPU on large repos | `1.0` |
 
-### Environment variables
+### Worker environment variables
 
 | Variable | Description | Default |
 |---|---|---|
