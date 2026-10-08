@@ -33,7 +33,19 @@
 | `--init` | Run a full repo scan on startup | off |
 | `--polling-interval` | File system polling interval in seconds — lower = faster response, higher CPU on large repos | `1.0` |
 
-The worker also honours `EMBEDDING_MODEL_CODE`, `EMBEDDING_MODEL_REVISION` (must match the server), `HF_HUB_OFFLINE`, and `MCP_SECRET_TOKEN` environment variables.
+### Environment variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `MCP_SECRET_TOKEN` | Bearer token for `marrow_server` authentication (fallback for `--secret-token`) — must match `SECRET_TOKEN` on the server | — |
+| `EMBEDDING_MODEL_CODE` | Sentence-transformer model for code skeleton embeddings | `BAAI/bge-small-en-v1.5` |
+| `EMBEDDING_MODEL_REVISION` | Pinned Hub commit for the embedding model — must match the server | `5c38ec7c405ec4b44b94cc5a9bb96e735b38267a` |
+| `HF_HUB_OFFLINE` | Set to `1` to block all HuggingFace network calls — the model must be pre-downloaded first | `0` |
+| `WORKER_OUTBOX_PATH` | Path to the persistent SQLite delivery queue | `./worker_outbox.db` |
+| `WORKER_FLUSH_INTERVAL_SECONDS` | Seconds between background outbox flush attempts | `60` |
+| `WORKER_FLUSH_CONCURRENCY` | Concurrent outbox flush workers | `3` |
+| `POLLING_INTERVAL` | File system polling interval in seconds (same as `--polling-interval`) | `1.0` |
+| `LOG_LEVEL` | Worker log verbosity | `INFO` |
 
 ## Docker Compose .env
 
