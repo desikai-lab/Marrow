@@ -27,7 +27,7 @@
 | `MAX_EMBED_CHARS` | Maximum characters to embed per chunk | `2000` |
 | `VECT_DEBOUNCE_SECONDS` | Debounce delay before vectorizing a changed file | `0.5` |
 | `PORT` | HTTP server port | `8000` |
-| `TOOL_GROUP_CODE_ENABLED` | `false` removes the code tools (`search_code_skeletons`, `get_file_skeleton`, `get_project_map`, `view_file_source`) from MCP and answers their REST routes with `409` — see [Tool groups](#tool-groups) | `true` |
+| `TOOL_GROUP_CODE_ENABLED` | `false` removes the code tools (`search_code_skeletons`, `get_file_skeleton`, `get_project_map`, `view_file_source`) from MCP, answers their REST routes with `409`, and rejects `marrow_worker` pushes to `/api/vectorize` with `409` — see [Tool groups](#tool-groups) | `true` |
 | `TOOL_GROUP_TASK_ENABLED` | `false` removes the task tools (`add_tasks`, `search_tasks`, `get_task_details`, `update_task`, `complete_tasks`) from MCP and answers their REST routes with `409` | `true` |
 | `TOOL_GROUP_BUILD_ENABLED` | `false` removes `run_project_build` from MCP (it has no REST route) | `true` |
 
@@ -38,7 +38,7 @@ Set a variable to `false` to switch a group off. As with `REST_API_ENABLED`, onl
 - Changes apply on restart. An MCP client that caches the tool list must reconnect before it stops offering a removed tool.
 - A disabled tool is not registered on MCP. Its REST routes answer `409` with error type `ToolGroupDisabledError`; authentication still runs first.
 - With the code group off, the descriptions of the artifact tools and the shipped guidelines still mention the code tools; an agent that follows them gets an unknown-tool error. This is a known limitation.
-- With `TOOL_GROUP_CODE_ENABLED=false` a deployed `marrow_worker` keeps indexing; stop it separately if you do not want that.
+- With `TOOL_GROUP_CODE_ENABLED=false` the `marrow_worker` ingestion routes (`POST` and `DELETE /api/vectorize`) also answer `409`, so a deployed worker can no longer deliver chunks: its pushes are rejected until the group is re-enabled. Stop the worker to avoid failed retries.
 - The flags only change what the server exposes: stored data, indexes and project init are untouched, so re-enabling a group finds everything intact.
 
 ## marrow_worker

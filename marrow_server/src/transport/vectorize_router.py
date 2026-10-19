@@ -1,5 +1,6 @@
 import logging
 
+import config
 from config import EMBEDDING_DIMENSIONS
 from fastapi import APIRouter, Request
 from marrow_common.skeleton_schema import SCHEMA_VERSION
@@ -7,9 +8,9 @@ from pydantic import BaseModel, Field, field_validator
 from services.skeleton_command_service import skeleton_command_service
 from starlette.responses import JSONResponse
 
-logger = logging.getLogger("marrow.transport.vectorize")
+from transport.rest.envelope import error_body
 
-router = APIRouter()
+logger = logging.getLogger("marrow.transport.vectorize")
 
 
 class ChunkPayload(BaseModel):
@@ -45,7 +46,6 @@ class VectorizeRequest(BaseModel):
         return v
 
 
-@router.post("/api/vectorize")
 async def vectorize_endpoint(request: Request, payload: VectorizeRequest):
     """Receives pre-vectorized code skeleton chunks from marrow_worker."""
     if payload.schema_version != SCHEMA_VERSION:
@@ -73,7 +73,6 @@ class DeleteRequest(BaseModel):
     path: str
 
 
-@router.delete("/api/vectorize")
 async def delete_vectorize_endpoint(request: Request, payload: DeleteRequest):
     """Removes all skeleton chunks for a deleted/moved source file."""
     try:
@@ -87,3 +86,40 @@ async def delete_vectorize_endpoint(request: Request, payload: DeleteRequest):
     except Exception as e:
         logger.error("[delete_vectorize_endpoint] %s", e)
         return JSONResponse({"error": str(e)}, status_code=400)
+
+
+async def _disabled_endpoint(request: Request) -> JSONResponse:
+    return JSONResponse(
+        error_body(
+            "ToolGroupDisabledError",
+            "The 'code' tool group is disabled on this server.",
+            request.scope.get("request_id", "unknown"),
+            {"group": "code"},
+        ),
+        status_code=409,
+    )
+
+
+def build_vectorize_router() -> APIRouter:
+    """Routes of the marrow_worker ingestion endpoint (POST/DELETE /api/vectorize).
+
+    With TOOL_GROUP_CODE_ENABLED=false the endpoint is not served: the returned
+    router answers 409 on both methods and stays out of the OpenAPI document,
+    like the other tool-group stubs (F4000302, ADR-0055). Auth still runs first.
+    """
+    router = APIRouter()
+    if not config.CODE_ENABLED:
+        for method in ("POST", "DELETE"):
+            router.add_api_route(
+                "/api/vectorize",
+                _disabled_endpoint,
+                methods=[method],
+                include_in_schema=False,
+            )
+        return router
+    router.add_api_route("/api/vectorize", vectorize_endpoint, methods=["POST"])
+    router.add_api_route("/api/vectorize", delete_vectorize_endpoint, methods=["DELETE"])
+    return router
+
+
+router = build_vectorize_router()
