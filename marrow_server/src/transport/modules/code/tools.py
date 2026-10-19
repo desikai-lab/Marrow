@@ -1,5 +1,6 @@
 from typing import Annotated, Any
 
+import config
 from mcp.server.fastmcp import FastMCP
 from operations import code_intel as code_intel_ops
 from pydantic import Field
@@ -7,7 +8,9 @@ from utils.error_middleware import mcp_error_handler
 
 
 def use_code_tools(mcp: FastMCP) -> None:
-    """Register the code tools on `mcp`."""
+    """Register the code tools on `mcp`; a no-op when TOOL_GROUP_CODE_ENABLED=false."""
+    if not config.CODE_ENABLED:
+        return
 
     @mcp.tool()
     @mcp_error_handler

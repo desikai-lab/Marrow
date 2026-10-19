@@ -1,7 +1,9 @@
 """MCP tool registration: composes the tool modules under transport/modules/.
 
 Each module owns the MCP stubs of one tool group and exposes one use_<group>_tools(mcp)
-function. Add a new tool to its module's tools.py; add a new module here.
+function. The optional groups (code, task, build) switch themselves off inside that
+function (TOOL_GROUP_<GROUP>_ENABLED, see config.py). Add a new tool to its module's
+tools.py; add a new module here.
 """
 
 from mcp.server.fastmcp import FastMCP

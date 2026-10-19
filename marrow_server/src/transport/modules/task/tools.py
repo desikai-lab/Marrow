@@ -1,5 +1,6 @@
 from typing import Annotated, Any
 
+import config
 from mcp.server.fastmcp import FastMCP
 from models import TaskInput
 from operations import tasks as tasks_ops
@@ -8,7 +9,9 @@ from utils.error_middleware import mcp_error_handler
 
 
 def use_task_tools(mcp: FastMCP) -> None:
-    """Register the task tools on `mcp`."""
+    """Register the task tools on `mcp`; a no-op when TOOL_GROUP_TASK_ENABLED=false."""
+    if not config.TASK_ENABLED:
+        return
 
     @mcp.tool()
     @mcp_error_handler
