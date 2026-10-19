@@ -14,7 +14,7 @@ TASK_TOOLS = {'add_tasks', 'search_tasks', 'get_task_details', 'update_task', 'c
 
 
 def _env(**flags: str) -> dict[str, str]:
-    env = {k: v for k, v in os.environ.items() if not k.upper().startswith('TOOL_GROUP_')}
+    env = dict(os.environ)
     env.update(flags)
     return env
 
