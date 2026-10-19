@@ -41,6 +41,7 @@ def _client() -> TestClient:
         ("ValidationError", 422),
         ("SourceFileError", 422),
         ("StorageTimeoutError", 503),
+        ("ToolGroupDisabledError", 409),
     ],
 )
 def test_domain_error_maps_to_status_and_envelope(name, status):

@@ -67,3 +67,9 @@ class StorageTimeoutError(BaseBacklogError):
     """Raised when acquiring a table lock exceeds its configured timeout."""
 
     pass
+
+
+class ToolGroupDisabledError(BaseBacklogError):
+    """A tool group switched off by TOOL_GROUP_<GROUP>_ENABLED was called (REST stub, HTTP 409)."""
+
+    pass
