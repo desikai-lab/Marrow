@@ -1,0 +1,1816 @@
+{
+  "components": {
+    "schemas": {
+      "AddTasksBody": {
+        "properties": {
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskInput"
+            },
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tasks"
+        ],
+        "title": "AddTasksBody",
+        "type": "object"
+      },
+      "CodeSearchBody": {
+        "properties": {
+          "chunk_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Type"
+          },
+          "include_tests": {
+            "default": false,
+            "title": "Include Tests",
+            "type": "boolean"
+          },
+          "limit": {
+            "default": 10,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "root_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Root Path"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "CodeSearchBody",
+        "type": "object"
+      },
+      "CompleteTasksBody": {
+        "properties": {
+          "task_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Task Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "task_ids"
+        ],
+        "title": "CompleteTasksBody",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "MoveArtifactBody": {
+        "properties": {
+          "dest_path": {
+            "title": "Dest Path",
+            "type": "string"
+          },
+          "src_path": {
+            "title": "Src Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "src_path",
+          "dest_path"
+        ],
+        "title": "MoveArtifactBody",
+        "type": "object"
+      },
+      "ReadArtifactsBody": {
+        "properties": {
+          "reads": {
+            "items": {
+              "$ref": "#/components/schemas/ReadRequest"
+            },
+            "title": "Reads",
+            "type": "array"
+          }
+        },
+        "required": [
+          "reads"
+        ],
+        "title": "ReadArtifactsBody",
+        "type": "object"
+      },
+      "ReadRequest": {
+        "additionalProperties": true,
+        "properties": {
+          "direction": {
+            "default": "begin",
+            "description": "Read direction: 'begin' (from start) or 'end' (from the end of file)",
+            "enum": [
+              "begin",
+              "end"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "end_line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ending line (for mode='lines')",
+            "title": "End Line"
+          },
+          "extra_fields": {
+            "additionalProperties": true,
+            "description": "Additional dynamic parameters",
+            "title": "Extra Fields",
+            "type": "object"
+          },
+          "line_numbers": {
+            "default": false,
+            "description": "Include line numbers in response",
+            "title": "Line Numbers",
+            "type": "boolean"
+          },
+          "max_chars": {
+            "default": 10000,
+            "description": "Response character limit",
+            "title": "Max Chars",
+            "type": "integer"
+          },
+          "mode": {
+            "default": "paged",
+            "description": "Read mode: 'full' (entire file, 0..EOF, ignores pagination params), 'paged' (windowed read — max_chars/skip_chars/direction apply), 'section' (single section, whole section returned), 'lines' (line range, whole range returned)",
+            "enum": [
+              "full",
+              "section",
+              "lines",
+              "paged"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "path": {
+            "description": "Path to the artifact (e.g. 'README.md' or 'docs/spec.md')",
+            "title": "Path",
+            "type": "string"
+          },
+          "section_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Section header (for mode='section')",
+            "title": "Section Name"
+          },
+          "skip_chars": {
+            "default": 0,
+            "description": "Characters to skip from the beginning of selection",
+            "title": "Skip Chars",
+            "type": "integer"
+          },
+          "start_line": {
+            "default": 1,
+            "description": "Starting line (for mode='lines' or pagination)",
+            "title": "Start Line",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "ReadRequest",
+        "type": "object"
+      },
+      "RestoreArtifactBody": {
+        "properties": {
+          "backup_name": {
+            "title": "Backup Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "backup_name"
+        ],
+        "title": "RestoreArtifactBody",
+        "type": "object"
+      },
+      "SemanticSearchBody": {
+        "properties": {
+          "limit": {
+            "default": 5,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "scopes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scopes"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "SemanticSearchBody",
+        "type": "object"
+      },
+      "TaskInput": {
+        "additionalProperties": true,
+        "properties": {
+          "blocked_by": {
+            "default": [],
+            "description": "List of task IDs this task depends on",
+            "title": "Blocked By"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/TaskPriority",
+            "default": "medium",
+            "description": "Priority: critical, high, medium, low"
+          },
+          "problem": {
+            "description": "Detailed problem description",
+            "title": "Problem",
+            "type": "string"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Project name (e.g. 'YourProject', 'MCP')",
+            "title": "Project"
+          },
+          "solution": {
+            "description": "Proposed or implemented solution",
+            "title": "Solution",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus",
+            "default": "open",
+            "description": "Current status (e.g. open, in_progress, paused, closed)"
+          },
+          "title": {
+            "description": "Short task title",
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TaskType",
+            "description": "Task type: F (feature), B (bug), TD (tech debt)"
+          },
+          "where": {
+            "default": [],
+            "description": "List of affected files or modules",
+            "title": "Where"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "problem",
+          "solution"
+        ],
+        "title": "TaskInput",
+        "type": "object"
+      },
+      "TaskPriority": {
+        "enum": [
+          "critical",
+          "high",
+          "medium",
+          "low"
+        ],
+        "title": "TaskPriority",
+        "type": "string"
+      },
+      "TaskStatus": {
+        "enum": [
+          "open",
+          "in_progress",
+          "paused",
+          "done",
+          "closed"
+        ],
+        "title": "TaskStatus",
+        "type": "string"
+      },
+      "TaskType": {
+        "enum": [
+          "F",
+          "B",
+          "TD"
+        ],
+        "title": "TaskType",
+        "type": "string"
+      },
+      "TextSearchBody": {
+        "properties": {
+          "query": {
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "TextSearchBody",
+        "type": "object"
+      },
+      "UpdateTaskBody": {
+        "properties": {
+          "updates": {
+            "additionalProperties": true,
+            "title": "Updates",
+            "type": "object"
+          }
+        },
+        "required": [
+          "updates"
+        ],
+        "title": "UpdateTaskBody",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WriteArtifactsBody": {
+        "properties": {
+          "updates": {
+            "items": {
+              "$ref": "#/components/schemas/WriteRequest"
+            },
+            "title": "Updates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "updates"
+        ],
+        "title": "WriteArtifactsBody",
+        "type": "object"
+      },
+      "WriteRequest": {
+        "additionalProperties": true,
+        "properties": {
+          "content": {
+            "default": "",
+            "description": "Content to write or replace. In 'patch' mode, this is the replacement string — or use 'new_str' instead (alias, patch mode only).",
+            "title": "Content",
+            "type": "string"
+          },
+          "end_line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ending line (mode='replace_chunk' only)",
+            "title": "End Line"
+          },
+          "extra_fields": {
+            "additionalProperties": true,
+            "description": "Additional dynamic parameters (e.g. old_str, start_line)",
+            "title": "Extra Fields",
+            "type": "object"
+          },
+          "header_level": {
+            "default": 2,
+            "description": "Markdown header level (e.g. 2 for '##')",
+            "title": "Header Level",
+            "type": "integer"
+          },
+          "mode": {
+            "default": "replace_file",
+            "description": "Write mode: replace_file, replace_section, append_section, replace_chunk, patch, delete_section",
+            "enum": [
+              "replace_file",
+              "replace_section",
+              "append_section",
+              "replace_chunk",
+              "patch",
+              "delete_section"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "new_str": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Alias for 'content' in 'patch' mode only. Takes precedence over 'content' if both are supplied.",
+            "title": "New Str"
+          },
+          "old_str": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "String to find and replace (mode='patch' only)",
+            "title": "Old Str"
+          },
+          "path": {
+            "description": "Path to the artifact to write",
+            "title": "Path",
+            "type": "string"
+          },
+          "section_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Section header (for append/replace/delete_section)",
+            "title": "Section Name"
+          },
+          "start_line": {
+            "default": 1,
+            "description": "Starting line (mode='replace_chunk' only)",
+            "title": "Start Line",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "WriteRequest",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Marrow REST API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/projects/{project}/artifacts": {
+      "delete": {
+        "operationId": "delete_project_artifact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Project Artifact",
+        "tags": [
+          "artifacts"
+        ]
+      },
+      "get": {
+        "operationId": "list_project_artifacts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "recursive",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Recursive",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Project Artifacts",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/artifacts/history": {
+      "get": {
+        "operationId": "list_artifact_history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Artifact History",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/artifacts/move": {
+      "post": {
+        "operationId": "move_project_artifact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveArtifactBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Move Project Artifact",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/artifacts/outline": {
+      "get": {
+        "operationId": "get_project_artifact_outline",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Project Artifact Outline",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/artifacts/read": {
+      "post": {
+        "operationId": "read_project_artifacts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadArtifactsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Project Artifacts",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/artifacts/restore": {
+      "post": {
+        "operationId": "restore_project_artifact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreArtifactBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Restore Project Artifact",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/artifacts/write": {
+      "post": {
+        "operationId": "save_project_artifacts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteArtifactsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Project Artifacts",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/code/map": {
+      "get": {
+        "operationId": "get_project_map",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "schema": {
+              "default": 4,
+              "title": "Depth",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_tests",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Tests",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Project Map",
+        "tags": [
+          "code"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/code/search": {
+      "post": {
+        "operationId": "search_code_skeletons",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeSearchBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Search Code Skeletons",
+        "tags": [
+          "code"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/code/skeleton": {
+      "get": {
+        "operationId": "get_file_skeleton",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "schema": {
+              "default": 2,
+              "title": "Depth",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "summary_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Summary Only",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get File Skeleton",
+        "tags": [
+          "code"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/code/source": {
+      "get": {
+        "operationId": "view_file_source",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_line",
+            "required": true,
+            "schema": {
+              "title": "Start Line",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_line",
+            "required": true,
+            "schema": {
+              "title": "End Line",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "View File Source",
+        "tags": [
+          "code"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/guidelines/{role}": {
+      "get": {
+        "operationId": "get_guideline",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "role",
+            "required": true,
+            "schema": {
+              "title": "Role",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Guideline",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/search/semantic": {
+      "post": {
+        "operationId": "semantic_search",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticSearchBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Semantic Search",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/search/text": {
+      "post": {
+        "operationId": "search_project_artifacts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextSearchBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Search Project Artifacts",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/session-context": {
+      "get": {
+        "operationId": "get_session_context",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Session Context",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/tasks": {
+      "get": {
+        "operationId": "search_tasks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "open",
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "priority",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Priority"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Search Tasks",
+        "tags": [
+          "tasks"
+        ]
+      },
+      "post": {
+        "operationId": "add_tasks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddTasksBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Tasks",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/tasks/complete": {
+      "post": {
+        "operationId": "complete_tasks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteTasksBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Complete Tasks",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/api/v1/projects/{project}/tasks/{task_id}": {
+      "get": {
+        "operationId": "get_task_details",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Task Details",
+        "tags": [
+          "tasks"
+        ]
+      },
+      "patch": {
+        "operationId": "update_task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTaskBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Task",
+        "tags": [
+          "tasks"
+        ]
+      }
+    }
+  }
+}
