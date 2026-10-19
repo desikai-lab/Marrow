@@ -58,6 +58,13 @@ REST_KEY_CACHE_MAX_AGE_S = int(
 REST_MAX_BODY_BYTES = int(os.getenv("REST_MAX_BODY_BYTES", "5242880"))
 REST_MAX_CONCURRENCY = int(os.getenv("REST_MAX_CONCURRENCY", "16"))
 
+# --- Tool groups (F4000302) ---
+# Set to false to switch a tool group off. Same convention as REST_API_ENABLED: only the
+# value "true" keeps a group on, anything else switches it off; no validation of names.
+CODE_ENABLED: bool = os.getenv("TOOL_GROUP_CODE_ENABLED", "true").lower() == "true"
+TASK_ENABLED: bool = os.getenv("TOOL_GROUP_TASK_ENABLED", "true").lower() == "true"
+BUILD_ENABLED: bool = os.getenv("TOOL_GROUP_BUILD_ENABLED", "true").lower() == "true"
+
 # Priority: .env TASKS_DIR > local tests
 TASKS_DIR_ENV = os.getenv("TASKS_DIR")
 if TASKS_DIR_ENV:

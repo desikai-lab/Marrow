@@ -5,6 +5,7 @@
 ## Contents
 - [marrow_server](#marrow_server)
   - [Server environment variables](#server-environment-variables)
+  - [Tool groups](#tool-groups)
 - [marrow_worker](#marrow_worker)
   - [Worker CLI arguments](#worker-cli-arguments)
   - [Worker environment variables](#worker-environment-variables)
@@ -26,6 +27,19 @@
 | `MAX_EMBED_CHARS` | Maximum characters to embed per chunk | `2000` |
 | `VECT_DEBOUNCE_SECONDS` | Debounce delay before vectorizing a changed file | `0.5` |
 | `PORT` | HTTP server port | `8000` |
+| `TOOL_GROUP_CODE_ENABLED` | `false` removes the code tools (`search_code_skeletons`, `get_file_skeleton`, `get_project_map`, `view_file_source`) from MCP and answers their REST routes with `409` — see [Tool groups](#tool-groups) | `true` |
+| `TOOL_GROUP_TASK_ENABLED` | `false` removes the task tools (`add_tasks`, `search_tasks`, `get_task_details`, `update_task`, `complete_tasks`) from MCP and answers their REST routes with `409` | `true` |
+| `TOOL_GROUP_BUILD_ENABLED` | `false` removes `run_project_build` from MCP (it has no REST route) | `true` |
+
+### Tool groups
+
+Set a variable to `false` to switch a group off. As with `REST_API_ENABLED`, only the value `true` (any case) keeps a group on: anything else, including an empty value, `1`, `yes` or a misspelled name, switches it off or has no effect, and nothing validates the names, so double-check the spelling. The artifact, history, session-context and project tools are core and cannot be switched off.
+
+- Changes apply on restart. An MCP client that caches the tool list must reconnect before it stops offering a removed tool.
+- A disabled tool is not registered on MCP. Its REST routes answer `409` with error type `ToolGroupDisabledError`; authentication still runs first.
+- With the code group off, the descriptions of the artifact tools and the shipped guidelines still mention the code tools; an agent that follows them gets an unknown-tool error. This is a known limitation.
+- With `TOOL_GROUP_CODE_ENABLED=false` a deployed `marrow_worker` keeps indexing; stop it separately if you do not want that.
+- The flags only change what the server exposes: stored data, indexes and project init are untouched, so re-enabling a group finds everything intact.
 
 ## marrow_worker
 

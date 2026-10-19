@@ -13,6 +13,7 @@ from utils.exceptions import (
     SourceFileError,
     StorageTimeoutError,
     TaskNotFoundError,
+    ToolGroupDisabledError,
     ValidationError,
 )
 
@@ -33,6 +34,7 @@ _DOMAIN_STATUS = (
     (ValidationError, 422),
     (SourceFileError, 422),
     (StorageTimeoutError, 503),
+    (ToolGroupDisabledError, 409),
 )
 _HTTP_TYPES = {404: "NotFound", 405: "MethodNotAllowed", 413: "PayloadTooLarge"}
 

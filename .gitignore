@@ -6,6 +6,7 @@ __pycache__/
 *.pyd
 .Python
 build/
+!marrow_server/src/transport/modules/build/
 dist/
 *.egg-info/
 *.egg

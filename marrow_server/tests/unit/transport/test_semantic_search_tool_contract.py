@@ -1,12 +1,12 @@
 import pytest
 from mcp.server.fastmcp import FastMCP
 
-from transport.tool_registry import register_all_tools
+from transport.tool_registry import register_tools
 
 
 async def _semantic_search_tool():
     mcp = FastMCP("semantic-search-contract")
-    register_all_tools(mcp)
+    register_tools(mcp)
     return next(t for t in await mcp.list_tools() if t.name == "semantic_search")
 
 

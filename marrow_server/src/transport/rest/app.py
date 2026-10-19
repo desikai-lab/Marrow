@@ -12,10 +12,8 @@ from transport.rest.middleware import (
     BodyLimitMiddleware,
     ConcurrencyLimitMiddleware,
 )
-from transport.rest.routers import ROUTERS
-
-API_PREFIX = "/api/v1"
-PROJECT_PREFIX = f"{API_PREFIX}/projects/{{project}}"
+from transport.rest.paths import API_PREFIX, PROJECT_PREFIX  # noqa: F401  (re-exported)
+from transport.rest.route_registry import register_routes
 
 
 def _operation_id(route: APIRoute) -> str:
@@ -33,8 +31,7 @@ def create_rest_app() -> FastAPI:
         generate_unique_id_function=_operation_id,
     )
     register_error_handlers(app)
-    for router in ROUTERS:
-        app.include_router(router, prefix=PROJECT_PREFIX)
+    register_routes(app)
     app.add_middleware(BodyLimitMiddleware, max_bytes=config.REST_MAX_BODY_BYTES)
     app.add_middleware(ConcurrencyLimitMiddleware, limit=config.REST_MAX_CONCURRENCY)
     if config.REST_CORS_ORIGINS:
