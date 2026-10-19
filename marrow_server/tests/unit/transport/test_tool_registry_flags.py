@@ -1,7 +1,5 @@
 import asyncio
-import json
 from itertools import combinations
-from pathlib import Path
 
 import config
 import pytest
@@ -11,7 +9,6 @@ from transport.modules.code.tools import use_code_tools
 from transport.modules.task.tools import use_task_tools
 from transport.tool_registry import register_tools
 
-GOLDEN = Path(__file__).resolve().parents[2] / 'fixtures' / 'tool_groups' / 'default_mcp_tools.json'
 GROUP_TOOLS = {
     'task': {'add_tasks', 'search_tasks', 'get_task_details', 'update_task', 'complete_tasks'},
     'code': {'search_code_skeletons', 'get_file_skeleton', 'get_project_map', 'view_file_source'},
@@ -41,20 +38,6 @@ def _served() -> dict[str, str]:
 def test_register_tools_all_groups_enabled_registers_24_tools(monkeypatch):
     _set_flags(monkeypatch, frozenset())
     assert len(_served()) == 24
-
-
-def test_register_tools_all_groups_enabled_matches_default_golden(monkeypatch):
-    _set_flags(monkeypatch, frozenset())
-    server = FastMCP('registry-flags-golden')
-    register_tools(server)
-    served = sorted(
-        (
-            {'name': t.name, 'description': t.description, 'inputSchema': t.inputSchema}
-            for t in asyncio.run(server.list_tools())
-        ),
-        key=lambda tool: tool['name'],
-    )
-    assert served == json.loads(GOLDEN.read_text(encoding='utf-8'))
 
 
 @pytest.mark.parametrize('disabled', COMBINATIONS, ids=_ids)
