@@ -8,7 +8,8 @@ from pydantic import BaseModel, Field, field_validator
 from services.skeleton_command_service import skeleton_command_service
 from starlette.responses import JSONResponse
 
-from transport.rest.envelope import error_body
+from transport.rest.disabled import group_disabled_message
+from transport.rest.envelope import UNKNOWN_REQUEST_ID, error_body
 
 logger = logging.getLogger("marrow.transport.vectorize")
 
@@ -58,7 +59,7 @@ async def vectorize_endpoint(request: Request, payload: VectorizeRequest):
             status_code=422,
         )
     try:
-        request_id = request.scope.get("request_id", "unknown")
+        request_id = request.scope.get("request_id", UNKNOWN_REQUEST_ID)
         count = await skeleton_command_service.ingest(
             payload, _perf_extra={"request_id": request_id, "file": payload.path}
         )
@@ -76,7 +77,7 @@ class DeleteRequest(BaseModel):
 async def delete_vectorize_endpoint(request: Request, payload: DeleteRequest):
     """Removes all skeleton chunks for a deleted/moved source file."""
     try:
-        request_id = request.scope.get("request_id", "unknown")
+        request_id = request.scope.get("request_id", UNKNOWN_REQUEST_ID)
         count = await skeleton_command_service.delete(
             payload.path,
             payload.project_name,
@@ -92,8 +93,8 @@ async def _disabled_endpoint(request: Request) -> JSONResponse:
     return JSONResponse(
         error_body(
             "ToolGroupDisabledError",
-            "The 'code' tool group is disabled on this server.",
-            request.scope.get("request_id", "unknown"),
+            group_disabled_message("code"),
+            request.scope.get("request_id", UNKNOWN_REQUEST_ID),
             {"group": "code"},
         ),
         status_code=409,
