@@ -7,8 +7,8 @@ from transport.rest.route_registry import register_routes
 from transport.rest.routers import code, tasks
 from utils.exceptions import BaseBacklogError
 
-GROUP_ROUTERS = {'task': tasks.router, 'code': code.router}
-REST_GROUPS = ('code', 'task')
+GROUP_ROUTERS = {"task": tasks.router, "code": code.router}
+REST_GROUPS = ("code", "task")
 COMBINATIONS = combinations_of(REST_GROUPS)
 
 
@@ -18,7 +18,7 @@ def _app(monkeypatch, disabled) -> FastAPI:
 
     @app.exception_handler(BaseBacklogError)
     async def _domain(request, exc: BaseBacklogError):
-        return JSONResponse({'error': {'type': type(exc).__name__}}, status_code=409)
+        return JSONResponse({"error": {"type": type(exc).__name__}}, status_code=409)
 
     register_routes(app)
     return app
@@ -26,7 +26,7 @@ def _app(monkeypatch, disabled) -> FastAPI:
 
 def _operations(app: FastAPI) -> set[str]:
     spec = app.openapi()
-    return {op['operationId'] for methods in spec['paths'].values() for op in methods.values()}
+    return {op["operationId"] for methods in spec["paths"].values() for op in methods.values()}
 
 
 def _group_operations(group: str) -> set[str]:
@@ -38,7 +38,7 @@ def _group_routes(group: str) -> list[tuple[str, str]]:
 
 
 def _concrete(path: str) -> str:
-    return '/api/v1/projects/P' + path.replace('{task_id}', 'T1')
+    return "/api/v1/projects/P" + path.replace("{task_id}", "T1")
 
 
 def test_register_routes_all_groups_enabled_lists_every_group_operation_in_openapi(monkeypatch):
@@ -47,7 +47,7 @@ def test_register_routes_all_groups_enabled_lists_every_group_operation_in_opena
         assert _group_operations(group) and _group_operations(group) <= operations
 
 
-@pytest.mark.parametrize('disabled', COMBINATIONS, ids=ids)
+@pytest.mark.parametrize("disabled", COMBINATIONS, ids=ids)
 def test_register_routes_group_off_removes_exactly_that_groups_operations(monkeypatch, disabled):
     expected = _operations(_app(monkeypatch, frozenset()))
     for group in disabled:
@@ -55,7 +55,7 @@ def test_register_routes_group_off_removes_exactly_that_groups_operations(monkey
     assert _operations(_app(monkeypatch, disabled)) == expected
 
 
-@pytest.mark.parametrize('disabled', COMBINATIONS, ids=ids)
+@pytest.mark.parametrize("disabled", COMBINATIONS, ids=ids)
 def test_register_routes_group_off_answers_409_for_every_route_of_that_group(monkeypatch, disabled):
     client = TestClient(_app(monkeypatch, disabled), raise_server_exceptions=False)
     for group in disabled:

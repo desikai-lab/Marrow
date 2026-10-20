@@ -5,6 +5,10 @@ from fastapi.routing import APIRoute
 from utils.exceptions import ToolGroupDisabledError
 
 
+def group_disabled_message(group: str) -> str:
+    return f"The '{group}' tool group is disabled on this server."
+
+
 def disabled_router_for(router: APIRouter, group: str) -> APIRouter:
     """Clone path, methods and name of every route onto a handler that raises.
 
@@ -13,9 +17,7 @@ def disabled_router_for(router: APIRouter, group: str) -> APIRouter:
     """
 
     async def _disabled(request: Request) -> None:
-        raise ToolGroupDisabledError(
-            f"The '{group}' tool group is disabled on this server.", {"group": group}
-        )
+        raise ToolGroupDisabledError(group_disabled_message(group), {"group": group})
 
     stub = APIRouter(tags=list(router.tags))
     for route in router.routes:

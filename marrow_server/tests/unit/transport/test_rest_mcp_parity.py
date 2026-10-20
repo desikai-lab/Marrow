@@ -65,43 +65,43 @@ def test_rest_exposes_exactly_21_operations():
 
 COMBINATIONS = combinations_of(FLAG_OF)
 GROUP_OF_EXCLUSION = {
-    'list_projects': 'project',
-    'init_project': 'project',
-    'run_project_build': 'build',
+    "list_projects": "project",
+    "init_project": "project",
+    "run_project_build": "build",
 }
 
 
 def _surfaces(monkeypatch, disabled):
     set_flags(monkeypatch, disabled)
-    server = FastMCP('parity-flags-test')
+    server = FastMCP("parity-flags-test")
     register_tools(server)
     return _mcp_params(server), _rest_operations(create_rest_app())
 
 
-@pytest.mark.parametrize('disabled', COMBINATIONS, ids=ids)
+@pytest.mark.parametrize("disabled", COMBINATIONS, ids=ids)
 def test_rest_operations_group_off_equal_mcp_minus_configured_exclusions(monkeypatch, disabled):
     tools, rest = _surfaces(monkeypatch, disabled)
     assert set(tools) - set(rest) - set(REST_EXCLUSIONS) == set()
     assert set(rest) - set(tools) == set()
 
 
-@pytest.mark.parametrize('disabled', COMBINATIONS, ids=ids)
+@pytest.mark.parametrize("disabled", COMBINATIONS, ids=ids)
 def test_rest_operation_count_group_off_equals_21_minus_disabled_rest_ops(monkeypatch, disabled):
     _, rest = _surfaces(monkeypatch, disabled)
     expected = 21
-    expected -= 5 if 'task' in disabled else 0
-    expected -= 4 if 'code' in disabled else 0
+    expected -= 5 if "task" in disabled else 0
+    expected -= 4 if "code" in disabled else 0
     assert len(rest) == expected
 
 
-@pytest.mark.parametrize('disabled', COMBINATIONS, ids=ids)
+@pytest.mark.parametrize("disabled", COMBINATIONS, ids=ids)
 def test_exclusions_naming_unregistered_tool_require_disabled_group(monkeypatch, disabled):
     tools, _ = _surfaces(monkeypatch, disabled)
     unregistered = set(REST_EXCLUSIONS) - set(tools)
     assert unregistered == {n for n, g in GROUP_OF_EXCLUSION.items() if g in disabled}
 
 
-@pytest.mark.parametrize('disabled', COMBINATIONS, ids=ids)
+@pytest.mark.parametrize("disabled", COMBINATIONS, ids=ids)
 def test_rest_parameter_names_equal_mcp_parameter_names_group_off(monkeypatch, disabled):
     tools, rest = _surfaces(monkeypatch, disabled)
     assert {n: (sorted(rest[n]), sorted(tools[n])) for n in rest if rest[n] != tools[n]} == {}

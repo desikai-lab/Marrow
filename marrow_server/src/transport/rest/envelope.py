@@ -2,9 +2,11 @@ from typing import Any
 
 from fastapi import Request
 
+UNKNOWN_REQUEST_ID = "-"
+
 
 def request_id(request: Request) -> str:
-    return getattr(request.state, "request_id", "-")
+    return getattr(request.state, "request_id", UNKNOWN_REQUEST_ID)
 
 
 def ok(request: Request, result: Any) -> dict[str, Any]:

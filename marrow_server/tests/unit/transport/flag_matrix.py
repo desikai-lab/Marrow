@@ -4,7 +4,7 @@ from itertools import combinations
 
 import config
 
-FLAG_OF = {'code': 'CODE_ENABLED', 'task': 'TASK_ENABLED', 'build': 'BUILD_ENABLED'}
+FLAG_OF = {"code": "CODE_ENABLED", "task": "TASK_ENABLED", "build": "BUILD_ENABLED"}
 
 
 def combinations_of(groups):
@@ -14,7 +14,7 @@ def combinations_of(groups):
 
 
 def ids(disabled):
-    return '+'.join(sorted(disabled)) or 'none'
+    return "+".join(sorted(disabled)) or "none"
 
 
 def set_flags(monkeypatch, disabled, groups=None):
