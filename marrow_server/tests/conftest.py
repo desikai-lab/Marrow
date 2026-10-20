@@ -3,6 +3,8 @@
 config.py loads .env with load_dotenv(), which never overrides an existing variable,
 so pinning the three flags here keeps a developer's local .env (used to try the flags
 on a running server) from changing the default tool surface the tests assert.
+Pinning happens in pytest_configure, which runs before any test module imports config
+(pyproject.toml sets testpaths = ["tests"], so this is an initial conftest).
 Flag tests do not read the environment; they monkeypatch config.<FLAG> directly.
 """
 
@@ -13,9 +15,6 @@ TOOL_GROUP_FLAGS = (
     "TOOL_GROUP_TASK_ENABLED",
     "TOOL_GROUP_BUILD_ENABLED",
 )
-
-for _flag in TOOL_GROUP_FLAGS:
-    os.environ.setdefault(_flag, "true")
 
 
 def pytest_configure(config):
