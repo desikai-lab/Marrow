@@ -14,3 +14,5 @@ h11>=0.16.0
 transformers>=4.38.0
 scikit-learn>=1.3.0
 filelock>=3.13.0
+# Security: pin Pillow to avoid PYSEC-2026-4326..4343 / CVE-2026-96638..112900 (fix: >=13.0.0)
+pillow>=13.0.0
