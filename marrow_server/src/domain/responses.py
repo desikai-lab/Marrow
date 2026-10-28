@@ -138,3 +138,4 @@ class ProjectInitResult(BaseModel):
 
     project: str
     files_created: list[str]
+    starting_role: str = "Discovery Agent"

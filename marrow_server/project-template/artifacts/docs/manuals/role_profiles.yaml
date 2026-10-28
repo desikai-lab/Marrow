@@ -1,4 +1,4 @@
-roles:
+﻿roles:
   discovery:
     guideline: docs/manuals/guidelines/discovery.md
     adrs: []
@@ -23,3 +23,9 @@ roles:
     playbooks: []
     next: discovery
     requires_approval: false
+  init:
+    guideline: docs/manuals/guidelines/init.md
+    adrs: []
+    playbooks: []
+    next: discovery
+    requires_approval: true
