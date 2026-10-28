@@ -37,12 +37,13 @@ def use_project_tools(mcp: FastMCP) -> None:
           project   : str — unique project name (must not already exist)
           template  : str — scaffold template; only "default" is supported in this release
 
-        Returns: { project, files_created } where files_created lists
-                 every file path copied into the new workspace (relative to workspace root).
+        Returns: { project, files_created, starting_role } where files_created lists
+                 every file path copied into the new workspace (relative to workspace root)
+                 and starting_role is Discovery Agent or Init Agent.
 
         Raises: ValidationError if project already exists or template is unsupported.
         """
         from tools.projects import init_project_logic
 
         result = await asyncio.to_thread(init_project_logic, project, template)
-        return result.model_dump()  # returns { project, files_created }
+        return result.model_dump()  # returns { project, files_created, starting_role }

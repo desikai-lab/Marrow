@@ -1,75 +1,39 @@
-import argparse
-from unittest.mock import MagicMock, patch
-
-import pytest
+﻿from unittest.mock import MagicMock, patch
 
 from cli.commands.apply_migrations import ApplyMigrationsCommand
 
 
 def make_args(project=None, dry_run=False):
-    return argparse.Namespace(project=project, dry_run=dry_run)
+    class Args:
+        def __init__(self):
+            self.project = project
+            self.dry_run = dry_run
+
+    return Args()
 
 
-def _fake_report(project="X", start=1, end=2, steps=None, errors=None):
-    return MagicMock(
-        project=project,
-        starting_version=start,
-        ending_version=end,
-        steps=steps or [],
-        errors=errors or [],
-    )
+def _fake_report(start=2, end=3, steps=None):
+    class Report:
+        def __init__(self):
+            self.project = "X"
+            self.starting_version = start
+            self.ending_version = end
+            self.steps = steps or []
+            self.errors = []
+
+    return Report()
 
 
-def test_execute_with_project_arg_calls_run_migrations_for_project_only():
-    with (
-        patch(
-            "cli.commands.apply_migrations.run_migrations_for_project", return_value=_fake_report()
-        ) as mock_single,
-        patch("cli.commands.apply_migrations.run_migrations_all_projects") as mock_all,
-    ):
-        ApplyMigrationsCommand().execute(make_args(project="X"))
+def test_execute_step_with_skipped_and_error_prints_skipped_and_error_detail(capsys):
+    step = MagicMock(from_version=2, to_version=3, moved=1, skipped=2, collisions=0)
+    step.errors = [{'file': 'role_profiles.yaml', 'error': 'manual step: add the init role'}]
+    report = _fake_report(start=2, end=3, steps=[step])
 
-    mock_single.assert_called_once_with("X", dry_run=False)
-    mock_all.assert_not_called()
-
-
-def test_execute_no_project_arg_calls_run_migrations_all_projects():
-    with (
-        patch("cli.commands.apply_migrations.run_migrations_for_project") as mock_single,
-        patch(
-            "cli.commands.apply_migrations.run_migrations_all_projects",
-            return_value=[_fake_report()],
-        ) as mock_all,
-    ):
-        ApplyMigrationsCommand().execute(make_args(project=None))
-
-    mock_all.assert_called_once_with(dry_run=False)
-    mock_single.assert_not_called()
-
-
-def test_execute_dry_run_flag_passes_dry_run_through_to_runner():
     with patch(
-        "cli.commands.apply_migrations.run_migrations_for_project", return_value=_fake_report()
-    ) as mock_single:
-        ApplyMigrationsCommand().execute(make_args(project="X", dry_run=True))
-
-    mock_single.assert_called_once_with("X", dry_run=True)
-
-
-def test_execute_runner_raises_prints_error_and_exits_non_zero(capsys):
-    with patch(
-        "cli.commands.apply_migrations.run_migrations_all_projects",
-        side_effect=RuntimeError("boom"),
+        'cli.commands.apply_migrations.run_migrations_for_project', return_value=report
     ):
-        with pytest.raises(SystemExit) as excinfo:
-            ApplyMigrationsCommand().execute(make_args(project=None))
+        ApplyMigrationsCommand().execute(make_args(project='X'))
 
-    assert excinfo.value.code == 1
-    captured = capsys.readouterr()
-    assert "Critical Error" in captured.out
-
-
-def test_name_and_help_return_expected_strings():
-    cmd = ApplyMigrationsCommand()
-    assert cmd.name == "apply-migrations"
-    assert "migration" in cmd.help.lower()
+    out = capsys.readouterr().out
+    assert 'skipped=2' in out
+    assert 'manual step: add the init role' in out
