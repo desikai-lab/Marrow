@@ -14,3 +14,5 @@ pyyaml==6.0.3
 aiofiles==25.1.0
 fastembed==0.8.1
 packaging==26.3
+# Security: pin Pillow to avoid PYSEC-2026-4326..4343 / CVE-2026-96638..112900 (fix: >=13.0.0)
+pillow>=13.0.0
