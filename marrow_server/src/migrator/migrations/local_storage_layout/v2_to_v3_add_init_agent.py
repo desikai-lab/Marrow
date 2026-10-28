@@ -1,13 +1,18 @@
+import logging
 import os
 
+import yaml
 from common import path_resolver
+
 from migrator.base import Migration, MigrationStepReport
 from migrator.migrations.local_storage_layout.role_record import (
     INIT_PROFILE,
     INIT_ROLE,
     append_init_role,
 )
-from tools.utils.filesystem_utils import create_artifact_backup
+
+_logger = logging.getLogger("marrow.migrator")
+
 
 
 class V2ToV3AddInitAgent(Migration):
@@ -64,8 +69,6 @@ class V2ToV3AddInitAgent(Migration):
 
         # If already has init role
         try:
-            import yaml
-
             parsed = yaml.safe_load(rp_text)
             roles = parsed.get("roles") if isinstance(parsed, dict) else None
             if isinstance(roles, dict) and INIT_ROLE in roles:
@@ -86,8 +89,6 @@ class V2ToV3AddInitAgent(Migration):
             return report
 
         # Validate again
-        import yaml
-
         old_parsed = yaml.safe_load(rp_text)
         new_parsed = yaml.safe_load(new_text)
         old_roles = old_parsed.get("roles", {}) if isinstance(old_parsed, dict) else {}
@@ -110,6 +111,9 @@ class V2ToV3AddInitAgent(Migration):
             return report
 
         try:
+            # lazy import: keeps the tools package out of the migrator import tree
+            from tools.utils.filesystem_utils import create_artifact_backup
+
             create_artifact_backup(project_name, rp_path)
         except Exception as exc:
             report.errors.append(
