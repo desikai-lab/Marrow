@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 import sys
 
 from migrator.runner import run_migrations_all_projects, run_migrations_for_project
@@ -34,8 +34,12 @@ class ApplyMigrationsCommand(BaseCommand):
                 )
                 for step in report.steps:
                     print(
-                        f"  step {step.from_version}->{step.to_version}: moved={step.moved} collisions={step.collisions} errors={len(step.errors)}"
+                        f"  step {step.from_version}->{step.to_version}: moved={step.moved} "
+                        f"skipped={step.skipped} collisions={step.collisions} "
+                        f"errors={len(step.errors)}"
                     )
+                    for error in step.errors:
+                        print(f"    error: {error}")
                 if report.errors:
                     print(f"  project-level errors: {report.errors}")
 
