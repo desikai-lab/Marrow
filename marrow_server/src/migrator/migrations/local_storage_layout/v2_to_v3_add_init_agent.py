@@ -14,7 +14,6 @@ from migrator.migrations.local_storage_layout.role_record import (
 _logger = logging.getLogger("marrow.migrator")
 
 
-
 class V2ToV3AddInitAgent(Migration):
     subsystem = "local_storage_layout"
     from_version = 2

@@ -1,4 +1,4 @@
-﻿import argparse
+import argparse
 import sys
 
 from migrator.runner import run_migrations_all_projects, run_migrations_for_project
