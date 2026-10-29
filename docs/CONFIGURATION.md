@@ -37,9 +37,18 @@ Set a variable to `false` to switch a group off. As with `REST_API_ENABLED`, onl
 
 - Changes apply on restart. An MCP client that caches the tool list must reconnect before it stops offering a removed tool.
 - A disabled tool is not registered on MCP. Its REST routes answer `409` with error type `ToolGroupDisabledError`; authentication still runs first.
-- With the code group off, the descriptions of the artifact tools and the shipped guidelines still mention the code tools; an agent that follows them gets an unknown-tool error. This is a known limitation.
+- With a group off, the descriptions of the artifact tools still mention that group's tools (known limitation). The shipped guidelines are adapted by the Init Agent: see [Projects created with a group off](#projects-created-with-a-group-off).
 - With `TOOL_GROUP_CODE_ENABLED=false` the `marrow_worker` ingestion routes (`POST` and `DELETE /api/vectorize`) also answer `409`, so a deployed worker can no longer deliver chunks: its pushes are rejected until the group is re-enabled. Stop the worker to avoid failed retries.
-- The flags only change what the server exposes: stored data, indexes and project init are untouched, so re-enabling a group finds everything intact.
+- The flags change what the server exposes and the first role of projects created while a group is off. Stored data and indexes are untouched, so re-enabling a group finds everything intact; guidelines the Init Agent already adapted stay as adapted.
+
+### Projects created with a group off
+
+- Project init (the `init_project` MCP tool and `marrow-admin project-init`) reads the code and task flags once (the build flag is ignored: build is experimental and the shipped guidelines do not use it). If either is `false`, the new project's `session.md` starts at the **Init Agent**; otherwise it starts at the Discovery Agent and the new project is identical to the template.
+- The Init Agent infers which tools exist, asks you to confirm, edits the shipped guidelines minimally, logs every change in `session.md`, and hands over to Discovery after your GO. It never deletes or overwrites an existing role or guideline.
+- `marrow-admin project-init` and the docker-compose `marrow-init` service read the flags of **their own** process. Set the same `TOOL_GROUP_*` variables there as on the server, or the project starts at Discovery.
+- Existing projects: a one-time migration (`local_storage_layout` step 2 to 3, run on server start and by `marrow-admin apply-migrations`) adds `docs/manuals/guidelines/init.md` and an `init` role. It is additive: nothing is overwritten, `session.md` is not touched, and an `init` role that already exists with different content is reported and kept. Start the agent with `get_session_context` and `start_role` set to `init`.
+- The migration writes files directly, so `semantic_search` finds `init.md` only after `marrow-admin reindex-chunks --project <name> --file docs/manuals/guidelines/init.md`.
+- If `role_profiles.yaml` has an unusual shape the migration does not edit it and reports a manual step: add the `init` record by hand (Protocol A, step 4, in `init.md`).
 
 ## marrow_worker
 
