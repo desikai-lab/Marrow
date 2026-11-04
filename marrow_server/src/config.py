@@ -47,6 +47,17 @@ AGENT_PROFILE_ENGINE_ENABLED: bool = (
 EXTERNAL_DEBUG: bool = os.getenv("EXTERNAL_DEBUG", "false").lower() == "true"
 VECT_DEBOUNCE_SECONDS = float(os.getenv("VECT_DEBOUNCE_SECONDS", "0.5"))
 
+# --- MCP transport security (DNS rebinding protection) ---
+# When empty and MCP_DNS_REBINDING_PROTECTION=false, Host/Origin validation is
+# disabled (needed for reverse-proxy tunnels like ngrok). The SDK only supports
+# exact hostnames or "<host>:*" port patterns — no subdomain wildcards.
+MCP_DNS_REBINDING_PROTECTION: bool = (
+    os.getenv("MCP_DNS_REBINDING_PROTECTION", "false").lower() == "true"
+)
+MCP_ALLOWED_HOSTS: list[str] = [
+    h.strip() for h in os.getenv("MCP_ALLOWED_HOSTS", "").split(",") if h.strip()
+]
+
 # --- REST API (F4000286) ---
 REST_API_ENABLED: bool = os.getenv("REST_API_ENABLED", "true").lower() == "true"
 REST_CORS_ORIGINS: list[str] = [
