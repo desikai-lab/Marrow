@@ -27,6 +27,8 @@
 | `MAX_EMBED_CHARS` | Maximum characters to embed per chunk | `2000` |
 | `VECT_DEBOUNCE_SECONDS` | Debounce delay before vectorizing a changed file | `0.5` |
 | `PORT` | HTTP server port | `8000` |
+| `MCP_DNS_REBINDING_PROTECTION` | `true` enables DNS-rebinding protection on the MCP transport (validates `Host` and `Origin` headers against the allow-lists). `false` disables both checks — required behind reverse-proxy tunnels (e.g. ngrok) that send an external domain in `Host`; the server already authenticates via `SECRET_TOKEN`/OAuth | `false` |
+| `MCP_ALLOWED_HOSTS` | Comma-separated `Host` allow-list for DNS-rebinding protection — exact hostnames or `<host>:*` port patterns only (no subdomain wildcards, e.g. `*.ngrok-free.dev`). Include `localhost,127.0.0.1` to keep direct local access working | empty |
 | `TOOL_GROUP_CODE_ENABLED` | `false` removes the code tools (`search_code_skeletons`, `get_file_skeleton`, `get_project_map`, `view_file_source`) from MCP, answers their REST routes with `409`, and rejects `marrow_worker` pushes to `/api/vectorize` with `409` — see [Tool groups](#tool-groups) | `true` |
 | `TOOL_GROUP_TASK_ENABLED` | `false` removes the task tools (`add_tasks`, `search_tasks`, `get_task_details`, `update_task`, `complete_tasks`) from MCP and answers their REST routes with `409` | `true` |
 | `TOOL_GROUP_BUILD_ENABLED` | `false` removes `run_project_build` from MCP (it has no REST route) | `true` |
